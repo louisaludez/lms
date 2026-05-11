@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lumina LMS — DFD Export</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f1b2d;
+      color: #e2e8f0;
+      padding: 32px 24px;
+    }
+    h1 {
+      text-align: center;
+      font-size: 28px;
+      color: #7ec8e3;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #80b3ce;
+      font-size: 14px;
+      margin-bottom: 40px;
+    }
+    .diagram-section {
+      background: #1a2e42;
+      border: 1px solid #447794;
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 32px;
+    }
+    .diagram-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .diagram-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #7ec8e3;
+    }
+    .diagram-subtitle {
+      font-size: 13px;
+      color: #80b3ce;
+      margin-top: 4px;
+    }
+    .btn-download {
+      background: #447794;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+    .btn-download:hover { background: #2d5b75; }
+    .mermaid-wrap {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 24px;
+      overflow-x: auto;
+    }
+    .mermaid { min-width: 100%; }
+  </style>
+</head>
+<body>
+  <h1>🏛️ Lumina LMS — Data Flow Diagrams</h1>
+  <p class="subtitle">Click "Download as PNG" on each diagram to save it as an image</p>
+
+  <!-- ======================== LEVEL 0 ======================== -->
+  <div class="diagram-section" id="section-0">
+    <div class="diagram-header">
+      <div>
+        <div class="diagram-title">Level 0 — Context Diagram</div>
+        <div class="diagram-subtitle">The entire system as a single process with all external actors</div>
+      </div>
+      <button class="btn-download" onclick="downloadDiagram('diagram-0', 'Lumina_DFD_Level0.png')">
+        ⬇️ Download as PNG
+      </button>
+    </div>
+    <div class="mermaid-wrap" id="diagram-0">
+      <div class="mermaid">
+flowchart LR
+    STU(["👤 Student / Faculty"])
+    LIB(["🧑‍💼 Librarian"])
+    ADM(["🔐 Admin"])
+    CRON(["⏰ CRON Scheduler"])
+    SYS["🏛️ LUMINA\nLibrary Management System"]
+    STU -- "Login, Search, Reservation, Attendance Scan" --> SYS
+    SYS -- "Book Results, Borrow History, Barcode ID, Status" --> STU
+    LIB -- "Login, Checkout/Return, Attendance Confirm" --> SYS
+    SYS -- "Transaction Records, Overdue List, Logs" --> LIB
+    ADM -- "Login, Add Book, Create User, Manage Data" --> SYS
+    SYS -- "Reports, User/Book Records" --> ADM
+    CRON -- "Daily Overdue Check Trigger" --> SYS
+    SYS -- "Suspension Updates, Fine Records" --> CRON
+    style SYS fill:#447794,stroke:#2d5b75,color:#fff
+    style STU fill:#1e3a5f,stroke:#447794,color:#fff
+    style LIB fill:#1e3a5f,stroke:#447794,color:#fff
+    style ADM fill:#1e3a5f,stroke:#447794,color:#fff
+    style CRON fill:#7d3c0a,stroke:#e67e22,color:#fff
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== LEVEL 1 ======================== -->
+  <div class="diagram-section" id="section-1">
+    <div class="diagram-header">
+      <div>
+        <div class="diagram-title">Level 1 — System Decomposition</div>
+        <div class="diagram-subtitle">5 major processes with data stores and external actor interactions</div>
+      </div>
+      <button class="btn-download" onclick="downloadDiagram('diagram-1', 'Lumina_DFD_Level1.png')">
+        ⬇️ Download as PNG
+      </button>
+    </div>
+    <div class="mermaid-wrap" id="diagram-1">
+      <div class="mermaid">
+flowchart TD
+    STU(["👤 Student / Faculty"])
+    LIB(["🧑‍💼 Librarian"])
+    ADM(["🔐 Admin"])
+    CRON(["⏰ CRON"])
+    P1["1.0\nAuthentication & Session"]
+    P2["2.0\nCatalog & OPAC Search"]
+    P3["3.0\nCirculation"]
+    P4["4.0\nAttendance Management"]
+    P5["5.0\nUser & Book Management"]
+    DS1[("D1: Users DB")]
+    DS2[("D2: Books & Copies DB")]
+    DS3[("D3: Transactions DB")]
+    DS4[("D4: Attendance DB")]
+    STU -- "Email + Password" --> P1
+    LIB -- "Email + Password" --> P1
+    ADM -- "Email + Password" --> P1
+    P1 -- "Read user record" --> DS1
+    P1 -- "JWT Token + Barcode Profile" --> STU
+    STU -- "Search query / filters" --> P2
+    P2 -- "Read books & copies" --> DS2
+    P2 -- "Book results, availability" --> STU
+    LIB -- "User barcode + Book barcode" --> P3
+    P3 -- "Validate eligibility" --> DS1
+    P3 -- "Update copy availability" --> DS2
+    P3 -- "Write/read transaction" --> DS3
+    P3 -- "Checkout receipt / Return + Fine" --> LIB
+    STU -- "Scan barcode (Kiosk)" --> P4
+    P4 -- "Lookup user" --> DS1
+    P4 -- "Write attendance log" --> DS4
+    P4 -- "Entry/Exit confirmation" --> STU
+    ADM -- "New book / user data" --> P5
+    LIB -- "New user / book data" --> P5
+    P5 -- "Write user + barcode" --> DS1
+    P5 -- "Write book + copies" --> DS2
+    CRON -- "Daily trigger" --> P3
+    P3 -- "Suspend overdue users" --> DS1
+    style P1 fill:#2d6a4f,stroke:#40916c,color:#fff
+    style P2 fill:#2d6a4f,stroke:#40916c,color:#fff
+    style P3 fill:#2d6a4f,stroke:#40916c,color:#fff
+    style P4 fill:#2d6a4f,stroke:#40916c,color:#fff
+    style P5 fill:#2d6a4f,stroke:#40916c,color:#fff
+    style DS1 fill:#7b2d8b,stroke:#9b59b6,color:#fff
+    style DS2 fill:#7b2d8b,stroke:#9b59b6,color:#fff
+    style DS3 fill:#7b2d8b,stroke:#9b59b6,color:#fff
+    style DS4 fill:#7b2d8b,stroke:#9b59b6,color:#fff
+    style STU fill:#1e3a5f,stroke:#447794,color:#fff
+    style LIB fill:#1e3a5f,stroke:#447794,color:#fff
+    style ADM fill:#1e3a5f,stroke:#447794,color:#fff
+    style CRON fill:#7d3c0a,stroke:#e67e22,color:#fff
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== LEVEL 2a ======================== -->
+  <div class="diagram-section" id="section-2a">
+    <div class="diagram-header">
+      <div>
+        <div class="diagram-title">Level 2 — Process 3.0: Circulation Detail</div>
+        <div class="diagram-subtitle">Checkout, Return, Fine Calculation, CRON Overdue, Renewal sub-processes</div>
+      </div>
+      <button class="btn-download" onclick="downloadDiagram('diagram-2a', 'Lumina_DFD_Level2_Circulation.png')">
+        ⬇️ Download as PNG
+      </button>
+    </div>
+    <div class="mermaid-wrap" id="diagram-2a">
+      <div class="mermaid">
+flowchart TD
+    LIB(["🧑‍💼 Librarian"])
+    CRON(["⏰ CRON"])
+    DS1[("D1: Users DB")]
+    DS2[("D2: Books DB")]
+    DS3[("D3: Transactions DB")]
+    P3_1["3.1 Validate User Eligibility"]
+    P3_2["3.2 Validate Book Copy"]
+    P3_3["3.3 Create Checkout Transaction"]
+    P3_4["3.4 Process Book Return"]
+    P3_5["3.5 Calculate Fine & Update Status"]
+    P3_6["3.6 Mark Overdue & Suspend User"]
+    P3_7["3.7 Renew Borrow Period"]
+    LIB -- "User Barcode" --> P3_1
+    P3_1 -- "Fetch user record" --> DS1
+    P3_1 -- "Eligible user data" --> P3_2
+    LIB -- "Book Copy Barcode" --> P3_2
+    P3_2 -- "Fetch copy + book" --> DS2
+    P3_2 -- "Available copy data" --> P3_3
+    P3_3 -- "Write transaction" --> DS3
+    P3_3 -- "Decrement availableCopies" --> DS2
+    P3_3 -- "Checkout receipt + due date" --> LIB
+    LIB -- "Book Copy Barcode (return)" --> P3_4
+    P3_4 -- "Find active transaction" --> DS3
+    P3_4 -- "Transaction data" --> P3_5
+    P3_5 -- "Update status=returned, fineAmount" --> DS3
+    P3_5 -- "Increment availableCopies" --> DS2
+    P3_5 -- "Lift suspension if clear" --> DS1
+    P3_5 -- "Return summary + fine" --> LIB
+    CRON -- "Daily scan trigger" --> P3_6
+    P3_6 -- "Find overdue transactions" --> DS3
+    P3_6 -- "Set eligibility=suspended" --> DS1
+    LIB -- "Renewal request" --> P3_7
+    P3_7 -- "Extend dueDate" --> DS3
+    P3_7 -- "Updated due date" --> LIB
+    style P3_1 fill:#1a4a7a,stroke:#447794,color:#fff
+    style P3_2 fill:#1a4a7a,stroke:#447794,color:#fff
+    style P3_3 fill:#1a4a7a,stroke:#447794,color:#fff
+    style P3_4 fill:#1a4a7a,stroke:#447794,color:#fff
+    style P3_5 fill:#c0392b,stroke:#e74c3c,color:#fff
+    style P3_6 fill:#c0392b,stroke:#e74c3c,color:#fff
+    style P3_7 fill:#1a4a7a,stroke:#447794,color:#fff
+    style DS1 fill:#7b2d8b,stroke:#9b59b6,color:#fff
+    style DS2 fill:#7b2d8b,stroke:#9b59b6,color:#fff
+    style DS3 fill:#7b2d8b,stroke:#9b59b6,color:#fff
+    style LIB fill:#1e3a5f,stroke:#447794,color:#fff
+    style CRON fill:#7d3c0a,stroke:#e67e22,color:#fff
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== LEVEL 2b ======================== -->
+  <div class="diagram-section" id="section-2b">
+    <div class="diagram-header">
+      <div>
+        <div class="diagram-title">Level 2 — Process 4.0: Attendance Detail</div>
+        <div class="diagram-subtitle">Kiosk scan → User lookup → Entry/Exit decision → Log → Feedback modal</div>
+      </div>
+      <button class="btn-download" onclick="downloadDiagram('diagram-2b', 'Lumina_DFD_Level2_Attendance.png')">
+        ⬇️ Download as PNG
+      </button>
+    </div>
+    <div class="mermaid-wrap" id="diagram-2b">
+      <div class="mermaid">
+flowchart TD
+    STU(["👤 Student / Faculty"])
+    LIB(["🧑‍💼 Librarian"])
+    DS1[("D1: Users DB")]
+    DS4[("D4: Attendance DB")]
+    P4_1["4.1 Receive Barcode Scan / Manual Input"]
+    P4_2["4.2 Lookup User by Barcode"]
+    P4_3["4.3 Determine Entry / Exit"]
+    P4_4["4.4 Record Attendance Log"]
+    P4_5["4.5 Display Feedback Modal"]
+    STU -- "Scan or type barcode (Kiosk)" --> P4_1
+    LIB -- "Manual barcode input (fallback)" --> P4_1
+    P4_1 -- "Barcode string" --> P4_2
+    P4_2 -- "Lookup user by barcode" --> DS1
+    P4_2 -- "User identity data" --> P4_3
+    P4_3 -- "Check last log today" --> DS4
+    P4_3 -- "Determined type: ENTRY or EXIT" --> P4_4
+    P4_4 -- "Write attendance record" --> DS4
+    P4_4 -- "Name + type + timestamp" --> P4_5
+    P4_5 -- "Success modal: Entry/Exit + Name" --> STU
+    style P4_1 fill:#1a6a4a,stroke:#40916c,color:#fff
+    style P4_2 fill:#1a6a4a,stroke:#40916c,color:#fff
+    style P4_3 fill:#c0392b,stroke:#e74c3c,color:#fff
+    style P4_4 fill:#1a6a4a,stroke:#40916c,color:#fff
+    style P4_5 fill:#1a6a4a,stroke:#40916c,color:#fff
+    style DS1 fill:#7b2d8b,stroke:#9b59b6,color:#fff
+    style DS4 fill:#7b2d8b,stroke:#9b59b6,color:#fff
+    style STU fill:#1e3a5f,stroke:#447794,color:#fff
+    style LIB fill:#1e3a5f,stroke:#447794,color:#fff
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== LEVEL 2c ======================== -->
+  <div class="diagram-section" id="section-2c">
+    <div class="diagram-header">
+      <div>
+        <div class="diagram-title">Level 2 — Process 5.0: User & Book Management Detail</div>
+        <div class="diagram-subtitle">Create user, auto-generate barcodes, add book, generate copy barcodes</div>
+      </div>
+      <button class="btn-download" onclick="downloadDiagram('diagram-2c', 'Lumina_DFD_Level2_Management.png')">
+        ⬇️ Download as PNG
+      </button>
+    </div>
+    <div class="mermaid-wrap" id="diagram-2c">
+      <div class="mermaid">
+flowchart TD
+    ADM(["🔐 Admin / Librarian"])
+    DS1[("D1: Users DB")]
+    DS2[("D2: Books & Copies DB")]
+    P5_1["5.1 Create User Account"]
+    P5_2["5.2 Auto-Generate User Barcode"]
+    P5_3["5.3 Add New Book to Catalog"]
+    P5_4["5.4 Auto-Generate Copy Barcodes"]
+    P5_5["5.5 Assign Category & Department"]
+    ADM -- "Name, Email, Role, Institutional ID, Dept" --> P5_1
+    P5_1 -- "Hash password + pass data" --> P5_2
+    P5_2 -- "Create USR-XXX barcode" --> P5_2
+    P5_2 -- "Save user + barcode" --> DS1
+    ADM -- "Title, ISBN, Copies, Category, Shelf" --> P5_3
+    P5_3 -- "Assign category" --> P5_5
+    P5_5 -- "Validate category data" --> DS2
+    P5_3 -- "Save book record" --> DS2
+    P5_3 -- "Pass copies count" --> P5_4
+    P5_4 -- "Create BC-XXXX-A/B/C per copy" --> DS2
+    style P5_1 fill:#5c2d8b,stroke:#9b59b6,color:#fff
+    style P5_2 fill:#5c2d8b,stroke:#9b59b6,color:#fff
+    style P5_3 fill:#5c2d8b,stroke:#9b59b6,color:#fff
+    style P5_4 fill:#5c2d8b,stroke:#9b59b6,color:#fff
+    style P5_5 fill:#5c2d8b,stroke:#9b59b6,color:#fff
+    style DS1 fill:#7b2d8b,stroke:#9b59b6,color:#fff
+    style DS2 fill:#7b2d8b,stroke:#9b59b6,color:#fff
+    style ADM fill:#1e3a5f,stroke:#447794,color:#fff
+      </div>
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default', flowchart: { useMaxWidth: true, htmlLabels: true } });
+
+    async function downloadDiagram(wrapperId, filename) {
+      const wrap = document.getElementById(wrapperId);
+      const svg = wrap.querySelector('svg');
+      if (!svg) { alert('Diagram not ready yet, please wait a moment and try again.'); return; }
+
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+
+      const img = new Image();
+      img.onload = function () {
+        const canvas = document.createElement('canvas');
+        const scale = 3; // High-res
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      };
+      img.src = url;
+    }
+  </script>
+</body>
+</html>
