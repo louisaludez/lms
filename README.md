@@ -102,6 +102,7 @@ npm run dev
 | Admin     | admin@lumina.edu.ph             | Run password update script    |
 | Librarian | librarian@lumina.edu.ph         | Run password update script    |
 | Student   | juan.delacruz@student.edu.ph   | Run password update script    |
+| Faculty   | faculty@lumina.edu.ph          | Run password update script    |
 
 > **Important:** The seed SQL uses placeholder bcrypt hashes. Run the backend `UsersService.create()` to register real accounts, or manually update the `password_hash` column using bcrypt.
 

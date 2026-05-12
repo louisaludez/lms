@@ -2,14 +2,18 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
+  Delete,
   Body,
   Param,
   Query,
   ParseIntPipe,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { BooksService } from './books.service';
-import { SearchBooksDto, CreateBookDto } from './dto/book.dto';
+import { SearchBooksDto, CreateBookDto, UpdateBookDto } from './dto/book.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -18,47 +22,43 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 export class BooksController {
   constructor(private readonly booksService: BooksService) {}
 
-  /**
-   * OPAC Search — public endpoint (no auth required)
-   * GET /api/v1/books/search?q=...&categoryId=...&availableOnly=true&page=1&limit=12
-   */
+  /** OPAC Search — public */
   @Get('search')
   search(@Query() dto: SearchBooksDto) {
     return this.booksService.search(dto);
   }
 
-  /**
-   * Get all categories for filter sidebar
-   * GET /api/v1/books/categories
-   */
+  /** GET /api/v1/books/categories — public */
   @Get('categories')
   getCategories() {
     return this.booksService.getCategories();
   }
 
-  /**
-   * Library stats for dashboard
-   * GET /api/v1/books/stats/overview
-   */
+  /** GET /api/v1/books/stats/overview — dashboard stats */
   @Get('stats/overview')
   @UseGuards(JwtAuthGuard)
   getStats() {
     return this.booksService.getStats();
   }
 
-  /**
-   * Book detail view — public
-   * GET /api/v1/books/:id
-   */
+  /** GET /api/v1/books/all — librarian: list all books incl. inactive */
+  @Get('all')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('librarian', 'admin')
+  findAll(
+    @Query('search') search?: string,
+    @Query('categoryId') categoryId?: string,
+  ) {
+    return this.booksService.findAll(search, categoryId ? Number(categoryId) : undefined);
+  }
+
+  /** GET /api/v1/books/:id — public */
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.booksService.findById(id);
   }
 
-  /**
-   * Add new book — librarian/admin only
-   * POST /api/v1/books
-   */
+  /** POST /api/v1/books — create */
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('librarian', 'admin')
@@ -66,5 +66,20 @@ export class BooksController {
     return this.booksService.create(dto);
   }
 
+  /** PATCH /api/v1/books/:id — update */
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('librarian', 'admin')
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateBookDto) {
+    return this.booksService.update(id, dto);
+  }
 
+  /** DELETE /api/v1/books/:id — soft-delete */
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('librarian', 'admin')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.booksService.remove(id);
+  }
 }

@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { CronModule } from './cron/cron.module';
 import { ReservationsModule } from './reservations/reservations.module';
+import { BookRequestsModule } from './book-requests/book-requests.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ReservationsModule } from './reservations/reservations.module';
     TransactionsModule,
     AttendanceModule,
     ReservationsModule,
+    BookRequestsModule,
     CronModule,
   ],
 })

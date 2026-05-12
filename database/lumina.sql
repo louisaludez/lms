@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 8.0.45, for Win64 (x86_64)
 --
--- Host: localhost    Database: lumina_lms
+-- Host: localhost    Database: n
 -- ------------------------------------------------------
 -- Server version	8.0.45
 
@@ -423,7 +423,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'ADM-0001','USR-ADM-0001','admin@lumina.edu.ph','$2b$10$QKOzNp9HWOmHE4f06E/JluANeS5kxXuy8TrrM.7AIesVjOkaDCwSa','System','Administrator',NULL,'admin',7,NULL,NULL,NULL,'eligible',1,'2026-05-05 00:43:35','2026-05-05 00:21:05','2026-05-05 00:43:35'),(2,'LIB-0001','USR-LIB-0001','librarian@lumina.edu.ph','$2b$10$QKOzNp9HWOmHE4f06E/JluANeS5kxXuy8TrrM.7AIesVjOkaDCwSa','Maria','Santos',NULL,'librarian',7,NULL,NULL,NULL,'eligible',1,'2026-05-05 00:54:23','2026-05-05 00:21:05','2026-05-05 00:54:23'),(3,'2024-CCS-001','USR-STU-001','juan.delacruz@student.edu.ph','$2b$10$QKOzNp9HWOmHE4f06E/JluANeS5kxXuy8TrrM.7AIesVjOkaDCwSa','Juan','Dela Cruz',NULL,'student',1,NULL,NULL,NULL,'eligible',1,'2026-05-05 01:05:58','2026-05-05 00:21:05','2026-05-05 01:41:09');
+INSERT INTO `users` VALUES (1,'ADM-0001','USR-ADM-0001','admin@lumina.edu.ph','$2b$10$QKOzNp9HWOmHE4f06E/JluANeS5kxXuy8TrrM.7AIesVjOkaDCwSa','System','Administrator',NULL,'admin',7,NULL,NULL,NULL,'eligible',1,'2026-05-05 00:43:35','2026-05-05 00:21:05','2026-05-05 00:43:35'),(2,'LIB-0001','USR-LIB-0001','librarian@lumina.edu.ph','$2b$10$QKOzNp9HWOmHE4f06E/JluANeS5kxXuy8TrrM.7AIesVjOkaDCwSa','Maria','Santos',NULL,'librarian',7,NULL,NULL,NULL,'eligible',1,'2026-05-05 00:54:23','2026-05-05 00:21:05','2026-05-05 00:54:23'),(3,'2024-CCS-001','USR-STU-001','juan.delacruz@student.edu.ph','$2b$10$QKOzNp9HWOmHE4f06E/JluANeS5kxXuy8TrrM.7AIesVjOkaDCwSa','Juan','Dela Cruz',NULL,'student',1,NULL,NULL,NULL,'eligible',1,'2026-05-05 01:05:58','2026-05-05 00:21:05','2026-05-05 01:41:09'),(4,'FAC-0001','USR-FAC-0001','faculty@lumina.edu.ph','$2b$10$QKOzNp9HWOmHE4f06E/JluANeS5kxXuy8TrrM.7AIesVjOkaDCwSa','Jane','Smith',NULL,'faculty',1,NULL,NULL,NULL,'eligible',1,NULL,'2026-05-05 00:21:05','2026-05-05 00:21:05');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

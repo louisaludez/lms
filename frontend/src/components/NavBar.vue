@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/useLibraryStore'
 import { useRouter } from 'vue-router'
-import { BookOpenIcon, UserCircleIcon, ArrowRightOnRectangleIcon } from '@heroicons/vue/24/outline'
+import { BookOpenIcon, UserCircleIcon, ArrowRightOnRectangleIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -40,6 +40,16 @@ function logout() {
           active-class="!text-white !bg-[#447794]/40"
         >
           Profile
+        </router-link>
+
+        <router-link
+          v-if="auth.isFaculty"
+          to="/faculty/requests"
+          class="px-4 py-2 rounded-xl text-sm font-medium text-[#aed0e2] hover:text-white hover:bg-white/10 transition-all flex items-center gap-1.5"
+          active-class="!text-white !bg-[#447794]/40"
+        >
+          <DocumentTextIcon class="w-4 h-4" />
+          My Requests
         </router-link>
 
         <router-link

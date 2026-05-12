@@ -5,7 +5,7 @@ import { onMounted } from 'vue'
 import {
   BookOpenIcon, HomeIcon, ArrowsRightLeftIcon,
   ClipboardDocumentListIcon, ArrowRightOnRectangleIcon,
-  ChartBarIcon,
+  ChartBarIcon, DocumentTextIcon,
   UserGroupIcon
 } from '@heroicons/vue/24/outline'
 import { useRouter } from 'vue-router'
@@ -28,6 +28,7 @@ const navItems = [
   { to: '/dashboard/attendance', name: 'Attendance', label: 'Attendance', icon: ClipboardDocumentListIcon },
   { to: '/dashboard/books', name: 'ManageBooks', label: 'Manage Books', icon: BookOpenIcon },
   { to: '/dashboard/users', name: 'ManageUsers', label: 'Manage Users', icon: UserGroupIcon },
+  { to: '/dashboard/book-requests', name: 'ManageBookRequests', label: 'Book Requests', icon: DocumentTextIcon },
 ]
 </script>
 

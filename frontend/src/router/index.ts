@@ -30,6 +30,12 @@ const router = createRouter({
       component: () => import('@/views/StudentProfileView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/faculty/requests',
+      name: 'FacultyRequests',
+      component: () => import('@/views/FacultyBookRequestsView.vue'),
+      meta: { requiresAuth: true, roles: ['faculty'] },
+    },
     // Librarian / Admin dashboard routes
     {
       path: '/dashboard',
@@ -60,6 +66,11 @@ const router = createRouter({
           path: 'users',
           name: 'ManageUsers',
           component: () => import('@/views/dashboard/UserManagementView.vue'),
+        },
+        {
+          path: 'book-requests',
+          name: 'ManageBookRequests',
+          component: () => import('@/views/dashboard/BookRequestsManagementView.vue'),
         },
       ],
     },

@@ -1,17 +1,25 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLibraryStore, useAuthStore } from '@/stores/useLibraryStore'
 import NavBar from '@/components/NavBar.vue'
 import {
   BookOpenIcon, ArrowLeftIcon, MapPinIcon, GlobeAltIcon,
-  CalendarIcon, BookmarkIcon, CheckCircleIcon, XCircleIcon, QrCodeIcon
+  CalendarIcon, BookmarkIcon, CheckCircleIcon, XCircleIcon, QrCodeIcon,
+  DocumentTextIcon, PaperAirplaneIcon
 } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
 const router = useRouter()
 const store = useLibraryStore()
 const auth = useAuthStore()
+
+// Faculty borrow request state
+const showRequestModal = ref(false)
+const requestReason = ref('')
+const requestLoading = ref(false)
+const requestSuccess = ref(false)
+const requestError = ref('')
 
 onMounted(() => {
   store.fetchBook(Number(route.params.id))
@@ -27,6 +35,26 @@ async function handleReserve() {
     alert('Book reserved! You have 3 days to collect it.')
   } catch (e: any) {
     alert(e.response?.data?.message ?? 'Reservation failed')
+  }
+}
+
+async function handleFacultyRequest() {
+  if (!auth.isAuthenticated) {
+    router.push({ name: 'Login', query: { redirect: route.fullPath } })
+    return
+  }
+  requestLoading.value = true
+  requestError.value = ''
+  requestSuccess.value = false
+  try {
+    await store.requestBorrowBook(Number(route.params.id), requestReason.value || undefined)
+    requestSuccess.value = true
+    requestReason.value = ''
+    setTimeout(() => { showRequestModal.value = false; requestSuccess.value = false }, 2000)
+  } catch (e: any) {
+    requestError.value = e.response?.data?.message ?? 'Request failed'
+  } finally {
+    requestLoading.value = false
   }
 }
 </script>
@@ -132,7 +160,8 @@ async function handleReserve() {
             </div>
 
             <!-- Actions -->
-            <div class="mt-6 flex gap-3">
+            <div class="mt-6 flex gap-3 flex-wrap">
+              <!-- Reserve: shown when unavailable and not reference-only -->
               <button
                 v-if="store.currentBook.availableCopies === 0 && !store.currentBook.isReferenceOnly"
                 @click="handleReserve"
@@ -140,7 +169,18 @@ async function handleReserve() {
               >
                 <BookmarkIcon class="w-4 h-4" /> Reserve Book
               </button>
-              <p v-else-if="store.currentBook.availableCopies > 0 && !auth.isLibrarian" class="text-sm text-slate-500 italic">
+
+              <!-- Faculty: Request to Borrow (when available) -->
+              <button
+                v-if="auth.isFaculty && store.currentBook.availableCopies > 0 && !store.currentBook.isReferenceOnly"
+                @click="showRequestModal = true"
+                class="btn-primary bg-purple-600 hover:bg-purple-700 shadow-purple-200"
+              >
+                <DocumentTextIcon class="w-4 h-4" /> Request to Borrow
+              </button>
+
+              <!-- Student / non-faculty: visit counter message -->
+              <p v-else-if="store.currentBook.availableCopies > 0 && !auth.isLibrarian && !auth.isFaculty" class="text-sm text-slate-500 italic">
                 Visit the library counter with your ID to borrow this book.
               </p>
             </div>
@@ -171,4 +211,50 @@ async function handleReserve() {
       </div>
     </div>
   </div>
+
+  <!-- Faculty Request Modal -->
+  <Teleport to="body">
+    <div v-if="showRequestModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl mx-4">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+            <DocumentTextIcon class="w-5 h-5 text-purple-600" />
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-800">Request to Borrow</h3>
+            <p class="text-xs text-slate-500 truncate max-w-[260px]">{{ store.currentBook?.title }}</p>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Reason / Purpose (optional)</label>
+          <textarea
+            v-model="requestReason"
+            rows="3"
+            placeholder="e.g. Reference for my research on distributed systems..."
+            class="input resize-none"
+          />
+        </div>
+
+        <div v-if="requestError" class="mb-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm">
+          {{ requestError }}
+        </div>
+        <div v-if="requestSuccess" class="mb-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold">
+          ✅ Request submitted! The librarian will process it shortly.
+        </div>
+
+        <div class="flex gap-3">
+          <button @click="showRequestModal = false; requestError = ''; requestReason = ''" class="btn-ghost flex-1 justify-center">Cancel</button>
+          <button
+            @click="handleFacultyRequest"
+            :disabled="requestLoading || requestSuccess"
+            class="flex-1 justify-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 transition-all flex items-center gap-2"
+          >
+            <PaperAirplaneIcon class="w-4 h-4" />
+            {{ requestLoading ? 'Submitting...' : 'Submit Request' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>

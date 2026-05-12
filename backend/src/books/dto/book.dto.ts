@@ -100,3 +100,19 @@ export class CreateBookDto {
   @IsBoolean()
   isReferenceOnly?: boolean;
 }
+
+export class UpdateBookDto {
+  @IsOptional() @IsString() title?: string;
+  @IsOptional() @IsString() isbn?: string;
+  @IsOptional() @IsString() callNumber?: string;
+  @IsOptional() @IsString() edition?: string;
+  @IsOptional() @IsString() publisher?: string;
+  @IsOptional() @IsNumber() publishYear?: number;
+  @IsOptional() @IsInt() categoryId?: number;
+  @IsOptional() @IsString() language?: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsString() coverImageUrl?: string;
+  @IsOptional() @IsString() locationShelf?: string;
+  @IsOptional() @IsBoolean() isReferenceOnly?: boolean;
+  @IsOptional() @IsBoolean() isActive?: boolean;
+}

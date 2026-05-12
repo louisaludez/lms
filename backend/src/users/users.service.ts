@@ -9,6 +9,8 @@ import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { Department } from './entities/department.entity';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { Like } from 'typeorm';
 
 @Injectable()
 export class UsersService {
@@ -100,5 +102,49 @@ export class UsersService {
 
   async getDepartments(): Promise<Department[]> {
     return this.deptRepo.find({ order: { name: 'ASC' } });
+  }
+
+  async findAll(search?: string, role?: string): Promise<User[]> {
+    const qb = this.userRepo
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.department', 'department')
+      .orderBy('user.createdAt', 'DESC');
+
+    if (role) qb.andWhere('user.role = :role', { role });
+    if (search) {
+      qb.andWhere(
+        '(user.firstName LIKE :s OR user.lastName LIKE :s OR user.email LIKE :s OR user.institutionalId LIKE :s)',
+        { s: `%${search}%` },
+      );
+    }
+    return qb.getMany();
+  }
+
+  async update(id: number, dto: UpdateUserDto): Promise<User> {
+    const user = await this.findById(id);
+
+    if (dto.departmentId !== undefined) {
+      const dept = await this.deptRepo.findOne({ where: { id: dto.departmentId } });
+      if (dept) user.department = dept;
+    }
+
+    if (dto.firstName !== undefined)        user.firstName        = dto.firstName;
+    if (dto.lastName !== undefined)         user.lastName         = dto.lastName;
+    if (dto.middleName !== undefined)       user.middleName       = dto.middleName;
+    if (dto.email !== undefined)            user.email            = dto.email;
+    if (dto.role !== undefined)             user.role             = dto.role;
+    if (dto.yearLevel !== undefined)        user.yearLevel        = dto.yearLevel;
+    if (dto.section !== undefined)          user.section          = dto.section;
+    if (dto.eligibilityStatus !== undefined) user.eligibilityStatus = dto.eligibilityStatus;
+    if (dto.isActive !== undefined)         user.isActive         = dto.isActive;
+
+    return this.userRepo.save(user);
+  }
+
+  async remove(id: number): Promise<void> {
+    const user = await this.findById(id);
+    // Soft-delete: just deactivate the account
+    user.isActive = false;
+    await this.userRepo.save(user);
   }
 }

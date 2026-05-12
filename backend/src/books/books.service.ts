@@ -8,7 +8,7 @@ import { Repository, SelectQueryBuilder, DataSource } from 'typeorm';
 import { Book } from './entities/book.entity';
 import { BookCopy } from './entities/book-copy.entity';
 import { Category } from './entities/category.entity';
-import { SearchBooksDto, CreateBookDto } from './dto/book.dto';
+import { SearchBooksDto, CreateBookDto, UpdateBookDto } from './dto/book.dto';
 
 export interface PaginatedBooks {
   data: Book[];
@@ -208,5 +208,73 @@ export class BooksService {
       totalCopies,
       availableCopies: Number(availableCopiesRaw?.sum ?? 0),
     };
+  }
+
+  // ── ADMIN: LIST ALL BOOKS (incl. inactive) ─────────────────────────────
+  async findAll(search?: string, categoryId?: number): Promise<Book[]> {
+    const qb = this.bookRepo
+      .createQueryBuilder('book')
+      .leftJoinAndSelect('book.category', 'category')
+      .orderBy('book.createdAt', 'DESC');
+
+    if (search) {
+      qb.andWhere(
+        '(book.title LIKE :s OR book.isbn LIKE :s OR book.callNumber LIKE :s)',
+        { s: `%${search}%` },
+      );
+    }
+    if (categoryId) qb.andWhere('book.category_id = :categoryId', { categoryId });
+
+    const books = await qb.getMany();
+
+    if (books.length > 0) {
+      const ids = books.map((b) => b.id);
+      const authorsData = await this.dataSource.query(
+        `SELECT ba.book_id, a.full_name FROM authors a
+         JOIN book_authors ba ON ba.author_id = a.id
+         WHERE ba.book_id IN (?) ORDER BY ba.role`,
+        [ids],
+      );
+      const map = new Map<number, string[]>();
+      authorsData.forEach((r: any) => {
+        if (!map.has(r.book_id)) map.set(r.book_id, []);
+        map.get(r.book_id)!.push(r.full_name);
+      });
+      books.forEach((b) => { b.authors = map.get(b.id) || []; });
+    }
+    return books;
+  }
+
+  // ── UPDATE BOOK ──────────────────────────────────────────────────────
+  async update(id: number, dto: UpdateBookDto): Promise<Book> {
+    const book = await this.findById(id);
+
+    if (dto.categoryId !== undefined) {
+      const cat = await this.categoryRepo.findOne({ where: { id: dto.categoryId } });
+      if (cat) book.category = cat;
+    }
+
+    if (dto.title !== undefined)         book.title          = dto.title;
+    if (dto.isbn !== undefined)          book.isbn           = dto.isbn;
+    if (dto.callNumber !== undefined)    book.callNumber     = dto.callNumber;
+    if (dto.edition !== undefined)       book.edition        = dto.edition;
+    if (dto.publisher !== undefined)     book.publisher      = dto.publisher;
+    if (dto.publishYear !== undefined)   book.publishYear    = dto.publishYear;
+    if (dto.language !== undefined)      book.language       = dto.language;
+    if (dto.description !== undefined)   book.description    = dto.description;
+    if (dto.coverImageUrl !== undefined) book.coverImageUrl  = dto.coverImageUrl;
+    if (dto.locationShelf !== undefined) book.locationShelf  = dto.locationShelf;
+    if (dto.isReferenceOnly !== undefined) book.isReferenceOnly = dto.isReferenceOnly;
+    if (dto.isActive !== undefined)      book.isActive       = dto.isActive;
+
+    await this.bookRepo.save(book as any);
+    return this.findById(id);
+  }
+
+  // ── SOFT-DELETE BOOK ────────────────────────────────────────────────
+  async remove(id: number): Promise<void> {
+    const book = await this.findById(id);
+    book.isActive = false;
+    await this.bookRepo.save(book as any);
   }
 }

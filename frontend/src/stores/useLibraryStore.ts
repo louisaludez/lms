@@ -53,6 +53,23 @@ export interface Transaction {
   status: 'active' | 'returned' | 'overdue' | 'lost'
 }
 
+export interface BookRequestItem {
+  id: number
+  book: Book | null
+  title: string | null
+  author: string | null
+  isbn: string | null
+  publisher: string | null
+  requestType: 'borrow' | 'acquisition'
+  reason: string | null
+  status: 'pending' | 'approved' | 'rejected' | 'fulfilled'
+  librarian: { firstName: string; lastName: string } | null
+  librarianNotes: string | null
+  processedAt: string | null
+  createdAt: string
+  user?: { id: number; firstName: string; lastName: string; institutionalId: string; department?: { name: string } }
+}
+
 export interface PaginatedBooks {
   data: Book[]
   total: number
@@ -128,6 +145,12 @@ export const useLibraryStore = defineStore('library', () => {
   const myActiveTransactions = ref<Transaction[]>([])
   const loadingTransactions = ref(false)
 
+  // Book requests (faculty feature)
+  const myBookRequests = ref<BookRequestItem[]>([])
+  const allBookRequests = ref<BookRequestItem[]>([])
+  const loadingBookRequests = ref(false)
+  const pendingRequestCount = ref(0)
+
   // Dashboard stats
   const stats = ref({ totalBooks: 0, totalCopies: 0, availableCopies: 0 })
   const txStats = ref({ active: 0, overdue: 0, returnedToday: 0 })
@@ -197,6 +220,50 @@ export const useLibraryStore = defineStore('library', () => {
     return data
   }
 
+  // ── Book Request Actions (Faculty) ────────────────────────────────────────
+  async function requestBorrowBook(bookId: number, reason?: string) {
+    const { data } = await api.post('/book-requests/borrow', { bookId, reason })
+    await fetchMyBookRequests()
+    return data
+  }
+
+  async function requestAcquisition(payload: { title: string; author?: string; isbn?: string; publisher?: string; reason: string }) {
+    const { data } = await api.post('/book-requests/acquisition', payload)
+    await fetchMyBookRequests()
+    return data
+  }
+
+  async function fetchMyBookRequests() {
+    loadingBookRequests.value = true
+    try {
+      const { data } = await api.get<BookRequestItem[]>('/book-requests/my')
+      myBookRequests.value = data
+    } finally {
+      loadingBookRequests.value = false
+    }
+  }
+
+  async function fetchAllBookRequests() {
+    loadingBookRequests.value = true
+    try {
+      const { data } = await api.get<BookRequestItem[]>('/book-requests')
+      allBookRequests.value = data
+    } finally {
+      loadingBookRequests.value = false
+    }
+  }
+
+  async function fetchPendingRequestCount() {
+    const { data } = await api.get<number>('/book-requests/pending-count')
+    pendingRequestCount.value = data
+  }
+
+  async function updateBookRequestStatus(requestId: number, status: string, librarianNotes?: string) {
+    const { data } = await api.patch(`/book-requests/${requestId}/status`, { status, librarianNotes })
+    await fetchAllBookRequests()
+    return data
+  }
+
   async function fetchStats() {
     const [bookStats, transStats] = await Promise.all([
       api.get('/books/stats/overview'),
@@ -231,8 +298,11 @@ export const useLibraryStore = defineStore('library', () => {
     books, currentBook, categories, totalBooks, currentPage, lastPage,
     loading, searchQuery, selectedCategory, availableOnly, excludeReference,
     myTransactions, myActiveTransactions, loadingTransactions,
+    myBookRequests, allBookRequests, loadingBookRequests, pendingRequestCount,
     stats, txStats,
     hasOverdue, overdueCount, totalFinesDue,
-    searchBooks, fetchBook, fetchCategories, fetchMyTransactions, renewBook, reserveBook, fetchStats, resetSearch,
+    searchBooks, fetchBook, fetchCategories, fetchMyTransactions, renewBook, reserveBook,
+    requestBorrowBook, requestAcquisition, fetchMyBookRequests, fetchAllBookRequests, fetchPendingRequestCount, updateBookRequestStatus,
+    fetchStats, resetSearch,
   }
 })

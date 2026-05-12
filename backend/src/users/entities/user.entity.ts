@@ -13,6 +13,7 @@ import { Department } from './department.entity';
 import { Transaction } from '../../transactions/entities/transaction.entity';
 import { AttendanceLog } from '../../attendance/entities/attendance-log.entity';
 import { Reservation } from '../../reservations/entities/reservation.entity';
+import { BookRequest } from '../../book-requests/entities/book-request.entity';
 
 export enum UserRole {
   STUDENT = 'student',
@@ -109,6 +110,9 @@ export class User {
 
   @OneToMany(() => Reservation, (res) => res.user)
   reservations: Reservation[];
+
+  @OneToMany(() => BookRequest, (br) => br.user)
+  bookRequests: BookRequest[];
 
   get fullName(): string {
     return `${this.firstName} ${this.lastName}`;
