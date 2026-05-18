@@ -211,7 +211,7 @@ export class BooksService {
   }
 
   // ── ADMIN: LIST ALL BOOKS (incl. inactive) ─────────────────────────────
-  async findAll(search?: string, categoryId?: number): Promise<Book[]> {
+  async findAll(search?: string, categoryId?: number, page: number = 1, limit: number = 10): Promise<PaginatedBooks> {
     const qb = this.bookRepo
       .createQueryBuilder('book')
       .leftJoinAndSelect('book.category', 'category')
@@ -225,7 +225,10 @@ export class BooksService {
     }
     if (categoryId) qb.andWhere('book.category_id = :categoryId', { categoryId });
 
-    const books = await qb.getMany();
+    const [books, total] = await qb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
 
     if (books.length > 0) {
       const ids = books.map((b) => b.id);
@@ -242,7 +245,7 @@ export class BooksService {
       });
       books.forEach((b) => { b.authors = map.get(b.id) || []; });
     }
-    return books;
+    return { data: books, total, page, lastPage: Math.ceil(total / limit) || 1 };
   }
 
   // ── UPDATE BOOK ──────────────────────────────────────────────────────

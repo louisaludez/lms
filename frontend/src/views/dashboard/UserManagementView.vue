@@ -6,6 +6,7 @@ import {
   TrashIcon, XMarkIcon, CheckIcon, FunnelIcon,
   UserCircleIcon,
 } from '@heroicons/vue/24/outline'
+import Pagination from '@/components/Pagination.vue'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Department { id: number; name: string; code: string }
@@ -56,15 +57,23 @@ onMounted(() => {
   fetchDepartments()
 })
 
+const currentPage = ref(1)
+const lastPage    = ref(1)
+const totalItems  = ref(0)
+const currentLimit = ref(10)
+
 // ── Data fetching ─────────────────────────────────────────────────────────────
-async function fetchUsers() {
+async function fetchUsers(page = 1) {
   loading.value = true
   try {
-    const params: Record<string, string> = {}
+    const params: Record<string, string | number> = { page, limit: currentLimit.value }
     if (searchQuery.value) params.search = searchQuery.value
     if (filterRole.value)  params.role   = filterRole.value
-    const { data } = await api.get<UserRow[]>('/users', { params })
-    users.value = data
+    const { data } = await api.get<{ data: UserRow[], total: number, page: number, lastPage: number }>('/users', { params })
+    users.value = data.data
+    currentPage.value = data.page
+    lastPage.value = data.lastPage
+    totalItems.value = data.total
   } finally {
     loading.value = false
   }
@@ -78,7 +87,12 @@ async function fetchDepartments() {
 let searchTimer: ReturnType<typeof setTimeout>
 function onSearch() {
   clearTimeout(searchTimer)
-  searchTimer = setTimeout(fetchUsers, 350)
+  searchTimer = setTimeout(() => fetchUsers(1), 350)
+}
+
+function onLimitChange(newLimit: number) {
+  currentLimit.value = newLimit
+  fetchUsers(1)
 }
 
 // ── Modal helpers ──────────────────────────────────────────────────────────────
@@ -118,9 +132,11 @@ async function saveUser() {
   modalError.value = ''
   try {
     if (modalMode.value === 'create') {
+      const { eligibilityStatus, isActive, ...createPayload } = form.value
       await api.post('/users', {
-        ...form.value,
-        departmentId: form.value.departmentId ? Number(form.value.departmentId) : undefined,
+        ...createPayload,
+        barcode: createPayload.institutionalId,
+        departmentId: createPayload.departmentId ? Number(createPayload.departmentId) : undefined,
       })
     } else {
       const payload: Record<string, any> = {
@@ -136,7 +152,7 @@ async function saveUser() {
       await api.patch(`/users/${editingId.value}`, payload)
     }
     closeModal()
-    await fetchUsers()
+    await fetchUsers(currentPage.value)
   } catch (e: any) {
     modalError.value = e.response?.data?.message ?? 'Save failed'
   } finally {
@@ -150,7 +166,7 @@ async function confirmDelete() {
   try {
     await api.delete(`/users/${deleteTarget.value.id}`)
     deleteTarget.value = null
-    await fetchUsers()
+    await fetchUsers(currentPage.value)
   } catch (e: any) {
     alert(e.response?.data?.message ?? 'Delete failed')
   } finally {
@@ -180,7 +196,7 @@ function eligBadge(status: string) {
 </script>
 
 <template>
-  <div class="max-w-6xl">
+  <div class="max-w-full">
 
     <!-- Header -->
     <div class="flex items-center justify-between mb-5">
@@ -190,7 +206,7 @@ function eligBadge(status: string) {
         </div>
         <div>
           <h2 class="text-lg font-bold text-slate-800">Manage Users</h2>
-          <p class="text-xs text-slate-500">{{ users.length }} user{{ users.length !== 1 ? 's' : '' }} found</p>
+          <p class="text-xs text-slate-500">{{ totalItems }} user{{ totalItems !== 1 ? 's' : '' }} found</p>
         </div>
       </div>
       <button @click="openCreate" class="btn-primary">
@@ -212,7 +228,7 @@ function eligBadge(status: string) {
       </div>
       <div class="flex items-center gap-2">
         <FunnelIcon class="w-4 h-4 text-slate-400" />
-        <select v-model="filterRole" @change="fetchUsers" class="input text-sm w-36">
+        <select v-model="filterRole" @change="fetchUsers(1)" class="input text-sm w-36">
           <option value="">All Roles</option>
           <option value="student">Student</option>
           <option value="faculty">Faculty</option>
@@ -312,6 +328,17 @@ function eligBadge(status: string) {
           </tbody>
         </table>
       </div>
+
+      <!-- Pagination -->
+      <Pagination
+        v-if="totalItems > 0"
+        :current-page="currentPage"
+        :last-page="lastPage"
+        :total-items="totalItems"
+        :limit="currentLimit"
+        @update:page="fetchUsers"
+        @update:limit="onLimitChange"
+      />
     </div>
 
     <!-- Create / Edit Modal -->

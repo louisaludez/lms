@@ -6,6 +6,7 @@ import {
   PencilSquareIcon, TrashIcon, XMarkIcon,
   CheckIcon, FunnelIcon,
 } from '@heroicons/vue/24/outline'
+import Pagination from '@/components/Pagination.vue'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Category { id: number; name: string }
@@ -59,15 +60,23 @@ onMounted(() => {
   api.get<Category[]>('/books/categories').then(r => { categories.value = r.data })
 })
 
+const currentPage = ref(1)
+const lastPage    = ref(1)
+const totalItems  = ref(0)
+const currentLimit = ref(10)
+
 // ── Data ──────────────────────────────────────────────────────────────────────
-async function fetchBooks() {
+async function fetchBooks(page = 1) {
   loading.value = true
   try {
-    const params: Record<string, string> = {}
+    const params: Record<string, string | number> = { page, limit: currentLimit.value }
     if (searchQuery.value) params.search     = searchQuery.value
     if (filterCat.value)   params.categoryId = filterCat.value
-    const { data } = await api.get<BookRow[]>('/books/all', { params })
-    books.value = data
+    const { data } = await api.get<{ data: BookRow[], total: number, page: number, lastPage: number }>('/books/all', { params })
+    books.value = data.data
+    currentPage.value = data.page
+    lastPage.value = data.lastPage
+    totalItems.value = data.total
   } finally {
     loading.value = false
   }
@@ -76,7 +85,12 @@ async function fetchBooks() {
 let timer: ReturnType<typeof setTimeout>
 function onSearch() {
   clearTimeout(timer)
-  timer = setTimeout(fetchBooks, 350)
+  timer = setTimeout(() => fetchBooks(1), 350)
+}
+
+function onLimitChange(newLimit: number) {
+  currentLimit.value = newLimit
+  fetchBooks(1)
 }
 
 // ── Modal ──────────────────────────────────────────────────────────────────────
@@ -117,10 +131,11 @@ async function saveBook() {
   modalError.value = ''
   try {
     if (modalMode.value === 'create') {
+      const { isActive, ...createPayload } = form.value
       await api.post('/books', {
-        ...form.value,
-        categoryId:  form.value.categoryId  ? Number(form.value.categoryId)  : undefined,
-        publishYear: form.value.publishYear ? Number(form.value.publishYear) : undefined,
+        ...createPayload,
+        categoryId:  createPayload.categoryId  ? Number(createPayload.categoryId)  : undefined,
+        publishYear: createPayload.publishYear ? Number(createPayload.publishYear) : undefined,
       })
     } else {
       await api.patch(`/books/${editingId.value}`, {
@@ -139,7 +154,7 @@ async function saveBook() {
       })
     }
     closeModal()
-    await fetchBooks()
+    await fetchBooks(currentPage.value)
   } catch (e: any) {
     modalError.value = e.response?.data?.message ?? 'Save failed'
   } finally {
@@ -153,7 +168,7 @@ async function confirmDelete() {
   try {
     await api.delete(`/books/${deleteTarget.value.id}`)
     deleteTarget.value = null
-    await fetchBooks()
+    await fetchBooks(currentPage.value)
   } catch (e: any) {
     alert(e.response?.data?.message ?? 'Delete failed')
   } finally {
@@ -170,7 +185,7 @@ function availBadge(available: number, total: number) {
 </script>
 
 <template>
-  <div class="max-w-7xl">
+  <div class="max-w-full">
 
     <!-- Header -->
     <div class="flex items-center justify-between mb-5">
@@ -180,7 +195,7 @@ function availBadge(available: number, total: number) {
         </div>
         <div>
           <h2 class="text-lg font-bold text-slate-800">Manage Books</h2>
-          <p class="text-xs text-slate-500">{{ books.length }} title{{ books.length !== 1 ? 's' : '' }} in catalog</p>
+          <p class="text-xs text-slate-500">{{ totalItems }} title{{ totalItems !== 1 ? 's' : '' }} in catalog</p>
         </div>
       </div>
       <button @click="openCreate" class="btn-primary">
@@ -202,7 +217,7 @@ function availBadge(available: number, total: number) {
       </div>
       <div class="flex items-center gap-2">
         <FunnelIcon class="w-4 h-4 text-slate-400" />
-        <select v-model="filterCat" @change="fetchBooks" class="input text-sm w-44">
+        <select v-model="filterCat" @change="fetchBooks(1)" class="input text-sm w-44">
           <option value="">All Categories</option>
           <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
         </select>
@@ -291,6 +306,17 @@ function availBadge(available: number, total: number) {
           </tbody>
         </table>
       </div>
+
+      <!-- Pagination -->
+      <Pagination
+        v-if="totalItems > 0"
+        :current-page="currentPage"
+        :last-page="lastPage"
+        :total-items="totalItems"
+        :limit="currentLimit"
+        @update:page="fetchBooks"
+        @update:limit="onLimitChange"
+      />
     </div>
 
     <!-- Create / Edit Modal -->

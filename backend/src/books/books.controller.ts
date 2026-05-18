@@ -48,8 +48,15 @@ export class BooksController {
   findAll(
     @Query('search') search?: string,
     @Query('categoryId') categoryId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.booksService.findAll(search, categoryId ? Number(categoryId) : undefined);
+    return this.booksService.findAll(
+      search, 
+      categoryId ? Number(categoryId) : undefined,
+      page ? Number(page) : 1,
+      limit ? Number(limit) : 10
+    );
   }
 
   /** GET /api/v1/books/:id — public */

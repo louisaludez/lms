@@ -44,8 +44,18 @@ export class UsersController {
   @Get()
   @UseGuards(RolesGuard)
   @Roles('librarian', 'admin')
-  findAll(@Query('search') search?: string, @Query('role') role?: string) {
-    return this.usersService.findAll(search, role);
+  findAll(
+    @Query('search') search?: string, 
+    @Query('role') role?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.usersService.findAll(
+      search, 
+      role,
+      page ? Number(page) : 1,
+      limit ? Number(limit) : 10
+    );
   }
 
   /** GET /api/v1/users/:id */

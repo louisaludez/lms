@@ -104,7 +104,7 @@ export class UsersService {
     return this.deptRepo.find({ order: { name: 'ASC' } });
   }
 
-  async findAll(search?: string, role?: string): Promise<User[]> {
+  async findAll(search?: string, role?: string, page: number = 1, limit: number = 10): Promise<{ data: User[], total: number, page: number, lastPage: number }> {
     const qb = this.userRepo
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.department', 'department')
@@ -117,7 +117,13 @@ export class UsersService {
         { s: `%${search}%` },
       );
     }
-    return qb.getMany();
+    
+    const [users, total] = await qb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return { data: users, total, page, lastPage: Math.ceil(total / limit) || 1 };
   }
 
   async update(id: number, dto: UpdateUserDto): Promise<User> {
