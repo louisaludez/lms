@@ -8,7 +8,7 @@ import {
   Max,
   MinLength,
 } from 'class-validator';
-import { UserRole } from '../entities/user.entity';
+import { UserRole, Gender } from '../entities/user.entity';
 
 export class CreateUserDto {
   @IsString()
@@ -33,6 +33,10 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   middleName?: string;
+
+  @IsOptional()
+  @IsEnum(Gender)
+  gender?: Gender;
 
   @IsEnum(UserRole)
   role: UserRole;

@@ -26,8 +26,11 @@ export class Book {
   @Column({ name: 'call_number', length: 60 })
   callNumber: string;
 
-  @Column({ length: 512 })
+  @Column({ name: 'main_title', length: 512 })
   title: string;
+
+  @Column({ name: 'other_title', length: 512, nullable: true })
+  otherTitle: string;
 
   @Column({ length: 30, nullable: true })
   edition: string;

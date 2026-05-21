@@ -21,7 +21,7 @@ async function handleLogin() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#061222] flex items-center justify-center p-4">
+  <div class="relative min-h-screen overflow-hidden bg-[#061222] flex items-center justify-center p-4">
     <!-- Background decoration -->
     <div class="absolute inset-0 overflow-hidden pointer-events-none">
       <div class="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-[#447794]/10 blur-3xl" />
@@ -57,6 +57,7 @@ async function handleLogin() {
               v-model="email"
               type="email"
               required
+              autofocus
               autocomplete="email"
               placeholder="you@student.edu.ph"
               class="input bg-[#123249] border-[#447794]/30 text-white placeholder:text-slate-500 focus:ring-[#447794]/40 focus:border-[#447794]"
@@ -101,6 +102,12 @@ async function handleLogin() {
         </form>
 
         <p class="text-center text-sm text-[#80b3ce] mt-6">
+          New here?
+          <router-link to="/signup" class="text-[#447794] hover:text-[#80b3ce] font-semibold transition-colors">
+            Create an account
+          </router-link>
+        </p>
+        <p class="text-center text-sm text-[#80b3ce] mt-3">
           Just browsing?
           <router-link to="/opac" class="text-[#447794] hover:text-[#80b3ce] font-semibold transition-colors">
             Search the catalog

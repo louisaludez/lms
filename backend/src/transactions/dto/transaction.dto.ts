@@ -10,6 +10,10 @@ export class CheckoutDto {
 
   @IsOptional()
   @IsString()
+  dueDate?: string; // YYYY-MM-DD
+
+  @IsOptional()
+  @IsString()
   notes?: string;
 }
 

@@ -17,7 +17,7 @@ export class AttendanceController {
   /** GET /api/v1/attendance/today */
   @Get('today')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('librarian', 'admin')
+  @Roles('librarian', 'chief_librarian')
   getTodayLogs() {
     return this.attendanceService.getTodayLogs();
   }

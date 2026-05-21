@@ -127,6 +127,27 @@ function clearSearch() {
             </label>
           </div>
 
+          <!-- Publish Year -->
+          <div class="mb-5">
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Publish Year</p>
+            <div class="flex gap-2">
+              <input 
+                v-model="store.publishYearStart" 
+                @change="handleFilterChange" 
+                type="number" 
+                placeholder="From" 
+                class="input w-full text-sm"
+              />
+              <input 
+                v-model="store.publishYearEnd" 
+                @change="handleFilterChange" 
+                type="number" 
+                placeholder="To" 
+                class="input w-full text-sm"
+              />
+            </div>
+          </div>
+
           <!-- Categories -->
           <div>
             <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Genre / Category</p>

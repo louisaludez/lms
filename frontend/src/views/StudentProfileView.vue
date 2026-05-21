@@ -8,15 +8,17 @@ import {
   UserCircleIcon, BookOpenIcon, ExclamationTriangleIcon,
   ClockIcon, CheckCircleIcon, ArrowPathIcon, ArrowLeftIcon,
 } from '@heroicons/vue/24/outline'
-import { ArrowDownTrayIcon, QrCodeIcon } from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, QrCodeIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
 import { ExclamationCircleIcon } from '@heroicons/vue/24/solid'
 import JsBarcode from 'jsbarcode'
+import ProfileSettingsModal from '@/components/ProfileSettingsModal.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
 const store = useLibraryStore()
 
 const barcodeCanvas = ref<HTMLCanvasElement | null>(null)
+const isSettingsModalOpen = ref(false)
 
 onMounted(() => {
   store.fetchMyTransactions()
@@ -90,7 +92,15 @@ async function handleRenew(txId: number) {
         </div>
         <div class="text-white flex-1 min-w-0">
           <h1 class="text-2xl font-bold">{{ user?.firstName }} {{ user?.lastName }}</h1>
-          <p class="text-[#aed0e2] text-sm mt-0.5">{{ user?.institutionalId }}</p>
+          <p class="text-[#aed0e2] text-sm mt-0.5">
+            {{ user?.institutionalId }}
+            <span v-if="user?.department"> • {{ user.department.name }}</span>
+            <span v-if="user?.gender"> • {{ user.gender }}</span>
+          </p>
+          <button @click="isSettingsModalOpen = true" class="mt-3 flex items-center gap-1.5 text-xs font-semibold text-white/80 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors border border-white/20">
+            <Cog6ToothIcon class="w-4 h-4" />
+            Edit Profile
+          </button>
           <div class="flex items-center gap-3 mt-3">
             <span v-if="user?.eligibilityStatus === 'eligible'" class="badge-eligible">
               ✅ Eligible to Borrow
@@ -274,5 +284,7 @@ async function handleRenew(txId: number) {
       </div>
 
     </div>
+
+    <ProfileSettingsModal :isOpen="isSettingsModalOpen" @close="isSettingsModalOpen = false" />
   </div>
 </template>

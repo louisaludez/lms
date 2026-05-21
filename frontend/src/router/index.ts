@@ -15,6 +15,12 @@ const router = createRouter({
       meta: { requiresGuest: true },
     },
     {
+      path: '/signup',
+      name: 'SignUp',
+      component: () => import('@/views/SignUpView.vue'),
+      meta: { requiresGuest: true },
+    },
+    {
       path: '/opac',
       name: 'Opac',
       component: () => import('@/views/StudentOpacView.vue'),
@@ -40,7 +46,7 @@ const router = createRouter({
     {
       path: '/dashboard',
       component: () => import('@/layouts/DashboardLayout.vue'),
-      meta: { requiresAuth: true, roles: ['librarian', 'admin'] },
+      meta: { requiresAuth: true, roles: ['librarian', 'chief_librarian', 'admin'] },
       children: [
         {
           path: '',
@@ -51,6 +57,12 @@ const router = createRouter({
           path: 'circulation',
           name: 'Circulation',
           component: () => import('@/views/dashboard/CirculationView.vue'),
+        },
+        {
+          path: 'history',
+          name: 'TransactionHistory',
+          component: () => import('@/views/dashboard/TransactionHistoryView.vue'),
+          meta: { roles: ['librarian', 'chief_librarian'] },
         },
         {
           path: 'attendance',
@@ -72,13 +84,25 @@ const router = createRouter({
           name: 'ManageBookRequests',
           component: () => import('@/views/dashboard/BookRequestsManagementView.vue'),
         },
+        {
+          path: 'librarians',
+          name: 'ManageLibrarians',
+          component: () => import('@/views/dashboard/LibrarianManagementView.vue'),
+          meta: { roles: ['admin', 'chief_librarian'] },
+        },
+        {
+          path: 'reports',
+          name: 'ReportsView',
+          component: () => import('@/views/dashboard/ReportsView.vue'),
+          meta: { roles: ['librarian', 'chief_librarian', 'admin'] },
+        },
       ],
     },
     {
       path: '/kiosk/attendance',
       name: 'KioskAttendance',
       component: () => import('@/views/KioskAttendanceView.vue'),
-      meta: { requiresAuth: true, roles: ['librarian', 'admin'] },
+      meta: { requiresAuth: true, roles: ['librarian', 'chief_librarian'] },
     },
     { path: '/:pathMatch(.*)*', redirect: '/opac' },
   ],

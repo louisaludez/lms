@@ -13,6 +13,8 @@ export interface User {
   eligibilityStatus: 'eligible' | 'suspended' | 'expelled'
   profilePhotoUrl: string | null
   barcode: string
+  gender?: 'Male' | 'Female' | 'Other'
+  department?: { id: number; name: string; code: string }
 }
 
 export interface Book {
@@ -77,6 +79,24 @@ export interface PaginatedBooks {
   lastPage: number
 }
 
+function formatApiMessage(e: unknown, fallback: string): string {
+  const msg = (e as { response?: { data?: { message?: unknown } } }).response?.data?.message
+  if (Array.isArray(msg)) return msg.map(String).join(' ')
+  if (typeof msg === 'string') return msg
+  return fallback
+}
+
+export interface RegisterPayload {
+  email: string
+  password: string
+  firstName: string
+  lastName: string
+  institutionalId: string
+  role: 'student' | 'faculty' | 'librarian'
+  gender?: string
+  departmentId?: number
+}
+
 // ─── AUTH STORE ───────────────────────────────────────────────────────────────
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
@@ -98,8 +118,25 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = data.access_token
       user.value = data.user
       localStorage.setItem('lumina_token', data.access_token)
-    } catch (e: any) {
-      error.value = e.response?.data?.message ?? 'Login failed'
+    } catch (e: unknown) {
+      error.value = formatApiMessage(e, 'Login failed')
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function register(payload: RegisterPayload): Promise<string> {
+    loading.value = true
+    error.value = null
+    try {
+      const { data } = await api.post<{ message: string; email: string }>(
+        '/auth/register',
+        payload,
+      )
+      return data.message
+    } catch (e: unknown) {
+      error.value = formatApiMessage(e, 'Registration failed')
       throw e
     } finally {
       loading.value = false
@@ -122,7 +159,35 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('lumina_token')
   }
 
-  return { user, token, loading, error, isAuthenticated, isStudent, isFaculty, isLibrarian, isSuspended, login, logout, fetchMe }
+  async function updateProfile(payload: { firstName?: string, lastName?: string, middleName?: string, gender?: string, profilePhotoUrl?: string }) {
+    loading.value = true
+    error.value = null
+    try {
+      const { data } = await api.patch('/users/me/profile', payload)
+      user.value = data
+      return data
+    } catch (e: unknown) {
+      error.value = formatApiMessage(e, 'Failed to update profile')
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function changePassword(payload: any) {
+    loading.value = true
+    error.value = null
+    try {
+      await api.patch('/users/me/password', payload)
+    } catch (e: unknown) {
+      error.value = formatApiMessage(e, 'Failed to change password')
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { user, token, loading, error, isAuthenticated, isStudent, isFaculty, isLibrarian, isSuspended, login, register, logout, fetchMe, updateProfile, changePassword }
 })
 
 // ─── LIBRARY STORE ────────────────────────────────────────────────────────────
@@ -139,6 +204,8 @@ export const useLibraryStore = defineStore('library', () => {
   const selectedCategory = ref<number | null>(null)
   const availableOnly = ref(false)
   const excludeReference = ref(false)
+  const publishYearStart = ref<number | null>(null)
+  const publishYearEnd = ref<number | null>(null)
 
   // My borrowings (for student view)
   const myTransactions = ref<Transaction[]>([])
@@ -167,6 +234,8 @@ export const useLibraryStore = defineStore('library', () => {
       if (selectedCategory.value) params.categoryId = selectedCategory.value
       if (availableOnly.value) params.availableOnly = true
       if (excludeReference.value) params.excludeReference = true
+      if (publishYearStart.value) params.publishYearStart = publishYearStart.value
+      if (publishYearEnd.value) params.publishYearEnd = publishYearEnd.value
 
       const { data } = await api.get<PaginatedBooks>('/books/search', { params })
       books.value = data.data
@@ -278,6 +347,8 @@ export const useLibraryStore = defineStore('library', () => {
     selectedCategory.value = null
     availableOnly.value = false
     excludeReference.value = false
+    publishYearStart.value = null
+    publishYearEnd.value = null
     currentPage.value = 1
   }
 
@@ -297,6 +368,7 @@ export const useLibraryStore = defineStore('library', () => {
   return {
     books, currentBook, categories, totalBooks, currentPage, lastPage,
     loading, searchQuery, selectedCategory, availableOnly, excludeReference,
+    publishYearStart, publishYearEnd,
     myTransactions, myActiveTransactions, loadingTransactions,
     myBookRequests, allBookRequests, loadingBookRequests, pendingRequestCount,
     stats, txStats,

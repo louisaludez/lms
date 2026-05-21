@@ -8,7 +8,12 @@ import {
   Min,
   Max,
 } from 'class-validator';
-import { UserRole, EligibilityStatus } from '../entities/user.entity';
+import {
+  UserRole,
+  Gender,
+  EligibilityStatus,
+  AccountApprovalStatus,
+} from '../entities/user.entity';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -26,6 +31,10 @@ export class UpdateUserDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  @IsOptional()
+  @IsEnum(Gender)
+  gender?: Gender;
 
   @IsOptional()
   @IsEnum(UserRole)
@@ -52,4 +61,8 @@ export class UpdateUserDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsEnum(AccountApprovalStatus)
+  accountApprovalStatus?: AccountApprovalStatus;
 }

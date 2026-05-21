@@ -11,6 +11,7 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { CronModule } from './cron/cron.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { BookRequestsModule } from './book-requests/book-requests.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { BookRequestsModule } from './book-requests/book-requests.module';
     ReservationsModule,
     BookRequestsModule,
     CronModule,
+    ReportsModule,
   ],
 })
 export class AppModule {}

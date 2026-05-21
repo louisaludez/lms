@@ -38,6 +38,8 @@ export class BooksService {
       publisher,
       availableOnly,
       excludeReference,
+      publishYearStart,
+      publishYearEnd,
       page = 1,
       limit = 12,
     } = dto;
@@ -63,6 +65,9 @@ export class BooksService {
       });
     if (availableOnly) qb.andWhere('book.available_copies > 0');
     if (excludeReference) qb.andWhere('book.is_reference_only = 0');
+    
+    if (publishYearStart !== undefined) qb.andWhere('book.publish_year >= :start', { start: publishYearStart });
+    if (publishYearEnd !== undefined) qb.andWhere('book.publish_year <= :end', { end: publishYearEnd });
 
     const [books, total] = await qb
       .skip((page - 1) * limit)

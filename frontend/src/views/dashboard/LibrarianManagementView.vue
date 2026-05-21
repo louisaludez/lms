@@ -32,7 +32,7 @@ const users        = ref<UserRow[]>([])
 const departments  = ref<Department[]>([])
 const loading      = ref(false)
 const searchQuery  = ref('')
-const filterRole           = ref('')
+const filterRole           = ref('librarian')
 const filterApprovalStatus = ref('')
 const reviewingId          = ref<number | null>(null)
 
@@ -46,7 +46,7 @@ const editingId    = ref<number | null>(null)
 const blankForm = () => ({
   firstName: '', lastName: '', middleName: '',
   email: '', password: 'Admin@1234',
-  institutionalId: '', role: 'student', gender: 'Male',
+  institutionalId: '', role: 'librarian', gender: 'Male',
   departmentId: '', eligibilityStatus: 'eligible',
   accountApprovalStatus: 'approved', isActive: true,
 })
@@ -236,12 +236,12 @@ function approvalBadge(status: string) {
           <UserCircleIcon class="w-5 h-5 text-[#447794]" />
         </div>
         <div>
-          <h2 class="text-lg font-bold text-slate-800">Manage Users</h2>
-          <p class="text-xs text-slate-500">{{ totalItems }} user{{ totalItems !== 1 ? 's' : '' }} found</p>
+          <h2 class="text-lg font-bold text-slate-800">Manage Librarians</h2>
+          <p class="text-xs text-slate-500">{{ totalItems }} librarian{{ totalItems !== 1 ? 's' : '' }} found</p>
         </div>
       </div>
       <button @click="openCreate" class="btn-primary">
-        <UserPlusIcon class="w-4 h-4" /> Add User
+        <UserPlusIcon class="w-4 h-4" /> Add Librarian
       </button>
     </div>
 
@@ -259,13 +259,6 @@ function approvalBadge(status: string) {
       </div>
       <div class="flex items-center gap-2">
         <FunnelIcon class="w-4 h-4 text-slate-400" />
-        <select v-model="filterRole" @change="fetchUsers(1)" class="input text-sm w-36">
-          <option value="">All Roles</option>
-          <option value="student">Student</option>
-          <option value="faculty">Faculty</option>
-          <option value="librarian">Librarian</option>
-          <option value="admin">Admin</option>
-        </select>
         <select v-model="filterApprovalStatus" @change="fetchUsers(1)" class="input text-sm w-40">
           <option value="">All approvals</option>
           <option value="pending">Pending approval</option>
@@ -285,7 +278,7 @@ function approvalBadge(status: string) {
       <!-- Empty -->
       <div v-else-if="users.length === 0" class="py-16 text-center text-slate-400">
         <UserCircleIcon class="w-12 h-12 mx-auto mb-3 text-slate-300" />
-        <p class="font-medium text-slate-500">No users found</p>
+        <p class="font-medium text-slate-500">No librarians found</p>
         <p class="text-sm mt-1">Try adjusting your search or filters.</p>
       </div>
 
@@ -412,7 +405,7 @@ function approvalBadge(status: string) {
           <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
             <h3 class="font-bold text-slate-800 flex items-center gap-2">
               <UserPlusIcon class="w-5 h-5 text-[#447794]" />
-              {{ modalMode === 'create' ? 'Create New User' : 'Edit User' }}
+              {{ modalMode === 'create' ? 'Create New Librarian' : 'Edit Librarian' }}
             </h3>
             <button @click="closeModal" class="text-slate-400 hover:text-slate-600">
               <XMarkIcon class="w-5 h-5" />
@@ -443,15 +436,6 @@ function approvalBadge(status: string) {
                   class="input font-mono"
                   placeholder="e.g. 2024-CCS-001"
                 />
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Role *</label>
-                <select v-model="form.role" required class="input">
-                  <option value="student">Student</option>
-                  <option value="faculty">Faculty</option>
-                  <option value="librarian">Librarian</option>
-                  <option value="admin">Admin</option>
-                </select>
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Gender</label>
@@ -502,7 +486,7 @@ function approvalBadge(status: string) {
             <div class="flex gap-3 pt-2">
               <button type="button" @click="closeModal" class="btn-ghost flex-1 justify-center">Cancel</button>
               <button type="submit" :disabled="saving" class="btn-primary flex-1 justify-center">
-                {{ saving ? 'Saving...' : modalMode === 'create' ? 'Create User' : 'Save Changes' }}
+                {{ saving ? 'Saving...' : modalMode === 'create' ? 'Create Librarian' : 'Save Changes' }}
               </button>
             </div>
           </form>

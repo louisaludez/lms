@@ -23,6 +23,16 @@ export class SearchBooksDto {
   language?: string;
 
   @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  publishYearStart?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  publishYearEnd?: number;
+
+  @IsOptional()
   @IsString()
   publisher?: string;
 
@@ -58,6 +68,10 @@ export class CreateBookDto {
 
   @IsString()
   title: string;
+
+  @IsOptional()
+  @IsString()
+  otherTitle?: string;
 
   @IsOptional()
   @IsString()
@@ -103,6 +117,7 @@ export class CreateBookDto {
 
 export class UpdateBookDto {
   @IsOptional() @IsString() title?: string;
+  @IsOptional() @IsString() otherTitle?: string;
   @IsOptional() @IsString() isbn?: string;
   @IsOptional() @IsString() callNumber?: string;
   @IsOptional() @IsString() edition?: string;

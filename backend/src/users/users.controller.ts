@@ -17,9 +17,12 @@ import { Request as ExpressRequest } from 'express';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { UserRole } from './entities/user.entity';
 
 type AuthReq = ExpressRequest & { user: { id: number; role: string } };
 
@@ -34,6 +37,18 @@ export class UsersController {
     return this.usersService.getProfile(req.user.id);
   }
 
+  /** PATCH /api/v1/users/me/profile */
+  @Patch('me/profile')
+  updateProfile(@Request() req: AuthReq, @Body() dto: UpdateProfileDto) {
+    return this.usersService.updateProfile(req.user.id, dto);
+  }
+
+  /** PATCH /api/v1/users/me/password */
+  @Patch('me/password')
+  changePassword(@Request() req: AuthReq, @Body() dto: ChangePasswordDto) {
+    return this.usersService.changePassword(req.user.id, dto);
+  }
+
   /** GET /api/v1/users/departments */
   @Get('departments')
   getDepartments() {
@@ -43,25 +58,27 @@ export class UsersController {
   /** GET /api/v1/users?search=&role= — Librarian/Admin: list all users */
   @Get()
   @UseGuards(RolesGuard)
-  @Roles('librarian', 'admin')
+  @Roles('librarian', 'chief_librarian', 'admin')
   findAll(
-    @Query('search') search?: string, 
+    @Query('search') search?: string,
     @Query('role') role?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('approvalStatus') approvalStatus?: string,
   ) {
     return this.usersService.findAll(
-      search, 
+      search,
       role,
       page ? Number(page) : 1,
-      limit ? Number(limit) : 10
+      limit ? Number(limit) : 10,
+      approvalStatus,
     );
   }
 
   /** GET /api/v1/users/:id */
   @Get(':id')
   @UseGuards(RolesGuard)
-  @Roles('librarian', 'admin')
+  @Roles('librarian', 'chief_librarian', 'admin')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.findById(id);
   }
@@ -69,23 +86,22 @@ export class UsersController {
   /** POST /api/v1/users — Create new user */
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('librarian', 'admin')
+  @Roles('librarian', 'chief_librarian', 'admin')
   create(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);
   }
 
-  /** PATCH /api/v1/users/:id — Update user */
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles('librarian', 'admin')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
-    return this.usersService.update(id, dto);
+  @Roles('librarian', 'chief_librarian', 'admin')
+  update(@Request() req: AuthReq, @Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
+    return this.usersService.update(id, dto, req.user.role as UserRole);
   }
 
   /** DELETE /api/v1/users/:id — Soft-delete (deactivate) user */
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles('librarian', 'admin')
+  @Roles('librarian', 'chief_librarian', 'admin')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.remove(id);

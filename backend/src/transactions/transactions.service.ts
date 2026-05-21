@@ -70,11 +70,16 @@ export class TransactionsService {
     if (existingActive)
       throw new BadRequestException('This copy is already checked out');
 
-    // Check reference-only
     if (copy.book.isReferenceOnly)
       throw new BadRequestException('Reference books cannot be borrowed');
 
-    const dueDate = addDays(new Date(), this.borrowDays);
+    let dueDate = addDays(new Date(), this.borrowDays);
+    if (dto.dueDate) {
+      const parsed = parseISO(dto.dueDate);
+      if (!isNaN(parsed.getTime())) {
+        dueDate = parsed;
+      }
+    }
 
     const tx = this.txRepo.create({
       user,
@@ -228,6 +233,14 @@ export class TransactionsService {
         eligibilityStatus: EligibilityStatus.ELIGIBLE,
       });
     }
+  }
+
+  // ─── GET ALL HISTORY ────────────────────────────────────────────────────────
+  async findAllHistory(): Promise<Transaction[]> {
+    return this.txRepo.find({
+      relations: ['user', 'bookCopy', 'bookCopy.book', 'librarian'],
+      order: { createdAt: 'DESC' },
+    });
   }
 
   // ─── DASHBOARD STATS ─────────────────────────────────────────────────────────

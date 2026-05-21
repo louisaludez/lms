@@ -15,6 +15,7 @@ interface BookRow {
   isbn: string
   callNumber: string
   title: string
+  otherTitle: string | null
   authors: string[]
   edition: string | null
   publisher: string | null
@@ -43,7 +44,7 @@ const modalError = ref('')
 const editingId  = ref<number | null>(null)
 
 const blankForm = () => ({
-  title: '', isbn: '', callNumber: '', edition: '',
+  title: '', otherTitle: '', isbn: '', callNumber: '', edition: '',
   publisher: '', publishYear: new Date().getFullYear(),
   categoryId: '', language: 'English', description: '',
   coverImageUrl: '', locationShelf: '', totalCopies: 1,
@@ -104,6 +105,7 @@ function openCreate() {
 function openEdit(book: BookRow) {
   form.value = {
     title:          book.title,
+    otherTitle:     book.otherTitle ?? '',
     isbn:           book.isbn,
     callNumber:     book.callNumber,
     edition:        book.edition ?? '',
@@ -140,6 +142,7 @@ async function saveBook() {
     } else {
       await api.patch(`/books/${editingId.value}`, {
         title:          form.value.title        || undefined,
+        otherTitle:     form.value.otherTitle   || undefined,
         isbn:           form.value.isbn         || undefined,
         callNumber:     form.value.callNumber   || undefined,
         edition:        form.value.edition      || undefined,
@@ -194,12 +197,12 @@ function availBadge(available: number, total: number) {
           <BookOpenIcon class="w-5 h-5 text-[#447794]" />
         </div>
         <div>
-          <h2 class="text-lg font-bold text-slate-800">Manage Books</h2>
-          <p class="text-xs text-slate-500">{{ totalItems }} title{{ totalItems !== 1 ? 's' : '' }} in catalog</p>
+          <h2 class="text-lg font-bold text-slate-800">Manage Items</h2>
+          <p class="text-xs text-slate-500">{{ totalItems }} item{{ totalItems !== 1 ? 's' : '' }} in catalog</p>
         </div>
       </div>
       <button @click="openCreate" class="btn-primary">
-        <PlusIcon class="w-4 h-4" /> Add Book
+        <PlusIcon class="w-4 h-4" /> Add Item
       </button>
     </div>
 
@@ -232,7 +235,7 @@ function availBadge(available: number, total: number) {
 
       <div v-else-if="books.length === 0" class="py-16 text-center text-slate-400">
         <BookOpenIcon class="w-12 h-12 mx-auto mb-3 text-slate-300" />
-        <p class="font-medium text-slate-500">No books found</p>
+        <p class="font-medium text-slate-500">No items found</p>
       </div>
 
       <div v-else class="overflow-x-auto">
@@ -257,8 +260,9 @@ function availBadge(available: number, total: number) {
               <!-- Title -->
               <td class="table-cell px-4 max-w-[240px]">
                 <p class="font-semibold text-slate-800 text-sm truncate">{{ book.title }}</p>
-                <p v-if="book.authors?.length" class="text-xs text-slate-400 truncate">{{ book.authors.join(', ') }}</p>
-                <p v-else class="text-xs text-slate-300 italic">No authors</p>
+                <p v-if="book.otherTitle" class="text-xs text-slate-500 truncate italic">{{ book.otherTitle }}</p>
+                <p v-if="book.authors?.length" class="text-xs text-slate-400 truncate mt-0.5">{{ book.authors.join(', ') }}</p>
+                <p v-else class="text-xs text-slate-300 italic mt-0.5">No authors</p>
               </td>
               <!-- ISBN -->
               <td class="table-cell px-4">
@@ -326,7 +330,7 @@ function availBadge(available: number, total: number) {
           <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
             <h3 class="font-bold text-slate-800 flex items-center gap-2">
               <BookOpenIcon class="w-5 h-5 text-[#447794]" />
-              {{ modalMode === 'create' ? 'Add New Book' : 'Edit Book' }}
+              {{ modalMode === 'create' ? 'Add New Item' : 'Edit Item' }}
             </h3>
             <button @click="closeModal" class="text-slate-400 hover:text-slate-600">
               <XMarkIcon class="w-5 h-5" />
@@ -335,9 +339,13 @@ function availBadge(available: number, total: number) {
 
           <form @submit.prevent="saveBook" class="p-6 space-y-4">
             <div class="grid grid-cols-2 gap-4">
-              <div class="col-span-2">
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Title *</label>
+              <div class="col-span-2 sm:col-span-1">
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Main Title *</label>
                 <input v-model="form.title" type="text" required class="input" />
+              </div>
+              <div class="col-span-2 sm:col-span-1">
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Other Title</label>
+                <input v-model="form.otherTitle" type="text" class="input" />
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">ISBN *</label>
@@ -404,7 +412,7 @@ function availBadge(available: number, total: number) {
             <div class="flex gap-3 pt-2">
               <button type="button" @click="closeModal" class="btn-ghost flex-1 justify-center">Cancel</button>
               <button type="submit" :disabled="saving" class="btn-primary flex-1 justify-center">
-                {{ saving ? 'Saving...' : modalMode === 'create' ? 'Add Book' : 'Save Changes' }}
+                {{ saving ? 'Saving...' : modalMode === 'create' ? 'Add Item' : 'Save Changes' }}
               </button>
             </div>
           </form>

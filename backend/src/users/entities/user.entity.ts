@@ -19,13 +19,27 @@ export enum UserRole {
   STUDENT = 'student',
   FACULTY = 'faculty',
   LIBRARIAN = 'librarian',
+  CHIEF_LIBRARIAN = 'chief_librarian',
   ADMIN = 'admin',
+}
+
+export enum Gender {
+  MALE = 'Male',
+  FEMALE = 'Female',
+  OTHER = 'Other',
 }
 
 export enum EligibilityStatus {
   ELIGIBLE = 'eligible',
   SUSPENDED = 'suspended',
   EXPELLED = 'expelled',
+}
+
+/** Self-service sign-up; librarian-created users stay `approved`. */
+export enum AccountApprovalStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
 }
 
 @Entity('users')
@@ -60,6 +74,9 @@ export class User {
   @Column({ type: 'enum', enum: UserRole, default: UserRole.STUDENT })
   role: UserRole;
 
+  @Column({ type: 'enum', enum: Gender, nullable: true })
+  gender: Gender;
+
   @ManyToOne(() => Department, (dept) => dept.users, {
     nullable: true,
     eager: true,
@@ -92,6 +109,15 @@ export class User {
 
   @Column({ name: 'is_active', type: 'tinyint', width: 1, default: 1 })
   isActive: boolean;
+
+  @Column({
+    name: 'account_approval_status',
+    type: 'enum',
+    enum: AccountApprovalStatus,
+    default: AccountApprovalStatus.APPROVED,
+  })
+  @Index()
+  accountApprovalStatus: AccountApprovalStatus;
 
   @Column({ name: 'last_login_at', nullable: true })
   lastLoginAt: Date;

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { useAuthStore, useLibraryStore } from '@/stores/useLibraryStore'
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import {
   BookOpenIcon, HomeIcon, ArrowsRightLeftIcon,
   ClipboardDocumentListIcon, ArrowRightOnRectangleIcon,
@@ -22,14 +22,20 @@ function logout() {
   router.push('/login')
 }
 
-const navItems = [
-  { to: '/dashboard', name: 'DashboardHome', label: 'Overview', icon: HomeIcon },
-  { to: '/dashboard/circulation', name: 'Circulation', label: 'Circulation', icon: ArrowsRightLeftIcon },
-  { to: '/dashboard/attendance', name: 'Attendance', label: 'Attendance', icon: ClipboardDocumentListIcon },
-  { to: '/dashboard/books', name: 'ManageBooks', label: 'Manage Books', icon: BookOpenIcon },
-  { to: '/dashboard/users', name: 'ManageUsers', label: 'Manage Users', icon: UserGroupIcon },
-  { to: '/dashboard/book-requests', name: 'ManageBookRequests', label: 'Book Requests', icon: DocumentTextIcon },
-]
+const navItems = computed(() => {
+  const role = auth.user?.role || ''
+  return [
+    { to: '/dashboard', name: 'DashboardHome', label: 'Overview', icon: HomeIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
+    { to: '/dashboard/circulation', name: 'Circulation', label: 'Circulation', icon: ArrowsRightLeftIcon, roles: ['librarian', 'chief_librarian'] },
+    { to: '/dashboard/history', name: 'TransactionHistory', label: 'Tx History', icon: DocumentTextIcon, roles: ['librarian', 'chief_librarian'] },
+    { to: '/dashboard/attendance', name: 'Attendance', label: 'Attendance', icon: ClipboardDocumentListIcon, roles: ['librarian', 'chief_librarian'] },
+    { to: '/dashboard/books', name: 'ManageBooks', label: 'Manage Items', icon: BookOpenIcon, roles: ['librarian', 'chief_librarian'] },
+    { to: '/dashboard/users', name: 'ManageUsers', label: 'Manage Users', icon: UserGroupIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
+    { to: '/dashboard/librarians', name: 'ManageLibrarians', label: 'Manage Librarians', icon: UserGroupIcon, roles: ['admin', 'chief_librarian'] },
+    { to: '/dashboard/book-requests', name: 'ManageBookRequests', label: 'Book Requests', icon: DocumentTextIcon, roles: ['librarian', 'chief_librarian'] },
+    { to: '/dashboard/reports', name: 'ReportsView', label: 'Reports', icon: ChartBarIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
+  ].filter(item => item.roles.includes(role))
+})
 </script>
 
 <template>

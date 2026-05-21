@@ -6,6 +6,7 @@ import { ArrowsRightLeftIcon, QrCodeIcon } from '@heroicons/vue/24/outline'
 // ── Checkout State ────────────────────────────────────────────────────────────
 const checkoutUserBarcode = ref('')
 const checkoutBarcode  = ref('')
+const checkoutDueDate  = ref('')
 const checkoutNotes    = ref('')
 const checkoutResult   = ref<any>(null)
 const checkoutError    = ref('')
@@ -25,11 +26,13 @@ async function handleCheckout() {
     const { data } = await api.post('/transactions/checkout', {
       userBarcode: checkoutUserBarcode.value,
       bookCopyBarcode: checkoutBarcode.value,
+      dueDate: checkoutDueDate.value || undefined,
       notes: checkoutNotes.value,
     })
     checkoutResult.value = data
     checkoutUserBarcode.value = ''
     checkoutBarcode.value = ''
+    checkoutDueDate.value = ''
     checkoutNotes.value = ''
   } catch (e: any) {
     checkoutError.value = e.response?.data?.message ?? 'Checkout failed'
@@ -92,6 +95,10 @@ async function handleReturn() {
             class="input font-mono"
             autocomplete="off"
           />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Manual Due Date (Optional)</label>
+          <input v-model="checkoutDueDate" type="date" class="input" />
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Notes (optional)</label>
