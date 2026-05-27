@@ -41,6 +41,7 @@ export class AuthService {
       lastName: dto.lastName,
       institutionalId: dto.institutionalId,
       role: dto.role,
+      gender: dto.gender,
     });
 
     return {
@@ -87,6 +88,7 @@ export class AuthService {
       eligibilityStatus: user.eligibilityStatus,
       profilePhotoUrl: user.profilePhotoUrl,
       barcode: user.barcode,
+      gender: user.gender,
     };
   }
 
@@ -109,6 +111,7 @@ export class AuthService {
         eligibilityStatus: user.eligibilityStatus,
         profilePhotoUrl: user.profilePhotoUrl,
         barcode: user.barcode,
+        gender: user.gender,
       },
     };
   }

@@ -55,7 +55,7 @@ export class BookRequestsController {
   /** GET /api/v1/book-requests — Librarian gets all requests */
   @Get()
   @UseGuards(RolesGuard)
-  @Roles('librarian', 'chief_librarian')
+  @Roles('librarian', 'chief_librarian', 'admin')
   getAllRequests() {
     return this.service.getAllRequests();
   }
@@ -63,7 +63,7 @@ export class BookRequestsController {
   /** GET /api/v1/book-requests/pending-count — Librarian gets pending count */
   @Get('pending-count')
   @UseGuards(RolesGuard)
-  @Roles('librarian', 'chief_librarian')
+  @Roles('librarian', 'chief_librarian', 'admin')
   getPendingCount() {
     return this.service.getPendingCount();
   }
@@ -71,7 +71,7 @@ export class BookRequestsController {
   /** PATCH /api/v1/book-requests/:id/status — Librarian updates request status */
   @Patch(':id/status')
   @UseGuards(RolesGuard)
-  @Roles('librarian', 'chief_librarian')
+  @Roles('librarian', 'chief_librarian', 'admin')
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRequestStatusDto,

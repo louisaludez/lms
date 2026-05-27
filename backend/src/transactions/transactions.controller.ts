@@ -25,7 +25,7 @@ export class TransactionsController {
   /** POST /api/v1/transactions/checkout */
   @Post('checkout')
   @UseGuards(RolesGuard)
-  @Roles('librarian', 'chief_librarian')
+  @Roles('librarian', 'chief_librarian', 'admin')
   checkout(@Body() dto: CheckoutDto, @Request() req: AuthReq) {
     return this.txService.checkout(dto, req.user.id);
   }
@@ -33,7 +33,7 @@ export class TransactionsController {
   /** POST /api/v1/transactions/return */
   @Post('return')
   @UseGuards(RolesGuard)
-  @Roles('librarian', 'chief_librarian')
+  @Roles('librarian', 'chief_librarian', 'admin')
   returnBook(@Body() dto: ReturnDto, @Request() req: AuthReq) {
     return this.txService.returnBook(dto, req.user.id);
   }
@@ -59,7 +59,7 @@ export class TransactionsController {
   /** GET /api/v1/transactions/history */
   @Get('history')
   @UseGuards(RolesGuard)
-  @Roles('librarian', 'chief_librarian')
+  @Roles('librarian', 'chief_librarian', 'admin')
   getHistory() {
     return this.txService.findAllHistory();
   }
@@ -67,7 +67,7 @@ export class TransactionsController {
   /** GET /api/v1/transactions/stats */
   @Get('stats')
   @UseGuards(RolesGuard)
-  @Roles('librarian', 'chief_librarian')
+  @Roles('librarian', 'chief_librarian', 'admin')
   getStats() {
     return this.txService.getStats();
   }
@@ -75,7 +75,7 @@ export class TransactionsController {
   /** GET /api/v1/transactions/user/:userId */
   @Get('user/:userId')
   @UseGuards(RolesGuard)
-  @Roles('librarian', 'chief_librarian')
+  @Roles('librarian', 'chief_librarian', 'admin')
   getUserTransactions(@Param('userId', ParseIntPipe) userId: number) {
     return this.txService.findByUser(userId);
   }

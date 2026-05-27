@@ -44,7 +44,7 @@ export class BooksController {
   /** GET /api/v1/books/all — librarian: list all books incl. inactive */
   @Get('all')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('librarian', 'chief_librarian')
+  @Roles('librarian', 'chief_librarian', 'admin')
   findAll(
     @Query('search') search?: string,
     @Query('categoryId') categoryId?: string,
@@ -68,7 +68,7 @@ export class BooksController {
   /** POST /api/v1/books — create */
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('librarian', 'chief_librarian')
+  @Roles('librarian', 'chief_librarian', 'admin')
   create(@Body() dto: CreateBookDto) {
     return this.booksService.create(dto);
   }
@@ -76,7 +76,7 @@ export class BooksController {
   /** PATCH /api/v1/books/:id — update */
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('librarian', 'chief_librarian')
+  @Roles('librarian', 'chief_librarian', 'admin')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateBookDto) {
     return this.booksService.update(id, dto);
   }
@@ -84,7 +84,7 @@ export class BooksController {
   /** DELETE /api/v1/books/:id — soft-delete */
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('librarian', 'chief_librarian')
+  @Roles('librarian', 'chief_librarian', 'admin')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.booksService.remove(id);

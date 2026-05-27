@@ -61,6 +61,7 @@ export class UsersService {
       firstName: dto.firstName,
       lastName: dto.lastName,
       middleName: dto.middleName,
+      gender: dto.gender,
       role: dto.role,
       department,
       yearLevel: dto.yearLevel,
@@ -94,6 +95,7 @@ export class UsersService {
     lastName: string;
     institutionalId: string;
     role: UserRole.STUDENT | UserRole.FACULTY | UserRole.LIBRARIAN;
+    gender?: any;
   }): Promise<User> {
     const exists = await this.userRepo.findOne({ where: { email: dto.email } });
     if (exists)
@@ -118,6 +120,7 @@ export class UsersService {
       firstName: dto.firstName,
       lastName: dto.lastName,
       role: dto.role,
+      gender: dto.gender,
       accountApprovalStatus: AccountApprovalStatus.PENDING,
       isActive: true,
     } as any);

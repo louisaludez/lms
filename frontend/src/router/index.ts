@@ -62,7 +62,7 @@ const router = createRouter({
           path: 'history',
           name: 'TransactionHistory',
           component: () => import('@/views/dashboard/TransactionHistoryView.vue'),
-          meta: { roles: ['librarian', 'chief_librarian'] },
+          meta: { roles: ['librarian', 'chief_librarian', 'admin'] },
         },
         {
           path: 'attendance',

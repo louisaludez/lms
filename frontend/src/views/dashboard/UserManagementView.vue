@@ -140,7 +140,7 @@ async function saveUser() {
   modalError.value = ''
   try {
     if (modalMode.value === 'create') {
-      const { eligibilityStatus, isActive, ...createPayload } = form.value
+      const { eligibilityStatus, isActive, accountApprovalStatus, ...createPayload } = form.value
       await api.post('/users', {
         ...createPayload,
         barcode: createPayload.institutionalId,
