@@ -49,6 +49,7 @@ const blankForm = () => ({
   institutionalId: '', role: 'student', gender: 'Male',
   departmentId: '', eligibilityStatus: 'eligible',
   accountApprovalStatus: 'approved', isActive: true,
+  displayPicture: null as File | null,
 })
 const form = ref(blankForm())
 
@@ -141,10 +142,18 @@ async function saveUser() {
   try {
     if (modalMode.value === 'create') {
       const { eligibilityStatus, isActive, accountApprovalStatus, ...createPayload } = form.value
-      await api.post('/users', {
-        ...createPayload,
-        barcode: createPayload.institutionalId,
-        departmentId: createPayload.departmentId ? Number(createPayload.departmentId) : undefined,
+      const fd = new FormData()
+      Object.entries(createPayload).forEach(([key, value]) => {
+        if (key === 'displayPicture' && value) {
+          fd.append('displayPicture', value as File)
+        } else if (value !== undefined && value !== null && key !== 'displayPicture') {
+          fd.append(key, value.toString())
+        }
+      })
+      fd.append('barcode', createPayload.institutionalId)
+
+      await api.post('/users', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       })
     } else {
       const payload: Record<string, any> = {
@@ -193,6 +202,15 @@ async function confirmDelete() {
     alert(e.response?.data?.message ?? 'Delete failed')
   } finally {
     deleting.value = false
+  }
+}
+
+function handleFileChange(e: Event) {
+  const target = e.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    form.value.displayPicture = target.files[0]
+  } else {
+    form.value.displayPicture = null
   }
 }
 
@@ -462,11 +480,15 @@ function approvalBadge(status: string) {
                 </select>
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Department</label>
-                <select v-model="form.departmentId" class="input">
-                  <option value="">Select department...</option>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Department *</label>
+                <select v-model="form.departmentId" required class="input">
+                  <option value="" disabled>Select department...</option>
                   <option v-for="dept in departments" :key="dept.id" :value="dept.id">{{ dept.code }} - {{ dept.name }}</option>
                 </select>
+              </div>
+              <div v-if="modalMode === 'create'" class="col-span-2">
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Profile Picture</label>
+                <input type="file" accept="image/*" @change="handleFileChange" class="input p-2" />
               </div>
               <div v-if="modalMode === 'edit'">
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Account approval</label>

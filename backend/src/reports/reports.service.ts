@@ -39,4 +39,12 @@ export class ReportsService {
       GROUP BY u.gender
     `);
   }
+
+  async getBookRequestStats() {
+    return this.dataSource.query(`
+      SELECT status, COUNT(id) as count
+      FROM book_requests
+      GROUP BY status
+    `);
+  }
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import api from '@/api/axios'
-import { PrinterIcon, ChartBarIcon, DocumentChartBarIcon, UsersIcon, BuildingOfficeIcon } from '@heroicons/vue/24/outline'
+import { PrinterIcon, ChartBarIcon, DocumentChartBarIcon, UsersIcon, BuildingOfficeIcon, BookOpenIcon } from '@heroicons/vue/24/outline'
 
 import { Bar, Doughnut } from 'vue-chartjs'
 import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, ArcElement } from 'chart.js'
@@ -11,18 +11,21 @@ ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale,
 const highDemand = ref<any[]>([])
 const deptBorrowing = ref<any[]>([])
 const visitorStats = ref<any[]>([])
+const bookReqStats = ref<any[]>([])
 const loading = ref(true)
 
 onMounted(async () => {
   try {
-    const [req1, req2, req3] = await Promise.all([
+    const [req1, req2, req3, req4] = await Promise.all([
       api.get('/reports/high-demand'),
       api.get('/reports/department-borrowing'),
-      api.get('/reports/visitor-statistics')
+      api.get('/reports/visitor-statistics'),
+      api.get('/reports/book-requests')
     ])
     highDemand.value = req1.data
     deptBorrowing.value = req2.data
     visitorStats.value = req3.data
+    bookReqStats.value = req4.data
   } catch(e) {
     console.error(e)
   } finally {
@@ -39,12 +42,15 @@ function printReport() {
 }
 
 const deptChartData = computed(() => {
+  const chartColors = [
+    '#447794', '#6366F1', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6', '#3B82F6', '#14B8A6'
+  ]
   return {
     labels: deptBorrowing.value.map(d => d.code),
     datasets: [
       {
         label: 'Total Borrows',
-        backgroundColor: '#447794',
+        backgroundColor: deptBorrowing.value.map((_, i) => chartColors[i % chartColors.length]),
         borderRadius: 4,
         data: deptBorrowing.value.map(d => Number(d.borrowCount))
       }
@@ -85,6 +91,27 @@ const visitorChartOptions = {
   },
   cutout: '70%'
 }
+
+const bookReqChartData = computed(() => {
+  const statusColors: Record<string, string> = {
+    'pending': '#F59E0B',
+    'approved': '#3B82F6',
+    'rejected': '#EF4444',
+    'fulfilled': '#10B981'
+  }
+  return {
+    labels: bookReqStats.value.map(s => s.status.charAt(0).toUpperCase() + s.status.slice(1)),
+    datasets: [
+      {
+        backgroundColor: bookReqStats.value.map(s => statusColors[s.status] || '#94A3B8'),
+        borderWidth: 0,
+        data: bookReqStats.value.map(s => Number(s.count))
+      }
+    ]
+  }
+})
+
+const totalBookReqs = computed(() => bookReqStats.value.reduce((acc, s) => acc + Number(s.count), 0))
 </script>
 
 <template>
@@ -115,10 +142,10 @@ const visitorChartOptions = {
       </div>
     </div>
 
-    <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       
       <!-- High Demand / Low Stock -->
-      <div class="card p-6 lg:col-span-2 print-section">
+      <div class="card p-6 lg:col-span-3 print-section">
         <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
           <div class="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center">
             <DocumentChartBarIcon class="w-6 h-6 text-rose-500" />
@@ -195,6 +222,30 @@ const visitorChartOptions = {
              <div class="text-center">
                <div class="text-3xl font-black text-slate-800">{{ totalVisitors }}</div>
                <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Entrants</div>
+             </div>
+          </div>
+          <div v-else class="text-slate-400 italic">No data available</div>
+        </div>
+      </div>
+
+      <!-- Book Requests Chart -->
+      <div class="card p-6 print-section h-full flex flex-col">
+        <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+          <div class="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center">
+            <BookOpenIcon class="w-6 h-6 text-amber-500" />
+          </div>
+          <div>
+            <h2 class="text-xl font-bold text-slate-800">Book Requests</h2>
+            <p class="text-sm text-slate-500">Breakdown of book requests by status</p>
+          </div>
+        </div>
+
+        <div class="flex-1 min-h-[300px] flex flex-col items-center justify-center relative">
+          <Doughnut v-if="bookReqStats.length" :data="bookReqChartData" :options="visitorChartOptions" />
+          <div v-if="bookReqStats.length" class="absolute inset-0 flex items-center justify-center pointer-events-none mt-[-20px]">
+             <div class="text-center">
+               <div class="text-3xl font-black text-slate-800">{{ totalBookReqs }}</div>
+               <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Requests</div>
              </div>
           </div>
           <div v-else class="text-slate-400 italic">No data available</div>

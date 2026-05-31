@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/useLibraryStore'
 import { BookOpenIcon, EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline'
+import ndcLogo from '@/assets/ndc_logo.png'
 
 const auth = useAuthStore()
 
@@ -18,6 +19,24 @@ const departments = ref<{id: number; name: string; code: string}[]>([])
 const showPassword = ref(false)
 const clientMessage = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
+const displayPicture = ref<File | null>(null)
+const displayPicturePreview = ref<string | null>(null)
+
+function handleFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    const file = target.files[0]
+    displayPicture.value = file
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      displayPicturePreview.value = e.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  } else {
+    displayPicture.value = null
+    displayPicturePreview.value = null
+  }
+}
 
 import api from '@/api/axios'
 import { onMounted } from 'vue'
@@ -42,6 +61,14 @@ async function handleSignUp() {
     clientMessage.value = 'Password must be at least 8 characters.'
     return
   }
+  if (!displayPicture.value) {
+    clientMessage.value = 'Please select a display picture.'
+    return
+  }
+  if (!departmentId.value) {
+    clientMessage.value = 'Please select a department.'
+    return
+  }
   try {
     successMessage.value = await auth.register({
       email: email.value.trim(),
@@ -52,6 +79,7 @@ async function handleSignUp() {
       role: role.value,
       gender: gender.value,
       departmentId: departmentId.value ? Number(departmentId.value) : undefined,
+      displayPicture: displayPicture.value,
     })
   } catch { /* error shown via auth.error */ }
 }
@@ -66,8 +94,8 @@ async function handleSignUp() {
 
     <div class="relative w-full max-w-lg">
       <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#447794] to-[#2D5B75] mb-4 shadow-xl">
-          <BookOpenIcon class="w-8 h-8 text-white" />
+        <div class="inline-flex items-center justify-center w-28 h-28 mb-4">
+          <img :src="ndcLogo" class="w-full h-full object-contain drop-shadow-xl" alt="NDC Logo" />
         </div>
         <h1 class="text-3xl font-bold text-white">Lumina</h1>
         <p class="text-[#80b3ce] text-sm mt-1">Library Management System</p>
@@ -131,6 +159,28 @@ async function handleSignUp() {
                   <input v-model="role" type="radio" value="librarian" class="sr-only" />
                   Librarian
                 </label>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-[#80b3ce] mb-1.5 uppercase tracking-wider">Display Picture</label>
+              <div class="flex items-center gap-4">
+                <div v-if="displayPicturePreview" class="w-16 h-16 rounded-full overflow-hidden border-2 border-[#447794] flex-shrink-0">
+                  <img :src="displayPicturePreview" alt="Preview" class="w-full h-full object-cover" />
+                </div>
+                <div v-else class="w-16 h-16 rounded-full bg-[#123249] border border-[#447794]/30 flex items-center justify-center text-[#80b3ce] flex-shrink-0">
+                  <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <input
+                  id="signup-picture"
+                  type="file"
+                  accept="image/*"
+                  required
+                  @change="handleFileChange"
+                  class="block w-full text-sm text-[#80b3ce] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#447794]/20 file:text-[#80b3ce] hover:file:bg-[#447794]/40 transition-colors cursor-pointer"
+                />
               </div>
             </div>
 

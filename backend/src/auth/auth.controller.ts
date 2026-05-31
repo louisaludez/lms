@@ -5,8 +5,13 @@ import {
   Get,
   UseGuards,
   Request,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -43,8 +48,23 @@ export class AuthController {
 
   /** POST /api/v1/auth/register — self-service student account */
   @Post('register')
-  async register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  @UseInterceptors(
+    FileInterceptor('displayPicture', {
+      storage: diskStorage({
+        destination: './uploads/profiles',
+        filename: (req, file, cb) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          cb(null, uniqueSuffix + extname(file.originalname));
+        },
+      }),
+    }),
+  )
+  async register(
+    @Body() dto: RegisterDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    const profilePhotoUrl = file ? `/uploads/profiles/${file.filename}` : null;
+    return this.authService.register(dto, profilePhotoUrl);
   }
 
   @Get('me')

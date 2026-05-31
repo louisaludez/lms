@@ -15,12 +15,30 @@ const authStore = useAuthStore()
 
 const activeTab = ref<'profile' | 'password'>('profile')
 
-const profileForm = ref({
+const profileForm = ref<{
+  firstName: string;
+  lastName: string;
+  gender: string;
+  profilePhotoUrl?: string;
+  displayPicture?: File | null;
+}>({
   firstName: '',
   lastName: '',
   gender: '',
   profilePhotoUrl: '',
+  displayPicture: null,
 })
+
+const photoPreview = ref<string | null>(null)
+
+function handleFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    const file = target.files[0]
+    profileForm.value.displayPicture = file
+    photoPreview.value = URL.createObjectURL(file)
+  }
+}
 
 const passwordForm = ref({
   currentPassword: '',
@@ -40,7 +58,9 @@ watch(() => props.isOpen, (val) => {
       lastName: authStore.user.lastName || '',
       gender: authStore.user.gender || '',
       profilePhotoUrl: authStore.user.profilePhotoUrl || '',
+      displayPicture: null,
     }
+    photoPreview.value = authStore.user.profilePhotoUrl ? authStore.user.profilePhotoUrl : null
     passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
     profileSuccess.value = ''
     passwordSuccess.value = ''
@@ -153,8 +173,17 @@ async function handlePasswordChange() {
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Profile Photo URL</label>
-            <input v-model="profileForm.profilePhotoUrl" type="text" placeholder="https://..." class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#447794] focus:border-transparent outline-none transition-all" />
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Profile Photo</label>
+            <div class="flex items-center gap-4">
+              <div class="w-16 h-16 rounded-full overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200">
+                <img v-if="photoPreview" :src="photoPreview" class="w-full h-full object-cover" />
+                <UserCircleIcon v-else class="w-full h-full text-slate-300 p-2" />
+              </div>
+              <div class="flex-1">
+                <input type="file" accept="image/*" @change="handleFileChange" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#447794] file:text-white hover:file:bg-[#325a70] transition-colors cursor-pointer" />
+                <p class="text-xs text-slate-400 mt-1">Recommended: Square image, max 2MB</p>
+              </div>
+            </div>
           </div>
 
           <div class="pt-4 flex justify-end gap-3">

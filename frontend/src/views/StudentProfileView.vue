@@ -11,6 +11,7 @@ import {
 import { ArrowDownTrayIcon, QrCodeIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
 import { ExclamationCircleIcon } from '@heroicons/vue/24/solid'
 import JsBarcode from 'jsbarcode'
+import { toPng } from 'html-to-image'
 import ProfileSettingsModal from '@/components/ProfileSettingsModal.vue'
 
 const router = useRouter()
@@ -18,7 +19,9 @@ const auth = useAuthStore()
 const store = useLibraryStore()
 
 const barcodeCanvas = ref<HTMLCanvasElement | null>(null)
+const idCardRef = ref<HTMLElement | null>(null)
 const isSettingsModalOpen = ref(false)
+const isDownloadingId = ref(false)
 
 onMounted(() => {
   store.fetchMyTransactions()
@@ -32,22 +35,33 @@ watchEffect(() => {
       format: "CODE128",
       lineColor: "#0f172a",
       width: 2,
-      height: 60,
-      displayValue: true,
-      margin: 15,
-      background: "#ffffff",
-      font: "monospace",
+      height: 40,
+      displayValue: false,
+      margin: 0,
+      background: "transparent",
     })
   }
 })
 
-function downloadBarcode() {
-  if (!barcodeCanvas.value) return
-  const url = barcodeCanvas.value.toDataURL("image/png")
-  const link = document.createElement('a')
-  link.download = `lumina-id-${(user.value as any)?.barcode}.png`
-  link.href = url
-  link.click()
+async function downloadId() {
+  if (!idCardRef.value || isDownloadingId.value) return
+  
+  isDownloadingId.value = true
+  try {
+    const dataUrl = await toPng(idCardRef.value, {
+      pixelRatio: 3, // High resolution download
+      cacheBust: true,
+    })
+    const link = document.createElement('a')
+    link.download = `lumina-id-${(user.value as any)?.barcode}.png`
+    link.href = dataUrl
+    link.click()
+  } catch (err: any) {
+    console.error("Failed to generate ID:", err)
+    alert("Failed to download ID. Error: " + (err.message || err))
+  } finally {
+    isDownloadingId.value = false
+  }
 }
 
 function formatDate(dateStr: string) {
@@ -102,25 +116,106 @@ async function handleRenew(txId: number) {
             Edit Profile
           </button>
           <div class="flex items-center gap-3 mt-3">
-            <span v-if="user?.eligibilityStatus === 'eligible'" class="badge-eligible">
+            <span v-if="user?.eligibilityStatus === 'eligible' && !store.hasOverdue" class="badge-eligible">
               ✅ Eligible to Borrow
             </span>
-            <span v-else-if="user?.eligibilityStatus === 'suspended'" class="badge-suspended">
+            <span v-else-if="user?.eligibilityStatus === 'suspended' || store.hasOverdue" class="badge-suspended">
               ⚠️ Account Suspended
             </span>
             <span v-else class="badge-overdue">🚫 Not Eligible</span>
           </div>
         </div>
 
-        <!-- Scannable Barcode Section -->
-        <div v-if="user?.barcode" class="bg-white/10 backdrop-blur-sm p-4 rounded-2xl flex flex-col items-center gap-3 border border-white/20 shadow-xl">
-          <div class="bg-white p-2 rounded-xl">
-            <canvas ref="barcodeCanvas" class="w-[200px] h-[70px]"></canvas>
+        <!-- Download ID Section -->
+        <div v-if="user?.barcode" class="flex flex-col items-center gap-4 ml-auto">
+          <!-- Visible UI -->
+          <div class="bg-white/10 backdrop-blur-sm p-6 rounded-2xl flex flex-col items-center gap-3 border border-white/20 shadow-xl text-center min-w-[200px]">
+            <QrCodeIcon class="w-12 h-12 text-white/90" />
+            <div>
+              <p class="text-white font-bold text-lg">Digital ID</p>
+              <p class="text-[#aed0e2] text-sm mt-0.5">Ready for download</p>
+            </div>
+            <button 
+              @click="downloadId" 
+              :disabled="isDownloadingId"
+              class="mt-2 flex items-center gap-2 text-sm font-bold text-[#123249] bg-white hover:bg-slate-50 px-6 py-3 rounded-xl transition-all shadow-lg w-full justify-center cursor-pointer disabled:opacity-75 disabled:cursor-wait"
+            >
+              <ArrowPathIcon v-if="isDownloadingId" class="w-5 h-5 animate-spin" />
+              <ArrowDownTrayIcon v-else class="w-5 h-5" />
+              {{ isDownloadingId ? 'Downloading...' : 'Download ID' }}
+            </button>
           </div>
-          <button @click="downloadBarcode" class="flex items-center gap-2 text-sm font-semibold text-white bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors w-full justify-center">
-            <ArrowDownTrayIcon class="w-4 h-4" />
-            Download ID
-          </button>
+
+          <!-- Hidden ID Card for Canvas Generation -->
+          <div style="position: absolute; z-index: -100; opacity: 0; pointer-events: none; top: 0; left: 0;">
+            <div 
+              ref="idCardRef"
+              class="relative overflow-hidden rounded-xl shadow-2xl bg-white select-none"
+              style="width: 280px; aspect-ratio: 591 / 1004;"
+            >
+              <!-- Background Template -->
+              <img src="@/assets/id.png" class="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none" alt="ID Template" crossorigin="anonymous" />
+              
+              <!-- Automated ID Header -->
+              <div 
+                class="absolute z-10 w-full text-center px-4 flex flex-col justify-center"
+                style="top: 25%; height: 5%;"
+              >
+                <h3 class="text-[12px] font-black text-rose-600 uppercase tracking-widest drop-shadow-sm">
+                  AUTOMATED ID
+                </h3>
+              </div>
+
+              <!-- User Photo -->
+              <div 
+                class="absolute z-10 overflow-hidden"
+                style="left: 36%; right: 36%; top: 31%; bottom: 49%; border-radius: 8px;"
+              >
+                <img v-if="user.profilePhotoUrl" :src="user.profilePhotoUrl" class="w-full h-full object-cover" crossorigin="anonymous" />
+                <div v-else class="w-full h-full bg-slate-200 flex items-center justify-center">
+                  <UserCircleIcon class="w-12 h-12 text-slate-400" />
+                </div>
+              </div>
+
+              <!-- Name -->
+              <div 
+                class="absolute z-10 w-full text-center px-4 flex flex-col justify-center"
+                style="top: 52%; height: 5%;"
+              >
+                <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide truncate">
+                  {{ user.firstName }} {{ user.lastName }}
+                </h2>
+              </div>
+
+              <!-- Role -->
+              <div 
+                class="absolute z-10 w-full text-center px-4 flex flex-col justify-center"
+                style="top: 57%; height: 3%;"
+              >
+                <p class="text-[10px] font-bold text-[#8c1c1c] uppercase tracking-widest truncate">
+                  {{ user.role || 'STUDENT' }}
+                </p>
+              </div>
+
+              <!-- Barcode Canvas -->
+              <div 
+                class="absolute z-10 w-full flex justify-center items-center"
+                style="top: 61%; height: 10%;"
+              >
+                <canvas ref="barcodeCanvas" class="w-[140px] h-[40px]"></canvas>
+              </div>
+
+              <!-- Institutional ID -->
+              <div 
+                class="absolute z-10 w-full text-center flex flex-col justify-center"
+                style="top: 71%; height: 4%;"
+              >
+                <p class="text-[11px] font-semibold text-slate-800 uppercase tracking-wider">
+                  {{ user.barcode }}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -129,7 +224,7 @@ async function handleRenew(txId: number) {
 
       <!-- Suspension Alert -->
       <div
-        v-if="auth.isSuspended"
+        v-if="auth.isSuspended || store.hasOverdue"
         class="rounded-2xl bg-amber-50 border border-amber-200 p-5 flex gap-4"
       >
         <ExclamationCircleIcon class="w-7 h-7 text-amber-500 flex-shrink-0 mt-0.5" />

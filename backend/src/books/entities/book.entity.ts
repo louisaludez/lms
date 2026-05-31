@@ -57,6 +57,9 @@ export class Book {
   @Column({ name: 'cover_image_url', length: 512, nullable: true })
   coverImageUrl: string;
 
+  @Column({ name: 'item_type', length: 50, default: 'BOOKS' })
+  itemType: string;
+
   @Column({
     name: 'total_copies',
     type: 'smallint',

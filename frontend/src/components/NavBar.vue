@@ -2,6 +2,7 @@
 import { useAuthStore } from '@/stores/useLibraryStore'
 import { useRouter } from 'vue-router'
 import { BookOpenIcon, UserCircleIcon, ArrowRightOnRectangleIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
+import ndcLogo from '@/assets/ndc_logo.png'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -17,8 +18,8 @@ function logout() {
     <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
       <!-- Logo -->
       <router-link to="/opac" class="flex items-center gap-2.5 text-white font-bold text-lg hover:opacity-80 transition-opacity">
-        <div class="w-8 h-8 rounded-lg bg-[#447794] flex items-center justify-center">
-          <BookOpenIcon class="w-5 h-5 text-white" />
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center">
+          <img :src="ndcLogo" class="w-full h-full object-contain" alt="NDC Logo" />
         </div>
         Lumina
       </router-link>

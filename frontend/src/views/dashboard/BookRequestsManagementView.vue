@@ -95,7 +95,7 @@ const pendingCount = computed(() =>
     <div class="flex items-center gap-2 mb-4">
       <FunnelIcon class="w-4 h-4 text-slate-400" />
       <button
-        v-for="s in ['all', 'pending', 'approved', 'rejected', 'fulfilled']"
+        v-for="s in ['all', 'pending', 'approved']"
         :key="s"
         @click="filterStatus = s"
         :class="[
@@ -178,21 +178,6 @@ const pendingCount = computed(() =>
                   >
                     <CheckCircleIcon class="w-4 h-4" />
                   </button>
-                  <button
-                    @click="openActionModal(req.id, 'rejected')"
-                    class="p-1.5 rounded-lg bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors"
-                    title="Reject"
-                  >
-                    <XCircleIcon class="w-4 h-4" />
-                  </button>
-                </div>
-                <div v-else-if="req.status === 'approved'">
-                  <button
-                    @click="openActionModal(req.id, 'fulfilled')"
-                    class="px-3 py-1 rounded-lg bg-sky-100 text-sky-700 hover:bg-sky-200 transition-colors text-xs font-semibold"
-                  >
-                    Mark Fulfilled
-                  </button>
                 </div>
                 <span v-else class="text-xs text-slate-400">—</span>
               </td>
@@ -213,8 +198,6 @@ const pendingCount = computed(() =>
               actionModal.action === 'rejected' ? 'bg-rose-100' : 'bg-sky-100'
             ]">
               <CheckCircleIcon v-if="actionModal.action === 'approved'" class="w-5 h-5 text-emerald-600" />
-              <XCircleIcon v-else-if="actionModal.action === 'rejected'" class="w-5 h-5 text-rose-600" />
-              <CheckCircleIcon v-else class="w-5 h-5 text-sky-600" />
             </div>
             <h3 class="font-bold text-slate-800 capitalize">{{ actionModal.action }} Request</h3>
           </div>
@@ -238,8 +221,7 @@ const pendingCount = computed(() =>
               :disabled="actionLoading"
               :class="[
                 'flex-1 justify-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all',
-                actionModal.action === 'approved' ? 'bg-emerald-600 hover:bg-emerald-700' :
-                actionModal.action === 'rejected' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-sky-600 hover:bg-sky-700'
+                actionModal.action === 'approved' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-600 hover:bg-slate-700'
               ]"
             >
               {{ actionLoading ? 'Processing...' : 'Confirm' }}

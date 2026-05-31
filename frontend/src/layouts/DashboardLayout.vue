@@ -9,6 +9,7 @@ import {
   UserGroupIcon
 } from '@heroicons/vue/24/outline'
 import { useRouter } from 'vue-router'
+import ndcLogo from '@/assets/ndc_logo.png'
 
 const auth = useAuthStore()
 const store = useLibraryStore()
@@ -27,7 +28,7 @@ const navItems = computed(() => {
   return [
     { to: '/dashboard', name: 'DashboardHome', label: 'Overview', icon: HomeIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
     { to: '/dashboard/circulation', name: 'Circulation', label: 'Circulation', icon: ArrowsRightLeftIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
-    { to: '/dashboard/history', name: 'TransactionHistory', label: 'Tx History', icon: DocumentTextIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
+    { to: '/dashboard/history', name: 'TransactionHistory', label: 'Transaction History', icon: DocumentTextIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
     { to: '/dashboard/attendance', name: 'Attendance', label: 'Attendance', icon: ClipboardDocumentListIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
     { to: '/dashboard/books', name: 'ManageBooks', label: 'Manage Items', icon: BookOpenIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
     { to: '/dashboard/users', name: 'ManageUsers', label: 'Manage Users', icon: UserGroupIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
@@ -44,8 +45,8 @@ const navItems = computed(() => {
     <aside class="w-64 bg-[#0e2236] flex flex-col flex-shrink-0">
       <!-- Logo -->
       <div class="h-16 flex items-center gap-3 px-5 border-b border-[#447794]/20">
-        <div class="w-8 h-8 rounded-lg bg-[#447794] flex items-center justify-center">
-          <BookOpenIcon class="w-5 h-5 text-white" />
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center">
+          <img :src="ndcLogo" class="w-full h-full object-contain" alt="NDC Logo" />
         </div>
         <div>
           <p class="text-white font-bold text-base leading-none">Lumina</p>
@@ -73,23 +74,7 @@ const navItems = computed(() => {
         </RouterLink>
       </nav>
 
-      <!-- Quick Stats -->
-      <div class="px-4 py-4 border-t border-[#447794]/20 space-y-2">
-        <div class="flex justify-between text-xs">
-          <span class="text-[#80b3ce]">Active borrows</span>
-          <span class="text-white font-bold">{{ store.txStats.active }}</span>
-        </div>
-        <div class="flex justify-between text-xs">
-          <span class="text-[#80b3ce]">Overdue</span>
-          <span class="font-bold" :class="store.txStats.overdue > 0 ? 'text-rose-400' : 'text-white'">
-            {{ store.txStats.overdue }}
-          </span>
-        </div>
-        <div class="flex justify-between text-xs">
-          <span class="text-[#80b3ce]">Total books</span>
-          <span class="text-white font-bold">{{ store.stats.totalBooks }}</span>
-        </div>
-      </div>
+      
 
       <!-- Logout -->
       <button @click="logout" class="flex items-center gap-3 px-5 py-4 text-[#80b3ce] hover:text-white hover:bg-white/5 transition-all text-sm border-t border-[#447794]/20">

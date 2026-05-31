@@ -24,4 +24,9 @@ export class ReportsController {
   getVisitorStatistics() {
     return this.reportsService.getVisitorStatistics();
   }
+
+  @Get('book-requests')
+  getBookRequestStats() {
+    return this.reportsService.getBookRequestStats();
+  }
 }

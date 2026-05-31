@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsUrl } from 'class-validator';
+import { IsString, IsOptional, IsEnum } from 'class-validator';
 import { Gender } from '../entities/user.entity';
 
 export class UpdateProfileDto {
@@ -19,6 +19,6 @@ export class UpdateProfileDto {
   gender?: Gender;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
   profilePhotoUrl?: string;
 }

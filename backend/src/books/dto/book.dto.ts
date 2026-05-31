@@ -11,12 +11,20 @@ import { Type } from 'class-transformer';
 export class SearchBooksDto {
   @IsOptional()
   @IsString()
-  q?: string; // full-text search query
+  q?: string; // search query
+
+  @IsOptional()
+  @IsString()
+  searchBy?: string; // title, author, isbn, call_number, or 'all'
 
   @IsOptional()
   @IsInt()
   @Type(() => Number)
   categoryId?: number;
+
+  @IsOptional()
+  @IsString()
+  itemType?: string;
 
   @IsOptional()
   @IsString()
@@ -75,6 +83,10 @@ export class CreateBookDto {
 
   @IsOptional()
   @IsString()
+  authors?: string;
+
+  @IsOptional()
+  @IsString()
   edition?: string;
 
   @IsOptional()
@@ -113,6 +125,10 @@ export class CreateBookDto {
   @IsOptional()
   @IsBoolean()
   isReferenceOnly?: boolean;
+
+  @IsOptional()
+  @IsString()
+  itemType?: string;
 }
 
 export class UpdateBookDto {
@@ -130,4 +146,6 @@ export class UpdateBookDto {
   @IsOptional() @IsString() locationShelf?: string;
   @IsOptional() @IsBoolean() isReferenceOnly?: boolean;
   @IsOptional() @IsBoolean() isActive?: boolean;
+  @IsOptional() @IsString() itemType?: string;
+  @IsOptional() @IsString() authors?: string;
 }

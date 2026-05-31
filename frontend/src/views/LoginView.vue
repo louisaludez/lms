@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/useLibraryStore'
 import { BookOpenIcon, EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline'
+import ndcLogo from '@/assets/ndc_logo.png'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -31,8 +32,8 @@ async function handleLogin() {
     <div class="relative w-full max-w-md">
       <!-- Logo -->
       <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#447794] to-[#2D5B75] mb-4 shadow-xl">
-          <BookOpenIcon class="w-8 h-8 text-white" />
+        <div class="inline-flex items-center justify-center w-28 h-28 mb-4">
+          <img :src="ndcLogo" class="w-full h-full object-contain drop-shadow-xl" alt="NDC Logo" />
         </div>
         <h1 class="text-3xl font-bold text-white">Lumina</h1>
         <p class="text-[#80b3ce] text-sm mt-1">Library Management System</p>

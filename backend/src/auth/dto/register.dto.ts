@@ -8,6 +8,7 @@ import {
   IsInt,
   IsOptional,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { UserRole, Gender } from '../../users/entities/user.entity';
 
 export class RegisterDto {
@@ -41,5 +42,6 @@ export class RegisterDto {
 
   @IsOptional()
   @IsInt()
+  @Type(() => Number)
   departmentId?: number;
 }

@@ -95,6 +95,7 @@ export interface RegisterPayload {
   role: 'student' | 'faculty' | 'librarian'
   gender?: string
   departmentId?: number
+  displayPicture?: File
 }
 
 // ─── AUTH STORE ───────────────────────────────────────────────────────────────
@@ -130,9 +131,23 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     error.value = null
     try {
+      let dataPayload: any = payload
+      let headers: any = {}
+
+      if (payload.displayPicture) {
+        dataPayload = new FormData()
+        Object.entries(payload).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            dataPayload.append(key, value)
+          }
+        })
+        headers['Content-Type'] = 'multipart/form-data'
+      }
+
       const { data } = await api.post<{ message: string; email: string }>(
         '/auth/register',
-        payload,
+        dataPayload,
+        { headers }
       )
       return data.message
     } catch (e: unknown) {
@@ -159,11 +174,24 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('lumina_token')
   }
 
-  async function updateProfile(payload: { firstName?: string, lastName?: string, middleName?: string, gender?: string, profilePhotoUrl?: string }) {
+  async function updateProfile(payload: { firstName?: string, lastName?: string, middleName?: string, gender?: string, displayPicture?: File | null, profilePhotoUrl?: string }) {
     loading.value = true
     error.value = null
     try {
-      const { data } = await api.patch('/users/me/profile', payload)
+      let dataPayload: any = payload
+      let headers: any = {}
+
+      if (payload.displayPicture) {
+        dataPayload = new FormData()
+        Object.entries(payload).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            dataPayload.append(key, value)
+          }
+        })
+        headers['Content-Type'] = 'multipart/form-data'
+      }
+
+      const { data } = await api.patch('/users/me/profile', dataPayload, { headers })
       user.value = data
       return data
     } catch (e: unknown) {
@@ -201,6 +229,8 @@ export const useLibraryStore = defineStore('library', () => {
   const lastPage = ref(1)
   const loading = ref(false)
   const searchQuery = ref('')
+  const searchBy = ref('all')
+  const selectedItemType = ref<string | null>(null)
   const selectedCategory = ref<number | null>(null)
   const availableOnly = ref(false)
   const excludeReference = ref(false)
@@ -230,7 +260,13 @@ export const useLibraryStore = defineStore('library', () => {
         page,
         limit: 12,
       }
-      if (searchQuery.value) params.q = searchQuery.value
+      if (searchQuery.value) {
+        params.q = searchQuery.value
+        if (searchBy.value !== 'all') {
+          params.searchBy = searchBy.value
+        }
+      }
+      if (selectedItemType.value) params.itemType = selectedItemType.value
       if (selectedCategory.value) params.categoryId = selectedCategory.value
       if (availableOnly.value) params.availableOnly = true
       if (excludeReference.value) params.excludeReference = true
@@ -344,6 +380,8 @@ export const useLibraryStore = defineStore('library', () => {
 
   function resetSearch() {
     searchQuery.value = ''
+    searchBy.value = 'all'
+    selectedItemType.value = null
     selectedCategory.value = null
     availableOnly.value = false
     excludeReference.value = false
@@ -367,7 +405,7 @@ export const useLibraryStore = defineStore('library', () => {
 
   return {
     books, currentBook, categories, totalBooks, currentPage, lastPage,
-    loading, searchQuery, selectedCategory, availableOnly, excludeReference,
+    loading, searchQuery, searchBy, selectedItemType, selectedCategory, availableOnly, excludeReference,
     publishYearStart, publishYearEnd,
     myTransactions, myActiveTransactions, loadingTransactions,
     myBookRequests, allBookRequests, loadingBookRequests, pendingRequestCount,

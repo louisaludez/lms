@@ -8,6 +8,7 @@ import {
   Max,
   MinLength,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { UserRole, Gender } from '../entities/user.entity';
 
 export class CreateUserDto {
@@ -42,10 +43,12 @@ export class CreateUserDto {
   role: UserRole;
 
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   departmentId?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(6)
@@ -54,4 +57,8 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   section?: string;
+
+  @IsOptional()
+  @IsString()
+  profilePhotoUrl?: string;
 }

@@ -33,6 +33,8 @@ export class BooksService {
   async search(dto: SearchBooksDto): Promise<PaginatedBooks> {
     const {
       q,
+      searchBy,
+      itemType,
       categoryId,
       language,
       publisher,
@@ -50,10 +52,31 @@ export class BooksService {
       .where('book.is_active = 1');
 
     if (q) {
-      qb.andWhere(
-        `(MATCH(book.title, book.description) AGAINST (:q IN BOOLEAN MODE) OR book.isbn LIKE :like OR book.call_number LIKE :like)`,
-        { q: `${q}*`, like: `%${q}%` },
-      );
+      if (searchBy === 'title') {
+        qb.andWhere('book.title LIKE :like', { like: `%${q}%` });
+      } else if (searchBy === 'author') {
+        qb.andWhere(`EXISTS (
+          SELECT 1 FROM book_authors ba
+          JOIN authors a ON a.id = ba.author_id
+          WHERE ba.book_id = book.id AND a.full_name LIKE :like
+        )`, { like: `%${q}%` });
+      } else if (searchBy === 'isbn') {
+        qb.andWhere('book.isbn LIKE :like', { like: `%${q}%` });
+      } else if (searchBy === 'callNumber') {
+        qb.andWhere('book.call_number LIKE :like', { like: `%${q}%` });
+      } else {
+        qb.andWhere(
+          `(MATCH(book.title, book.description) AGAINST (:q IN BOOLEAN MODE) 
+            OR book.isbn LIKE :like 
+            OR book.call_number LIKE :like
+            OR EXISTS (
+              SELECT 1 FROM book_authors ba
+              JOIN authors a ON a.id = ba.author_id
+              WHERE ba.book_id = book.id AND a.full_name LIKE :like
+            ))`,
+          { q: `${q}*`, like: `%${q}%` },
+        );
+      }
     }
 
     if (categoryId)
@@ -68,6 +91,9 @@ export class BooksService {
     
     if (publishYearStart !== undefined) qb.andWhere('book.publish_year >= :start', { start: publishYearStart });
     if (publishYearEnd !== undefined) qb.andWhere('book.publish_year <= :end', { end: publishYearEnd });
+    if (itemType) qb.andWhere('book.item_type = :itemType', { itemType });
+
+    qb.orderBy('book.itemType', 'ASC').addOrderBy('book.title', 'ASC');
 
     const [books, total] = await qb
       .skip((page - 1) * limit)
@@ -159,6 +185,7 @@ export class BooksService {
       availableCopies: dto.totalCopies ?? 1,
       locationShelf: dto.locationShelf,
       isReferenceOnly: dto.isReferenceOnly ?? false,
+      itemType: dto.itemType ?? 'BOOKS',
     };
 
     const book = this.bookRepo.create(bookPartial as any);
@@ -175,7 +202,42 @@ export class BooksService {
     }
     await this.copyRepo.save(copies as any);
 
+    if (dto.authors !== undefined) {
+      await this.syncAuthors(saved.id, dto.authors);
+    }
+
     return this.findById(saved.id);
+  }
+
+  // ─── HELPER: SYNC AUTHORS ───────────────────────────────────────────────────
+  private async syncAuthors(bookId: number, authorsString: string): Promise<void> {
+    const names = authorsString.split(',')
+      .map(n => n.trim())
+      .filter(n => n.length > 0);
+
+    // Delete existing links for this book
+    await this.dataSource.query('DELETE FROM book_authors WHERE book_id = ?', [bookId]);
+
+    if (names.length === 0) return;
+
+    for (const name of names) {
+      // Find or create author
+      let [authorRows] = await this.dataSource.query('SELECT id FROM authors WHERE full_name = ?', [name]);
+      let authorId: number;
+
+      if (authorRows && authorRows.length > 0) {
+        authorId = authorRows[0].id;
+      } else {
+        const [result] = await this.dataSource.query('INSERT INTO authors (full_name) VALUES (?)', [name]);
+        authorId = result.insertId;
+      }
+
+      // Link book to author
+      await this.dataSource.query(
+        'INSERT INTO book_authors (book_id, author_id, role) VALUES (?, ?, ?)',
+        [bookId, authorId, 'primary']
+      );
+    }
   }
 
   // ─── FIND COPY BY BARCODE ─────────────────────────────────────────────────────
@@ -274,8 +336,14 @@ export class BooksService {
     if (dto.locationShelf !== undefined) book.locationShelf  = dto.locationShelf;
     if (dto.isReferenceOnly !== undefined) book.isReferenceOnly = dto.isReferenceOnly;
     if (dto.isActive !== undefined)      book.isActive       = dto.isActive;
+    if (dto.itemType !== undefined)      book.itemType       = dto.itemType;
 
     await this.bookRepo.save(book as any);
+
+    if (dto.authors !== undefined) {
+      await this.syncAuthors(id, dto.authors);
+    }
+
     return this.findById(id);
   }
 

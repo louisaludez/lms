@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/api/axios'
 import {
   BookOpenIcon, PlusIcon, MagnifyingGlassIcon,
@@ -28,6 +28,7 @@ interface BookRow {
   isReferenceOnly: boolean
   isActive: boolean
   coverImageUrl: string | null
+  itemType: string
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -39,18 +40,59 @@ const filterCat   = ref('')
 
 type ModalMode = 'create' | 'edit' | null
 const modalMode  = ref<ModalMode>(null)
+const showTypeModal = ref(false)
 const saving     = ref(false)
 const modalError = ref('')
 const editingId  = ref<number | null>(null)
+
+const itemTypes = ['Journals', 'Thesis', 'CD', 'BOOKS', 'DVD', 'Cartographic Materials', 'Electronics']
 
 const blankForm = () => ({
   title: '', otherTitle: '', isbn: '', callNumber: '', edition: '',
   publisher: '', publishYear: new Date().getFullYear(),
   categoryId: '', language: 'English', description: '',
   coverImageUrl: '', locationShelf: '', totalCopies: 1,
-  isReferenceOnly: false, isActive: true,
+  isReferenceOnly: false, isActive: true, itemType: 'BOOKS', authors: ''
 })
 const form = ref(blankForm())
+
+const typeConfig = computed(() => {
+  const type = form.value.itemType;
+  const base = {
+    titleLabel: 'Main Title *',
+    showOtherTitle: true,
+    otherTitleLabel: 'Other Title',
+    isbnLabel: 'ISBN *',
+    callNumberLabel: 'Call Number *',
+    showCategory: true,
+    showLanguage: true,
+    showPublisher: true,
+    publisherLabel: 'Publisher',
+    showPublishYear: true,
+    publishYearLabel: 'Publish Year',
+    showEdition: true,
+    editionLabel: 'Edition',
+    locationLabel: 'Location / Shelf',
+    showAuthors: true,
+    authorsLabel: 'Authors (Comma Separated)',
+  };
+
+  switch (type) {
+    case 'Journals':
+      return { ...base, titleLabel: 'Journal Name *', editionLabel: 'Issue/Volume', isbnLabel: 'ISSN *', showOtherTitle: false, authorsLabel: 'Authors / Contributors' };
+    case 'Thesis':
+      return { ...base, titleLabel: 'Thesis Title *', otherTitleLabel: 'Degree Program', isbnLabel: 'Thesis ID / Ref No. *', publisherLabel: 'University/Institution', publishYearLabel: 'Submission Year', showEdition: false, authorsLabel: 'Author(s)' };
+    case 'CD':
+    case 'DVD':
+      return { ...base, titleLabel: 'Title *', editionLabel: 'Format/Duration', isbnLabel: 'UPC / EAN *', publisherLabel: 'Studio/Producer', publishYearLabel: 'Release Year', authorsLabel: 'Artist / Director (Comma Separated)' };
+    case 'Cartographic Materials':
+      return { ...base, titleLabel: 'Title / Region *', editionLabel: 'Scale', isbnLabel: 'Identifier *', authorsLabel: 'Cartographer(s)' };
+    case 'Electronics':
+      return { ...base, titleLabel: 'Item Name *', otherTitleLabel: 'Model / Specs', isbnLabel: 'Serial Number *', callNumberLabel: 'Control Number *', publisherLabel: 'Brand / Manufacturer', publishYearLabel: 'Acquisition Year', showCategory: false, showLanguage: false, showEdition: false, showAuthors: false };
+    default:
+      return base;
+  }
+});
 
 const deleteTarget = ref<BookRow | null>(null)
 const deleting     = ref(false)
@@ -96,7 +138,13 @@ function onLimitChange(newLimit: number) {
 
 // ── Modal ──────────────────────────────────────────────────────────────────────
 function openCreate() {
+  showTypeModal.value = true
+}
+
+function selectTypeAndCreate(type: string) {
+  showTypeModal.value = false
   form.value     = blankForm()
+  form.value.itemType = type
   editingId.value = null
   modalError.value = ''
   modalMode.value  = 'create'
@@ -119,6 +167,8 @@ function openEdit(book: BookRow) {
     totalCopies:    book.totalCopies,
     isReferenceOnly: book.isReferenceOnly,
     isActive:       book.isActive,
+    itemType:       book.itemType || 'BOOKS',
+    authors:        book.authors?.join(', ') || '',
   }
   editingId.value  = book.id
   modalError.value = ''
@@ -138,6 +188,7 @@ async function saveBook() {
         ...createPayload,
         categoryId:  createPayload.categoryId  ? Number(createPayload.categoryId)  : undefined,
         publishYear: createPayload.publishYear ? Number(createPayload.publishYear) : undefined,
+        authors:     createPayload.authors || undefined,
       })
     } else {
       await api.patch(`/books/${editingId.value}`, {
@@ -154,6 +205,8 @@ async function saveBook() {
         locationShelf:  form.value.locationShelf || undefined,
         isReferenceOnly: form.value.isReferenceOnly,
         isActive:       form.value.isActive,
+        itemType:       form.value.itemType || undefined,
+        authors:        form.value.authors || undefined,
       })
     }
     closeModal()
@@ -243,8 +296,8 @@ function availBadge(available: number, total: number) {
           <thead class="bg-slate-50 border-b border-slate-100">
             <tr>
               <th class="table-header px-4 py-3 text-left">Title / Author</th>
+              <th class="table-header px-4 py-3 text-left">Type & Category</th>
               <th class="table-header px-4 py-3 text-left">ISBN / Call No.</th>
-              <th class="table-header px-4 py-3 text-left">Category</th>
               <th class="table-header px-4 py-3 text-left">Copies</th>
               <th class="table-header px-4 py-3 text-left">Shelf</th>
               <th class="table-header px-4 py-3 text-left">Flags</th>
@@ -264,13 +317,16 @@ function availBadge(available: number, total: number) {
                 <p v-if="book.authors?.length" class="text-xs text-slate-400 truncate mt-0.5">{{ book.authors.join(', ') }}</p>
                 <p v-else class="text-xs text-slate-300 italic mt-0.5">No authors</p>
               </td>
+              <!-- Type & Category -->
+              <td class="table-cell px-4">
+                <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-[#447794]/10 text-[#447794] mb-1 uppercase tracking-wider">{{ book.itemType || 'BOOKS' }}</span>
+                <p class="text-sm text-slate-600">{{ book.category?.name ?? '—' }}</p>
+              </td>
               <!-- ISBN -->
               <td class="table-cell px-4">
                 <p class="font-mono text-xs text-slate-700">{{ book.isbn }}</p>
                 <p class="font-mono text-xs text-slate-400">{{ book.callNumber }}</p>
               </td>
-              <!-- Category -->
-              <td class="table-cell px-4 text-sm text-slate-600">{{ book.category?.name ?? '—' }}</td>
               <!-- Copies -->
               <td class="table-cell px-4">
                 <span :class="['px-2.5 py-0.5 rounded-full text-xs font-bold', availBadge(book.availableCopies, book.totalCopies)]">
@@ -339,48 +395,58 @@ function availBadge(available: number, total: number) {
 
           <form @submit.prevent="saveBook" class="p-6 space-y-4">
             <div class="grid grid-cols-2 gap-4">
-              <div class="col-span-2 sm:col-span-1">
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Main Title *</label>
-                <input v-model="form.title" type="text" required class="input" />
-              </div>
-              <div class="col-span-2 sm:col-span-1">
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Other Title</label>
-                <input v-model="form.otherTitle" type="text" class="input" />
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Item Type *</label>
+                <select v-model="form.itemType" class="input">
+                  <option v-for="type in itemTypes" :key="type" :value="type">{{ type }}</option>
+                </select>
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">ISBN *</label>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{{ typeConfig.titleLabel }}</label>
+                <input v-model="form.title" type="text" required class="input" />
+              </div>
+              <div v-if="typeConfig.showOtherTitle" class="col-span-2 sm:col-span-1">
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{{ typeConfig.otherTitleLabel }}</label>
+                <input v-model="form.otherTitle" type="text" class="input" />
+              </div>
+              <div v-if="typeConfig.showAuthors" class="col-span-2">
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{{ typeConfig.authorsLabel }}</label>
+                <input v-model="form.authors" type="text" class="input" placeholder="e.g. John Doe, Jane Smith" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{{ typeConfig.isbnLabel }}</label>
                 <input v-model="form.isbn" type="text" :required="modalMode === 'create'" :disabled="modalMode === 'edit'" class="input font-mono" />
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Call Number *</label>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{{ typeConfig.callNumberLabel }}</label>
                 <input v-model="form.callNumber" type="text" required class="input font-mono" />
               </div>
-              <div>
+              <div v-if="typeConfig.showCategory">
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Category</label>
                 <select v-model="form.categoryId" class="input">
                   <option value="">Select category...</option>
                   <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
                 </select>
               </div>
-              <div>
+              <div v-if="typeConfig.showLanguage">
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Language</label>
                 <input v-model="form.language" type="text" class="input" />
               </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Publisher</label>
+              <div v-if="typeConfig.showPublisher">
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{{ typeConfig.publisherLabel }}</label>
                 <input v-model="form.publisher" type="text" class="input" />
               </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Publish Year</label>
+              <div v-if="typeConfig.showPublishYear">
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{{ typeConfig.publishYearLabel }}</label>
                 <input v-model="form.publishYear" type="number" class="input" />
               </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Edition</label>
-                <input v-model="form.edition" type="text" class="input" placeholder="e.g. 3rd" />
+              <div v-if="typeConfig.showEdition">
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{{ typeConfig.editionLabel }}</label>
+                <input v-model="form.edition" type="text" class="input" />
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Location / Shelf</label>
-                <input v-model="form.locationShelf" type="text" class="input" placeholder="e.g. Section A Row 3" />
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{{ typeConfig.locationLabel }}</label>
+                <input v-model="form.locationShelf" type="text" class="input" />
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Cover Image URL</label>
@@ -442,6 +508,32 @@ function availBadge(available: number, total: number) {
             >
               {{ deleting ? 'Removing...' : 'Deactivate' }}
             </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Item Type Modal -->
+    <Teleport to="body">
+      <div v-if="showTypeModal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+          <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h3 class="font-bold text-slate-800">Select Item Type</h3>
+            <button @click="showTypeModal = false" class="text-slate-400 hover:text-slate-600">
+              <XMarkIcon class="w-5 h-5" />
+            </button>
+          </div>
+          <div class="p-6">
+            <div class="grid grid-cols-2 gap-3">
+              <button
+                v-for="type in itemTypes"
+                :key="type"
+                @click="selectTypeAndCreate(type)"
+                class="flex items-center justify-center p-4 rounded-xl border border-slate-200 hover:border-[#447794] hover:bg-[#447794]/5 hover:text-[#447794] transition-all text-sm font-semibold text-slate-700"
+              >
+                {{ type }}
+              </button>
+            </div>
           </div>
         </div>
       </div>

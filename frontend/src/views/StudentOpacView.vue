@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLibraryStore, useAuthStore } from '@/stores/useLibraryStore'
 import { MagnifyingGlassIcon, FunnelIcon, BookOpenIcon, XMarkIcon, UserCircleIcon } from '@heroicons/vue/24/outline'
@@ -37,6 +37,25 @@ function handleFilterChange() {
   store.searchBooks(1)
 }
 
+const itemTypes = ['BOOKS', 'Journals', 'Thesis', 'CD', 'DVD', 'Cartographic Materials', 'Electronics']
+
+function handleItemTypeSelect(type: string | null) {
+  store.selectedItemType = type
+  store.searchBooks(1)
+}
+
+const groupedBooks = computed(() => {
+  const groups: Record<string, typeof store.books> = {}
+  store.books.forEach(b => {
+    // b.itemType exists on the entity, but Book interface in store might need it added.
+    // It's returned by the backend by default since it's a column.
+    const type = (b as any).itemType || 'BOOKS'
+    if (!groups[type]) groups[type] = []
+    groups[type].push(b)
+  })
+  return groups
+})
+
 function goToPage(page: number) {
   store.searchBooks(page)
   window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -65,23 +84,42 @@ function clearSearch() {
         </p>
 
         <!-- Search Bar -->
-        <div class="relative max-w-2xl mx-auto">
-          <MagnifyingGlassIcon class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 z-10" />
-          <input
-            id="opac-search"
-            v-model="searchInput"
-            type="search"
-            placeholder="Search by title, author, ISBN, or call number..."
-            class="w-full pl-12 pr-12 py-4 rounded-2xl text-slate-800 text-base font-medium shadow-xl
-                   focus:outline-none focus:ring-2 focus:ring-[#447794]/60 bg-white"
-          />
-          <button
-            v-if="searchInput"
-            @click="clearSearch"
-            class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-          >
-            <XMarkIcon class="w-5 h-5" />
-          </button>
+        <div class="relative max-w-3xl mx-auto flex shadow-xl rounded-2xl bg-white focus-within:ring-2 focus-within:ring-[#447794]/60 transition-shadow">
+          <div class="relative">
+            <select
+              v-model="store.searchBy"
+              @change="store.searchBooks(1)"
+              class="h-full pl-5 pr-10 py-4 rounded-l-2xl text-sm font-semibold text-slate-700 bg-slate-50 border-r border-slate-200 focus:outline-none cursor-pointer appearance-none hover:bg-slate-100 transition-colors"
+            >
+              <option value="all">All Fields</option>
+              <option value="title">Title</option>
+              <option value="author">Author</option>
+              <option value="isbn">ISBN</option>
+              <option value="callNumber">Call Number</option>
+            </select>
+            <!-- Custom chevron for select -->
+            <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
+
+          <div class="relative flex-1">
+            <MagnifyingGlassIcon class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 z-10" />
+            <input
+              id="opac-search"
+              v-model="searchInput"
+              type="search"
+              placeholder="Enter search term..."
+              class="w-full h-full pl-12 pr-12 py-4 rounded-r-2xl text-slate-800 text-base font-medium focus:outline-none bg-transparent"
+            />
+            <button
+              v-if="searchInput"
+              @click="clearSearch"
+              class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <XMarkIcon class="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <!-- Quick stats -->
@@ -148,6 +186,31 @@ function clearSearch() {
             </div>
           </div>
 
+          <!-- Item Types -->
+          <div class="mb-5">
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Item Type</p>
+            <button
+              @click="handleItemTypeSelect(null)"
+              :class="['w-full text-left px-3 py-2 rounded-lg text-sm transition-colors mb-1',
+                store.selectedItemType === null
+                  ? 'bg-[#447794] text-white font-medium'
+                  : 'text-slate-600 hover:bg-slate-100']"
+            >
+              All Types
+            </button>
+            <button
+              v-for="type in itemTypes"
+              :key="type"
+              @click="handleItemTypeSelect(type)"
+              :class="['w-full text-left px-3 py-2 rounded-lg text-sm transition-colors mb-1',
+                store.selectedItemType === type
+                  ? 'bg-[#447794] text-white font-medium'
+                  : 'text-slate-600 hover:bg-slate-100']"
+            >
+              {{ type }}
+            </button>
+          </div>
+
           <!-- Categories -->
           <div>
             <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Genre / Category</p>
@@ -204,17 +267,22 @@ function clearSearch() {
           </div>
         </div>
 
-        <!-- Book cards grid -->
-        <div
-          v-else-if="store.books.length > 0"
-          class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4"
-        >
-          <BookCard
-            v-for="book in store.books"
-            :key="book.id"
-            :book="book"
-            @click="router.push({ name: 'BookDetail', params: { id: book.id } })"
-          />
+        <!-- Books grouped by Item Type -->
+        <div v-else-if="store.books.length > 0" class="space-y-10">
+          <div v-for="(groupBooks, type) in groupedBooks" :key="type">
+            <div class="flex items-center gap-3 mb-5 border-b border-slate-200 pb-3">
+              <h3 class="text-xl font-bold text-slate-800">{{ type }}</h3>
+              <span class="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold">{{ groupBooks.length }} items</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
+              <BookCard
+                v-for="book in groupBooks"
+                :key="book.id"
+                :book="book"
+                @click="router.push({ name: 'BookDetail', params: { id: book.id } })"
+              />
+            </div>
+          </div>
         </div>
 
         <!-- Empty state -->

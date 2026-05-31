@@ -12,8 +12,13 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -39,7 +44,25 @@ export class UsersController {
 
   /** PATCH /api/v1/users/me/profile */
   @Patch('me/profile')
-  updateProfile(@Request() req: AuthReq, @Body() dto: UpdateProfileDto) {
+  @UseInterceptors(
+    FileInterceptor('displayPicture', {
+      storage: diskStorage({
+        destination: './uploads/profiles',
+        filename: (req, file, cb) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          cb(null, uniqueSuffix + extname(file.originalname));
+        },
+      }),
+    }),
+  )
+  updateProfile(
+    @Request() req: AuthReq,
+    @Body() dto: UpdateProfileDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (file) {
+      dto.profilePhotoUrl = `/uploads/profiles/${file.filename}`;
+    }
     return this.usersService.updateProfile(req.user.id, dto);
   }
 
@@ -83,11 +106,24 @@ export class UsersController {
     return this.usersService.findById(id);
   }
 
-  /** POST /api/v1/users — Create new user */
   @Post()
   @UseGuards(RolesGuard)
   @Roles('librarian', 'chief_librarian', 'admin')
-  create(@Body() dto: CreateUserDto) {
+  @UseInterceptors(
+    FileInterceptor('displayPicture', {
+      storage: diskStorage({
+        destination: './uploads/profiles',
+        filename: (req, file, cb) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          cb(null, uniqueSuffix + extname(file.originalname));
+        },
+      }),
+    }),
+  )
+  create(@Body() dto: CreateUserDto, @UploadedFile() file?: Express.Multer.File) {
+    if (file) {
+      dto.profilePhotoUrl = `${process.env.BACKEND_URL || 'http://localhost:3000'}/uploads/profiles/${file.filename}`;
+    }
     return this.usersService.create(dto);
   }
 

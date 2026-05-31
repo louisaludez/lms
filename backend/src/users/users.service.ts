@@ -96,6 +96,8 @@ export class UsersService {
     institutionalId: string;
     role: UserRole.STUDENT | UserRole.FACULTY | UserRole.LIBRARIAN;
     gender?: any;
+    departmentId?: number;
+    profilePhotoUrl?: string;
   }): Promise<User> {
     const exists = await this.userRepo.findOne({ where: { email: dto.email } });
     if (exists)
@@ -109,6 +111,14 @@ export class UsersService {
         `Institutional ID ${dto.institutionalId} already registered`,
       );
 
+    let department: Department | undefined = undefined;
+    if (dto.departmentId) {
+      const dept = await this.deptRepo.findOne({
+        where: { id: dto.departmentId },
+      });
+      if (dept) department = dept;
+    }
+
     const barcode = await this.generateUniqueLibraryBarcode();
     const hash = await bcrypt.hash(dto.password, 10);
 
@@ -121,6 +131,8 @@ export class UsersService {
       lastName: dto.lastName,
       role: dto.role,
       gender: dto.gender,
+      department,
+      profilePhotoUrl: dto.profilePhotoUrl,
       accountApprovalStatus: AccountApprovalStatus.PENDING,
       isActive: true,
     } as any);

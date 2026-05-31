@@ -27,11 +27,15 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async register(dto: RegisterDto) {
+  async register(dto: RegisterDto, profilePhotoUrl: string | null = null) {
     if (![UserRole.STUDENT, UserRole.FACULTY, UserRole.LIBRARIAN].includes(dto.role)) {
       throw new BadRequestException(
         'Only student, faculty, or librarian accounts can be created via sign-up',
       );
+    }
+
+    if (!profilePhotoUrl) {
+      throw new BadRequestException('Display picture is required.');
     }
 
     const user = await this.usersService.registerPublicPending({
@@ -42,6 +46,8 @@ export class AuthService {
       institutionalId: dto.institutionalId,
       role: dto.role,
       gender: dto.gender,
+      departmentId: dto.departmentId,
+      profilePhotoUrl: profilePhotoUrl,
     });
 
     return {
