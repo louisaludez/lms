@@ -102,7 +102,7 @@ const router = createRouter({
       path: '/kiosk/attendance',
       name: 'KioskAttendance',
       component: () => import('@/views/KioskAttendanceView.vue'),
-      meta: { requiresAuth: true, roles: ['librarian', 'chief_librarian'] },
+      meta: { requiresAuth: true, roles: ['librarian', 'chief_librarian', 'admin'] },
     },
     { path: '/:pathMatch(.*)*', redirect: '/opac' },
   ],

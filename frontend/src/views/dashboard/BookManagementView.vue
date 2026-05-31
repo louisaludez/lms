@@ -165,8 +165,8 @@ function openEdit(book: BookRow) {
     coverImageUrl:  book.coverImageUrl ?? '',
     locationShelf:  book.locationShelf ?? '',
     totalCopies:    book.totalCopies,
-    isReferenceOnly: book.isReferenceOnly,
-    isActive:       book.isActive,
+    isReferenceOnly: !!book.isReferenceOnly,
+    isActive:       !!book.isActive,
     itemType:       book.itemType || 'BOOKS',
     authors:        book.authors?.join(', ') || '',
   }
@@ -203,8 +203,8 @@ async function saveBook() {
         language:       form.value.language     || undefined,
         coverImageUrl:  form.value.coverImageUrl || undefined,
         locationShelf:  form.value.locationShelf || undefined,
-        isReferenceOnly: form.value.isReferenceOnly,
-        isActive:       form.value.isActive,
+        isReferenceOnly: !!form.value.isReferenceOnly,
+        isActive:       !!form.value.isActive,
         itemType:       form.value.itemType || undefined,
         authors:        form.value.authors || undefined,
       })

@@ -222,13 +222,13 @@ export class BooksService {
 
     for (const name of names) {
       // Find or create author
-      let [authorRows] = await this.dataSource.query('SELECT id FROM authors WHERE full_name = ?', [name]);
+      let authorRows = await this.dataSource.query('SELECT id FROM authors WHERE full_name = ?', [name]);
       let authorId: number;
 
       if (authorRows && authorRows.length > 0) {
         authorId = authorRows[0].id;
       } else {
-        const [result] = await this.dataSource.query('INSERT INTO authors (full_name) VALUES (?)', [name]);
+        const result = await this.dataSource.query('INSERT INTO authors (full_name) VALUES (?)', [name]);
         authorId = result.insertId;
       }
 
