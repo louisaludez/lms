@@ -35,7 +35,7 @@ export class ReportsService {
       SELECT u.gender, COUNT(a.id) as visitorCount
       FROM attendance_logs a
       JOIN users u ON a.user_id = u.id
-      WHERE u.gender IS NOT NULL
+      WHERE u.gender IS NOT NULL AND a.entry_type = 'entry'
       GROUP BY u.gender
     `);
   }

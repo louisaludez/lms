@@ -8,6 +8,7 @@ import {
   Min,
   Max,
 } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 import {
   UserRole,
   Gender,
@@ -41,10 +42,12 @@ export class UpdateUserDto {
   role?: UserRole;
 
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   departmentId?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(6)
@@ -59,10 +62,15 @@ export class UpdateUserDto {
   eligibilityStatus?: EligibilityStatus;
 
   @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   isActive?: boolean;
 
   @IsOptional()
   @IsEnum(AccountApprovalStatus)
   accountApprovalStatus?: AccountApprovalStatus;
+
+  @IsOptional()
+  @IsString()
+  profilePhotoUrl?: string;
 }

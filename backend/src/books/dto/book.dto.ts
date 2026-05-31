@@ -71,6 +71,10 @@ export class CreateBookDto {
   @IsString()
   isbn: string;
 
+  @IsOptional()
+  @IsString()
+  issn?: string;
+
   @IsString()
   callNumber: string;
 
@@ -135,6 +139,7 @@ export class UpdateBookDto {
   @IsOptional() @IsString() title?: string;
   @IsOptional() @IsString() otherTitle?: string;
   @IsOptional() @IsString() isbn?: string;
+  @IsOptional() @IsString() issn?: string;
   @IsOptional() @IsString() callNumber?: string;
   @IsOptional() @IsString() edition?: string;
   @IsOptional() @IsString() publisher?: string;

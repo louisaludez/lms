@@ -29,6 +29,7 @@ interface BookRow {
   isActive: boolean
   coverImageUrl: string | null
   itemType: string
+  issn: string | null
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -48,7 +49,7 @@ const editingId  = ref<number | null>(null)
 const itemTypes = ['Journals', 'Thesis', 'CD', 'BOOKS', 'DVD', 'Cartographic Materials', 'Electronics']
 
 const blankForm = () => ({
-  title: '', otherTitle: '', isbn: '', callNumber: '', edition: '',
+  title: '', otherTitle: '', isbn: '', issn: '', callNumber: '', edition: '',
   publisher: '', publishYear: new Date().getFullYear(),
   categoryId: '', language: 'English', description: '',
   coverImageUrl: '', locationShelf: '', totalCopies: 1,
@@ -63,6 +64,8 @@ const typeConfig = computed(() => {
     showOtherTitle: true,
     otherTitleLabel: 'Other Title',
     isbnLabel: 'ISBN *',
+    showIssn: true,
+    issnLabel: 'ISSN',
     callNumberLabel: 'Call Number *',
     showCategory: true,
     showLanguage: true,
@@ -79,16 +82,16 @@ const typeConfig = computed(() => {
 
   switch (type) {
     case 'Journals':
-      return { ...base, titleLabel: 'Journal Name *', editionLabel: 'Issue/Volume', isbnLabel: 'ISSN *', showOtherTitle: false, authorsLabel: 'Authors / Contributors' };
+      return { ...base, titleLabel: 'Journal Name *', editionLabel: 'Issue/Volume', isbnLabel: 'ISSN / Ref No. *', showIssn: false, showOtherTitle: false, authorsLabel: 'Authors / Contributors' };
     case 'Thesis':
-      return { ...base, titleLabel: 'Thesis Title *', otherTitleLabel: 'Degree Program', isbnLabel: 'Thesis ID / Ref No. *', publisherLabel: 'University/Institution', publishYearLabel: 'Submission Year', showEdition: false, authorsLabel: 'Author(s)' };
+      return { ...base, titleLabel: 'Thesis Title *', otherTitleLabel: 'Degree Program', isbnLabel: 'Thesis ID / Ref No. *', showIssn: false, publisherLabel: 'University/Institution', publishYearLabel: 'Submission Year', showEdition: false, authorsLabel: 'Author(s)' };
     case 'CD':
     case 'DVD':
-      return { ...base, titleLabel: 'Title *', editionLabel: 'Format/Duration', isbnLabel: 'UPC / EAN *', publisherLabel: 'Studio/Producer', publishYearLabel: 'Release Year', authorsLabel: 'Artist / Director (Comma Separated)' };
+      return { ...base, titleLabel: 'Title *', editionLabel: 'Format/Duration', isbnLabel: 'UPC / EAN *', showIssn: false, publisherLabel: 'Studio/Producer', publishYearLabel: 'Release Year', authorsLabel: 'Artist / Director (Comma Separated)' };
     case 'Cartographic Materials':
-      return { ...base, titleLabel: 'Title / Region *', editionLabel: 'Scale', isbnLabel: 'Identifier *', authorsLabel: 'Cartographer(s)' };
+      return { ...base, titleLabel: 'Title / Region *', editionLabel: 'Scale', isbnLabel: 'Identifier *', showIssn: false, authorsLabel: 'Cartographer(s)' };
     case 'Electronics':
-      return { ...base, titleLabel: 'Item Name *', otherTitleLabel: 'Model / Specs', isbnLabel: 'Serial Number *', callNumberLabel: 'Control Number *', publisherLabel: 'Brand / Manufacturer', publishYearLabel: 'Acquisition Year', showCategory: false, showLanguage: false, showEdition: false, showAuthors: false };
+      return { ...base, titleLabel: 'Item Name *', otherTitleLabel: 'Model / Specs', isbnLabel: 'Serial Number *', callNumberLabel: 'Control Number *', showIssn: false, publisherLabel: 'Brand / Manufacturer', publishYearLabel: 'Acquisition Year', showCategory: false, showLanguage: false, showEdition: false, showAuthors: false };
     default:
       return base;
   }
@@ -155,6 +158,7 @@ function openEdit(book: BookRow) {
     title:          book.title,
     otherTitle:     book.otherTitle ?? '',
     isbn:           book.isbn,
+    issn:           book.issn ?? '',
     callNumber:     book.callNumber,
     edition:        book.edition ?? '',
     publisher:      book.publisher ?? '',
@@ -195,6 +199,7 @@ async function saveBook() {
         title:          form.value.title        || undefined,
         otherTitle:     form.value.otherTitle   || undefined,
         isbn:           form.value.isbn         || undefined,
+        issn:           form.value.issn         || undefined,
         callNumber:     form.value.callNumber   || undefined,
         edition:        form.value.edition      || undefined,
         publisher:      form.value.publisher    || undefined,
@@ -415,7 +420,11 @@ function availBadge(available: number, total: number) {
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{{ typeConfig.isbnLabel }}</label>
-                <input v-model="form.isbn" type="text" :required="modalMode === 'create'" :disabled="modalMode === 'edit'" class="input font-mono" />
+                <input v-model="form.isbn" type="text" :required="modalMode === 'create'" class="input font-mono" />
+              </div>
+              <div v-if="typeConfig.showIssn">
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{{ typeConfig.issnLabel }}</label>
+                <input v-model="form.issn" type="text" class="input font-mono" />
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{{ typeConfig.callNumberLabel }}</label>

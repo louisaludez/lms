@@ -5,7 +5,10 @@ import {
   UserPlusIcon, MagnifyingGlassIcon, PencilSquareIcon,
   TrashIcon, XMarkIcon, CheckIcon, FunnelIcon,
   UserCircleIcon, HandThumbUpIcon, HandThumbDownIcon,
+  QrCodeIcon, ArrowDownTrayIcon, ArrowPathIcon,
 } from '@heroicons/vue/24/outline'
+import JsBarcode from 'jsbarcode'
+import { toPng } from 'html-to-image'
 import Pagination from '@/components/Pagination.vue'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -18,6 +21,7 @@ interface UserRow {
   firstName: string
   lastName: string
   middleName: string | null
+  profilePhotoUrl: string | null
   role: string
   gender?: string
   department: Department | null
@@ -35,6 +39,52 @@ const searchQuery  = ref('')
 const filterRole           = ref('')
 const filterApprovalStatus = ref('')
 const reviewingId          = ref<number | null>(null)
+
+// View ID
+const viewingIdUser = ref<UserRow | null>(null)
+const barcodeCanvas = ref<HTMLCanvasElement | null>(null)
+const idCardRef = ref<HTMLElement | null>(null)
+const isDownloadingId = ref(false)
+import { watch } from 'vue'
+
+watch(() => viewingIdUser.value, (user) => {
+  if (user?.barcode) {
+    setTimeout(() => {
+      if (barcodeCanvas.value) {
+        JsBarcode(barcodeCanvas.value, user.barcode, {
+          format: "CODE128",
+          lineColor: "#0f172a",
+          width: 2,
+          height: 40,
+          displayValue: false,
+          margin: 0,
+          background: "transparent",
+        })
+      }
+    }, 50)
+  }
+})
+
+async function downloadId() {
+  if (!idCardRef.value || isDownloadingId.value || !viewingIdUser.value) return
+  
+  isDownloadingId.value = true
+  try {
+    const dataUrl = await toPng(idCardRef.value, {
+      pixelRatio: 3,
+      cacheBust: true,
+    })
+    const link = document.createElement('a')
+    link.download = `lumina-id-${viewingIdUser.value.barcode}.png`
+    link.href = dataUrl
+    link.click()
+  } catch (err: any) {
+    console.error("Failed to generate ID:", err)
+    alert("Failed to download ID. Error: " + (err.message || err))
+  } finally {
+    isDownloadingId.value = false
+  }
+}
 
 // Modal
 type ModalMode = 'create' | 'edit' | null
@@ -124,6 +174,7 @@ function openEdit(user: UserRow) {
     eligibilityStatus: user.eligibilityStatus,
     accountApprovalStatus: user.accountApprovalStatus,
     isActive:        user.isActive,
+    displayPicture:  null as File | null,
   }
   editingId.value  = user.id
   modalError.value = ''
@@ -168,7 +219,20 @@ async function saveUser() {
         accountApprovalStatus: form.value.accountApprovalStatus,
         isActive:         form.value.isActive,
       }
-      await api.patch(`/users/${editingId.value}`, payload)
+      
+      const fd = new FormData()
+      Object.entries(payload).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          fd.append(key, value.toString())
+        }
+      })
+      if (form.value.displayPicture) {
+        fd.append('displayPicture', form.value.displayPicture as File)
+      }
+
+      await api.patch(`/users/${editingId.value}`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
     }
     closeModal()
     await fetchUsers(currentPage.value)
@@ -391,6 +455,14 @@ function approvalBadge(status: string) {
                     </button>
                   </template>
                   <button
+                    v-if="user.role === 'student'"
+                    @click="viewingIdUser = user"
+                    class="p-1.5 rounded-lg bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition-colors"
+                    title="View Digital ID"
+                  >
+                    <QrCodeIcon class="w-4 h-4" />
+                  </button>
+                  <button
                     @click="openEdit(user)"
                     class="p-1.5 rounded-lg bg-[#447794]/10 text-[#447794] hover:bg-[#447794]/20 transition-colors"
                     title="Edit"
@@ -486,9 +558,10 @@ function approvalBadge(status: string) {
                   <option v-for="dept in departments" :key="dept.id" :value="dept.id">{{ dept.code }} - {{ dept.name }}</option>
                 </select>
               </div>
-              <div v-if="modalMode === 'create'" class="col-span-2">
+              <div class="col-span-2">
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Profile Picture</label>
                 <input type="file" accept="image/*" @change="handleFileChange" class="input p-2" />
+                <p v-if="modalMode === 'edit'" class="text-[10px] text-slate-400 mt-1">Leave blank to keep the current picture.</p>
               </div>
               <div v-if="modalMode === 'edit'">
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Account approval</label>
@@ -553,6 +626,136 @@ function approvalBadge(status: string) {
               class="flex-1 justify-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 transition-all"
             >
               {{ deleting ? 'Deactivating...' : 'Deactivate' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- View ID / Profile Modal -->
+    <Teleport to="body">
+      <div v-if="viewingIdUser" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full flex flex-col md:flex-row overflow-hidden max-h-[90vh]">
+          
+          <!-- Left side: Profile Info -->
+          <div class="flex-1 p-6 lg:p-8 bg-slate-50 flex flex-col overflow-y-auto">
+            <div class="flex justify-between items-start mb-6">
+              <h3 class="font-bold text-2xl text-slate-800 flex items-center gap-3">
+                <UserCircleIcon class="w-8 h-8 text-[#447794]" />
+                User Profile
+              </h3>
+              <button @click="viewingIdUser = null" class="md:hidden text-slate-400 hover:text-slate-600">
+                <XMarkIcon class="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div class="space-y-6 flex-1">
+              <div class="flex items-center gap-5">
+                <div class="w-24 h-24 rounded-full bg-slate-200 overflow-hidden ring-4 ring-white shadow-md flex-shrink-0">
+                  <img v-if="viewingIdUser.profilePhotoUrl" :src="viewingIdUser.profilePhotoUrl" class="w-full h-full object-cover" />
+                  <UserCircleIcon v-else class="w-full h-full text-slate-400 bg-white" />
+                </div>
+                <div>
+                  <h4 class="text-2xl font-bold text-slate-800">{{ viewingIdUser.firstName }} {{ viewingIdUser.lastName }}</h4>
+                  <p class="text-slate-500 text-sm font-medium mt-0.5">{{ viewingIdUser.email }}</p>
+                  <div class="mt-3 flex gap-2 flex-wrap">
+                    <span :class="['px-2.5 py-1 rounded-full text-xs font-bold capitalize', roleBadge(viewingIdUser.role)]">
+                      {{ viewingIdUser.role }}
+                    </span>
+                    <span :class="['px-2.5 py-1 rounded-full text-xs font-bold capitalize', eligBadge(viewingIdUser.eligibilityStatus)]">
+                      {{ viewingIdUser.eligibilityStatus }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                  <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Institutional ID</p>
+                  <p class="font-mono text-slate-800 font-medium">{{ viewingIdUser.institutionalId }}</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                  <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Department</p>
+                  <p class="text-slate-800 font-medium">{{ viewingIdUser.department?.name ?? '—' }}</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                  <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Gender</p>
+                  <p class="text-slate-800 font-medium">{{ viewingIdUser.gender ?? '—' }}</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                  <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Joined Date</p>
+                  <p class="text-slate-800 font-medium">{{ new Date(viewingIdUser.createdAt).toLocaleDateString() }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right side: ID Card -->
+          <div class="p-6 lg:p-8 bg-white flex flex-col items-center justify-center border-t md:border-t-0 md:border-l border-slate-100 relative min-w-[320px]">
+            <button @click="viewingIdUser = null" class="hidden md:block absolute top-6 right-6 text-slate-400 hover:text-slate-600">
+              <XMarkIcon class="w-6 h-6" />
+            </button>
+            
+            <p class="font-bold text-slate-800 mb-6 flex items-center gap-2">
+              <QrCodeIcon class="w-5 h-5 text-[#447794]" />
+              Digital ID Preview
+            </p>
+
+            <!-- ID Card Render -->
+            <div 
+              ref="idCardRef"
+              class="relative overflow-hidden rounded-xl shadow-lg bg-white select-none mb-6"
+              style="width: 250px; aspect-ratio: 591 / 1004;"
+            >
+              <!-- Background Template -->
+              <img src="@/assets/id.png" class="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none" alt="ID Template" crossorigin="anonymous" />
+              
+              <!-- Automated ID Header -->
+              <div class="absolute z-10 w-full text-center px-4 flex flex-col justify-center" style="top: 25%; height: 5%;">
+                <h3 class="text-[12px] font-black text-rose-600 uppercase tracking-widest drop-shadow-sm">AUTOMATED ID</h3>
+              </div>
+
+              <!-- User Photo -->
+              <div class="absolute z-10 overflow-hidden bg-slate-200 flex items-center justify-center" style="left: 36%; right: 36%; top: 31%; bottom: 49%; border-radius: 8px;">
+                <img v-if="viewingIdUser.profilePhotoUrl" :src="viewingIdUser.profilePhotoUrl" class="w-full h-full object-cover" crossorigin="anonymous" />
+                <UserCircleIcon v-else class="w-12 h-12 text-slate-400 bg-white" />
+              </div>
+
+              <!-- Name -->
+              <div class="absolute z-10 w-full text-center px-4 flex flex-col justify-center" style="top: 52%; height: 5%;">
+                <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide truncate">
+                  {{ viewingIdUser.firstName }} {{ viewingIdUser.lastName }}
+                </h2>
+              </div>
+
+              <!-- Role -->
+              <div class="absolute z-10 w-full text-center px-4 flex flex-col justify-center" style="top: 57%; height: 3%;">
+                <p class="text-[10px] font-bold text-[#8c1c1c] uppercase tracking-widest truncate">
+                  {{ viewingIdUser.role || 'STUDENT' }}
+                </p>
+              </div>
+
+              <!-- Barcode Canvas -->
+              <div class="absolute z-10 w-full flex justify-center items-center" style="top: 61%; height: 10%;">
+                <canvas ref="barcodeCanvas" class="w-[140px] h-[40px]"></canvas>
+              </div>
+
+              <!-- Institutional ID -->
+              <div class="absolute z-10 w-full text-center flex flex-col justify-center" style="top: 71%; height: 4%;">
+                <p class="text-[11px] font-semibold text-slate-800 uppercase tracking-wider">
+                  {{ viewingIdUser.barcode }}
+                </p>
+              </div>
+            </div>
+
+            <button 
+              @click="downloadId" 
+              :disabled="isDownloadingId"
+              class="btn-primary w-full justify-center max-w-[250px]"
+            >
+              <ArrowDownTrayIcon v-if="!isDownloadingId" class="w-5 h-5 mr-2" />
+              <ArrowPathIcon v-else class="w-5 h-5 mr-2 animate-spin" />
+              {{ isDownloadingId ? 'Downloading...' : 'Download ID' }}
             </button>
           </div>
         </div>

@@ -130,7 +130,26 @@ export class UsersController {
   @Patch(':id')
   @UseGuards(RolesGuard)
   @Roles('librarian', 'chief_librarian', 'admin')
-  update(@Request() req: AuthReq, @Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
+  @UseInterceptors(
+    FileInterceptor('displayPicture', {
+      storage: diskStorage({
+        destination: './uploads/profiles',
+        filename: (req, file, cb) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          cb(null, uniqueSuffix + extname(file.originalname));
+        },
+      }),
+    }),
+  )
+  update(
+    @Request() req: AuthReq,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateUserDto,
+    @UploadedFile() file?: Express.Multer.File
+  ) {
+    if (file) {
+      dto.profilePhotoUrl = `${process.env.BACKEND_URL || 'http://localhost:3000'}/uploads/profiles/${file.filename}`;
+    }
     return this.usersService.update(id, dto, req.user.role as UserRole);
   }
 

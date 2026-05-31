@@ -22,6 +22,9 @@ export class Book {
   @Column({ length: 20 })
   isbn: string;
 
+  @Column({ length: 20, nullable: true })
+  issn: string;
+
   @Index({ unique: true })
   @Column({ name: 'call_number', length: 60 })
   callNumber: string;
