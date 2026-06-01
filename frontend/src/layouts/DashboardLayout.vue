@@ -33,7 +33,7 @@ function closeMobileSidebar() {
 const navItems = computed(() => {
   const role = auth.user?.role || ''
   return [
-    { to: '/dashboard', name: 'DashboardHome', label: 'Overview', icon: HomeIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
+    { to: '/dashboard', name: 'DashboardHome', label: 'Dashboard  ', icon: HomeIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
     { to: '/dashboard/circulation', name: 'Circulation', label: 'Circulation', icon: ArrowsRightLeftIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
     { to: '/dashboard/history', name: 'TransactionHistory', label: 'Transaction History', icon: DocumentTextIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
     { to: '/dashboard/attendance', name: 'Attendance', label: 'Attendance', icon: ClipboardDocumentListIcon, roles: ['librarian', 'chief_librarian', 'admin'] },

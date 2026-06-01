@@ -35,6 +35,11 @@ function handleFileChange(event: Event) {
   const target = event.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
     const file = target.files[0]
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file.')
+      target.value = ''
+      return
+    }
     profileForm.value.displayPicture = file
     photoPreview.value = URL.createObjectURL(file)
   }

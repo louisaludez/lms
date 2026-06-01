@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, UseGuards, Query } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -28,5 +28,44 @@ export class ReportsController {
   @Get('book-requests')
   getBookRequestStats() {
     return this.reportsService.getBookRequestStats();
+  }
+
+  @Get('entry-exit')
+  getEntryExitReport(
+    @Query('frequency') frequency: string,
+    @Query('department') department: string,
+    @Query('year') year: string,
+  ) {
+    return this.reportsService.getEntryExitReport(frequency, department, year);
+  }
+
+  @Get('borrowed')
+  getBorrowedReport(@Query('frequency') frequency: string) {
+    return this.reportsService.getBorrowedReport(frequency);
+  }
+
+  @Get('returned')
+  getReturnedReport(@Query('frequency') frequency: string) {
+    return this.reportsService.getReturnedReport(frequency);
+  }
+
+  @Get('overdue')
+  getOverdueReport(@Query('frequency') frequency: string) {
+    return this.reportsService.getOverdueReport(frequency);
+  }
+
+  @Get('registered-users')
+  getRegisteredUsersReport() {
+    return this.reportsService.getRegisteredUsersReport();
+  }
+
+  @Get('inventory')
+  getInventoryReport() {
+    return this.reportsService.getInventoryReport();
+  }
+
+  @Get('new-acquisitions')
+  getNewAcquisitionsReport() {
+    return this.reportsService.getNewAcquisitionsReport();
   }
 }

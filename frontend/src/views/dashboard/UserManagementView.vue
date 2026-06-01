@@ -272,7 +272,14 @@ async function confirmDelete() {
 function handleFileChange(e: Event) {
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
-    form.value.displayPicture = target.files[0]
+    const file = target.files[0]
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file.')
+      target.value = ''
+      form.value.displayPicture = null
+      return
+    }
+    form.value.displayPicture = file
   } else {
     form.value.displayPicture = null
   }
@@ -455,7 +462,7 @@ function approvalBadge(status: string) {
                     </button>
                   </template>
                   <button
-                    v-if="user.role === 'student'"
+                    v-if="user.role === 'student' || user.role === 'faculty'"
                     @click="viewingIdUser = user"
                     class="p-1.5 rounded-lg bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition-colors"
                     title="View Digital ID"
