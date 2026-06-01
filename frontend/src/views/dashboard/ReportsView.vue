@@ -142,7 +142,7 @@ const totalBookReqs = computed(() => bookReqStats.value.reduce((acc, s) => acc +
       </div>
     </div>
 
-    <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-8 print:block print:space-y-8">
       
       <!-- High Demand / Low Stock -->
       <div class="card p-6 lg:col-span-3 print-section">
@@ -156,8 +156,8 @@ const totalBookReqs = computed(() => bookReqStats.value.reduce((acc, s) => acc +
           </div>
         </div>
         
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
+        <div class="overflow-x-auto print:overflow-visible">
+          <table class="w-full text-left border-collapse min-w-[600px] print:min-w-full">
             <thead>
               <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
                 <th class="px-4 py-3 font-semibold rounded-tl-xl">Item Title</th>
@@ -198,7 +198,7 @@ const totalBookReqs = computed(() => bookReqStats.value.reduce((acc, s) => acc +
           </div>
         </div>
 
-        <div class="flex-1 min-h-[300px] flex items-center justify-center">
+        <div class="flex-1 min-h-[300px] print:min-h-[400px] flex items-center justify-center">
           <Bar v-if="deptBorrowing.length" :data="deptChartData" :options="deptChartOptions" />
           <div v-else class="text-slate-400 italic">No data available</div>
         </div>
@@ -216,7 +216,7 @@ const totalBookReqs = computed(() => bookReqStats.value.reduce((acc, s) => acc +
           </div>
         </div>
 
-        <div class="flex-1 min-h-[300px] flex flex-col items-center justify-center relative">
+        <div class="flex-1 min-h-[300px] print:min-h-[400px] flex flex-col items-center justify-center relative">
           <Doughnut v-if="visitorStats.length" :data="visitorChartData" :options="visitorChartOptions" />
           <div v-if="visitorStats.length" class="absolute inset-0 flex items-center justify-center pointer-events-none mt-[-20px]">
              <div class="text-center">
@@ -240,7 +240,7 @@ const totalBookReqs = computed(() => bookReqStats.value.reduce((acc, s) => acc +
           </div>
         </div>
 
-        <div class="flex-1 min-h-[300px] flex flex-col items-center justify-center relative">
+        <div class="flex-1 min-h-[300px] print:min-h-[400px] flex flex-col items-center justify-center relative">
           <Doughnut v-if="bookReqStats.length" :data="bookReqChartData" :options="visitorChartOptions" />
           <div v-if="bookReqStats.length" class="absolute inset-0 flex items-center justify-center pointer-events-none mt-[-20px]">
              <div class="text-center">

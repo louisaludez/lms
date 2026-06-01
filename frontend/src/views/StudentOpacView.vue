@@ -73,23 +73,23 @@ function clearSearch() {
     <NavBar />
 
     <!-- Hero Banner -->
-    <div class="bg-gradient-to-br from-[#123249] via-[#1a3f5c] to-[#447794] py-14 px-6">
+    <div class="bg-gradient-to-br from-[#123249] via-[#1a3f5c] to-[#447794] py-8 sm:py-14 px-4 sm:px-6">
       <div class="max-w-4xl mx-auto text-center text-white">
-        <div class="flex items-center justify-center gap-3 mb-4">
-          <BookOpenIcon class="w-10 h-10 text-[#80b3ce]" />
-          <h1 class="text-3xl font-bold tracking-tight">Lumina Library Catalog</h1>
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 mb-4">
+          <BookOpenIcon class="w-8 h-8 sm:w-10 sm:h-10 text-[#80b3ce]" />
+          <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">Lumina Library Catalog</h1>
         </div>
-        <p class="text-[#aed0e2] text-base mb-8">
+        <p class="text-[#aed0e2] text-sm sm:text-base mb-6 sm:mb-8 max-w-lg mx-auto sm:max-w-none">
           Search thousands of books, check availability, and manage your borrowings.
         </p>
 
         <!-- Search Bar -->
-        <div class="relative max-w-3xl mx-auto flex shadow-xl rounded-2xl bg-white focus-within:ring-2 focus-within:ring-[#447794]/60 transition-shadow">
-          <div class="relative">
+        <div class="relative max-w-3xl mx-auto flex flex-col sm:flex-row shadow-xl rounded-2xl bg-white focus-within:ring-2 focus-within:ring-[#447794]/60 transition-shadow">
+          <div class="relative w-full sm:w-auto">
             <select
               v-model="store.searchBy"
               @change="store.searchBooks(1)"
-              class="h-full pl-5 pr-10 py-4 rounded-l-2xl text-sm font-semibold text-slate-700 bg-slate-50 border-r border-slate-200 focus:outline-none cursor-pointer appearance-none hover:bg-slate-100 transition-colors"
+              class="w-full sm:w-auto h-full pl-5 pr-10 py-3 sm:py-4 rounded-t-2xl sm:rounded-none sm:rounded-l-2xl text-sm font-semibold text-slate-700 bg-slate-50 border-b sm:border-b-0 sm:border-r border-slate-200 focus:outline-none cursor-pointer appearance-none hover:bg-slate-100 transition-colors"
             >
               <option value="all">All Fields</option>
               <option value="title">Title</option>
@@ -110,7 +110,7 @@ function clearSearch() {
               v-model="searchInput"
               type="search"
               placeholder="Enter search term..."
-              class="w-full h-full pl-12 pr-12 py-4 rounded-r-2xl text-slate-800 text-base font-medium focus:outline-none bg-transparent"
+              class="w-full h-full pl-12 pr-12 py-3 sm:py-4 rounded-b-2xl sm:rounded-none sm:rounded-r-2xl text-slate-800 text-sm sm:text-base font-medium focus:outline-none bg-transparent"
             />
             <button
               v-if="searchInput"
@@ -123,7 +123,7 @@ function clearSearch() {
         </div>
 
         <!-- Quick stats -->
-        <div class="flex justify-center gap-8 mt-8 text-sm text-[#aed0e2]">
+        <div class="flex flex-wrap justify-center gap-3 sm:gap-8 mt-6 sm:mt-8 text-xs sm:text-sm text-[#aed0e2]">
           <span>📚 {{ store.totalBooks.toLocaleString() }} books found</span>
           <span>✅ Available Now</span>
           <span>🔖 Reserve Online</span>
@@ -132,11 +132,11 @@ function clearSearch() {
     </div>
 
     <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex gap-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col lg:flex-row gap-6">
 
-      <!-- Sidebar Filters (desktop) -->
-      <aside class="hidden lg:block w-64 flex-shrink-0">
-        <div class="card p-5 sticky top-6">
+      <!-- Sidebar Filters -->
+      <aside :class="['w-full lg:w-64 flex-shrink-0', showFilters ? 'block' : 'hidden lg:block']">
+        <div class="card p-4 sm:p-5 lg:sticky lg:top-6 mb-2 lg:mb-0">
           <div class="flex items-center gap-2 mb-4">
             <FunnelIcon class="w-4 h-4 text-[#447794]" />
             <h2 class="font-semibold text-slate-700 text-sm">Filters</h2>
@@ -242,7 +242,7 @@ function clearSearch() {
       <div class="flex-1 min-w-0">
 
         <!-- Result bar -->
-        <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
           <p class="text-sm text-slate-500">
             Showing <span class="font-semibold text-slate-700">{{ store.books.length }}</span> of
             <span class="font-semibold text-slate-700">{{ store.totalBooks }}</span> results
@@ -251,9 +251,9 @@ function clearSearch() {
           <!-- Mobile filters toggle -->
           <button
             @click="showFilters = !showFilters"
-            class="lg:hidden btn-ghost text-xs"
+            :class="['lg:hidden btn-ghost text-xs border border-slate-200', showFilters ? 'bg-slate-100' : '']"
           >
-            <FunnelIcon class="w-4 h-4" />Filters
+            <FunnelIcon class="w-4 h-4" />{{ showFilters ? 'Hide Filters' : 'Show Filters' }}
           </button>
         </div>
 
@@ -294,12 +294,12 @@ function clearSearch() {
         </div>
 
         <!-- Pagination -->
-        <div v-if="store.lastPage > 1" class="flex justify-center gap-2 mt-10">
+        <div v-if="store.lastPage > 1" class="flex flex-wrap justify-center gap-2 mt-10">
           <button
             v-for="page in store.lastPage"
             :key="page"
             @click="goToPage(page)"
-            :class="['w-10 h-10 rounded-xl text-sm font-semibold transition-all',
+            :class="['w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-sm font-semibold transition-all',
               page === store.currentPage
                 ? 'bg-[#447794] text-white shadow-md'
                 : 'bg-white border border-slate-200 text-slate-600 hover:border-[#447794]/40 hover:text-[#447794]']"

@@ -98,24 +98,25 @@ async function handleRenew(txId: number) {
     <NavBar />
 
     <!-- Profile Header -->
-    <div class="bg-gradient-to-r from-[#123249] to-[#447794] py-12 px-6">
-      <div class="max-w-4xl mx-auto flex items-center gap-6">
-        <div class="w-20 h-20 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0 ring-2 ring-white/30">
+    <div class="bg-gradient-to-r from-[#123249] to-[#447794] py-8 sm:py-12 px-4 sm:px-6">
+      <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-center md:items-start gap-6">
+        <div class="w-24 h-24 md:w-20 md:h-20 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0 ring-2 ring-white/30">
           <UserCircleIcon v-if="!user?.profilePhotoUrl" class="w-12 h-12 text-white/80" />
           <img v-else :src="user.profilePhotoUrl" class="w-full h-full object-cover rounded-2xl" :alt="user?.firstName" />
         </div>
-        <div class="text-white flex-1 min-w-0">
+        <div class="text-white flex-1 min-w-0 text-center md:text-left flex flex-col items-center md:items-start">
           <h1 class="text-2xl font-bold">{{ user?.firstName }} {{ user?.lastName }}</h1>
           <p class="text-[#aed0e2] text-sm mt-0.5">
             {{ user?.institutionalId }}
-            <span v-if="user?.department"> • {{ user.department.name }}</span>
+            <span v-if="user?.department" class="hidden md:inline"> • {{ user.department.name }}</span>
+            <span v-if="user?.department" class="block md:hidden text-xs mt-1">{{ user.department.name }}</span>
             <span v-if="user?.gender"> • {{ user.gender }}</span>
           </p>
-          <button @click="isSettingsModalOpen = true" class="mt-3 flex items-center gap-1.5 text-xs font-semibold text-white/80 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors border border-white/20">
+          <button @click="isSettingsModalOpen = true" class="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-white/80 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors border border-white/20">
             <Cog6ToothIcon class="w-4 h-4" />
             Edit Profile
           </button>
-          <div class="flex items-center gap-3 mt-3">
+          <div class="flex items-center gap-3 mt-3 flex-wrap justify-center md:justify-start">
             <span v-if="user?.eligibilityStatus === 'eligible' && !store.hasOverdue" class="badge-eligible">
               ✅ Eligible to Borrow
             </span>
@@ -127,9 +128,9 @@ async function handleRenew(txId: number) {
         </div>
 
         <!-- Download ID Section -->
-        <div v-if="user?.barcode" class="flex flex-col items-center gap-4 ml-auto">
+        <div v-if="user?.barcode" class="flex flex-col items-center gap-4 md:ml-auto mt-4 md:mt-0 w-full md:w-auto">
           <!-- Visible UI -->
-          <div class="bg-white/10 backdrop-blur-sm p-6 rounded-2xl flex flex-col items-center gap-3 border border-white/20 shadow-xl text-center min-w-[200px]">
+          <div class="bg-white/10 backdrop-blur-sm p-5 sm:p-6 rounded-2xl flex flex-col items-center gap-3 border border-white/20 shadow-xl text-center w-full max-w-[280px] md:min-w-[200px]">
             <QrCodeIcon class="w-12 h-12 text-white/90" />
             <div>
               <p class="text-white font-bold text-lg">Digital ID</p>
@@ -239,7 +240,7 @@ async function handleRenew(txId: number) {
       </div>
 
       <!-- Quick Stats -->
-      <div class="grid grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="card p-5 text-center">
           <p class="text-3xl font-bold text-[#447794]">{{ store.myActiveTransactions.length }}</p>
           <p class="text-xs text-slate-500 mt-1 font-medium">Currently Borrowed</p>
@@ -278,39 +279,41 @@ async function handleRenew(txId: number) {
           <div
             v-for="tx in store.myActiveTransactions"
             :key="tx.id"
-            class="px-6 py-4 flex items-start gap-4 hover:bg-slate-50/50 transition-colors"
+            class="px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 hover:bg-slate-50/50 transition-colors"
           >
-            <!-- Book cover placeholder -->
-            <div class="w-12 h-16 rounded-lg bg-gradient-to-b from-[#2D5B75] to-[#123249] flex-shrink-0 flex items-center justify-center">
-              <BookOpenIcon class="w-6 h-6 text-white/60" />
-            </div>
+            <div class="flex items-start gap-4 flex-1 min-w-0 w-full sm:w-auto">
+              <!-- Book cover placeholder -->
+              <div class="w-12 h-16 rounded-lg bg-gradient-to-b from-[#2D5B75] to-[#123249] flex-shrink-0 flex items-center justify-center mt-0.5 sm:mt-0">
+                <BookOpenIcon class="w-6 h-6 text-white/60" />
+              </div>
 
-            <div class="flex-1 min-w-0">
-              <p class="font-semibold text-slate-800 text-sm truncate">{{ tx.bookCopy.book.title }}</p>
-              <p class="text-xs text-slate-500 mt-0.5">{{ tx.bookCopy.book.authors?.join(', ') ?? 'Unknown Author' }}</p>
-              <div class="flex items-center gap-3 mt-2 flex-wrap">
-                <span :class="statusClass(tx.status)">{{ tx.status }}</span>
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold text-slate-800 text-sm truncate">{{ tx.bookCopy.book.title }}</p>
+                <p class="text-xs text-slate-500 mt-0.5 truncate">{{ tx.bookCopy.book.authors?.join(', ') ?? 'Unknown Author' }}</p>
+                <div class="flex items-center gap-3 mt-2 flex-wrap">
+                  <span :class="statusClass(tx.status)">{{ tx.status }}</span>
 
-                <!-- Due date indicator -->
-                <span
-                  v-if="tx.status === 'active'"
-                  :class="[
-                    'text-xs font-medium flex items-center gap-1',
-                    daysUntilDue(tx.dueDate) <= 3 ? 'text-amber-600' : 'text-slate-500'
-                  ]"
-                >
-                  <ClockIcon class="w-3.5 h-3.5" />
-                  Due {{ formatDate(tx.dueDate) }}
-                  <span v-if="daysUntilDue(tx.dueDate) <= 3 && daysUntilDue(tx.dueDate) >= 0">
-                    ({{ daysUntilDue(tx.dueDate) }}d left)
+                  <!-- Due date indicator -->
+                  <span
+                    v-if="tx.status === 'active'"
+                    :class="[
+                      'text-xs font-medium flex items-center gap-1',
+                      daysUntilDue(tx.dueDate) <= 3 ? 'text-amber-600' : 'text-slate-500'
+                    ]"
+                  >
+                    <ClockIcon class="w-3.5 h-3.5" />
+                    Due {{ formatDate(tx.dueDate) }}
+                    <span v-if="daysUntilDue(tx.dueDate) <= 3 && daysUntilDue(tx.dueDate) >= 0">
+                      ({{ daysUntilDue(tx.dueDate) }}d left)
+                    </span>
                   </span>
-                </span>
 
-                <!-- Overdue indicator -->
-                <span v-if="tx.status === 'overdue'" class="text-xs font-medium text-rose-600 flex items-center gap-1">
-                  <ExclamationTriangleIcon class="w-3.5 h-3.5" />
-                  {{ tx.overdueDays }} day(s) overdue — Fine: ₱{{ Number(tx.fineAmount).toFixed(2) }}
-                </span>
+                  <!-- Overdue indicator -->
+                  <span v-if="tx.status === 'overdue'" class="text-xs font-medium text-rose-600 flex items-center gap-1">
+                    <ExclamationTriangleIcon class="w-3.5 h-3.5 flex-shrink-0" />
+                    {{ tx.overdueDays }} day(s) overdue — Fine: ₱{{ Number(tx.fineAmount).toFixed(2) }}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -318,12 +321,12 @@ async function handleRenew(txId: number) {
             <button
               v-if="tx.status === 'active' && tx.renewalCount < 2"
               @click="handleRenew(tx.id)"
-              class="btn-ghost text-xs flex-shrink-0"
+              class="btn-ghost text-xs flex-shrink-0 w-full sm:w-auto justify-center mt-2 sm:mt-0"
             >
               <ArrowPathIcon class="w-4 h-4" />
               Renew
             </button>
-            <span v-else-if="tx.renewalCount >= 2" class="text-xs text-slate-400 flex-shrink-0">Max renewals</span>
+            <span v-else-if="tx.renewalCount >= 2" class="text-xs text-slate-400 flex-shrink-0 w-full sm:w-auto text-center sm:text-right mt-2 sm:mt-0">Max renewals</span>
           </div>
         </div>
       </div>
@@ -340,7 +343,7 @@ async function handleRenew(txId: number) {
         </div>
 
         <div v-else class="overflow-x-auto">
-          <table class="w-full">
+          <table class="w-full min-w-[600px]">
             <thead class="bg-slate-50 border-b border-slate-100">
               <tr>
                 <th class="table-header px-4 py-3 text-left">Book</th>
