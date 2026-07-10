@@ -12,7 +12,6 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
   app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
 
-
   app.enableCors({
     origin: config.get<string>('FRONTEND_URL', 'http://localhost:5173'),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],

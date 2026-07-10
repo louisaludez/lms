@@ -27,7 +27,16 @@ export class ReturnDto {
 }
 
 export class RenewalDto {
+  @IsOptional()
   @IsInt()
   @Type(() => Number)
-  transactionId: number;
+  transactionId?: number;
+
+  @IsOptional()
+  @IsString()
+  bookCopyBarcode?: string;
+
+  @IsOptional()
+  @IsString()
+  dueDate?: string; // YYYY-MM-DD
 }

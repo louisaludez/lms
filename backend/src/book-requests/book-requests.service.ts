@@ -38,7 +38,9 @@ export class BookRequestsService {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
     if (user.role !== UserRole.FACULTY)
-      throw new ForbiddenException('Only faculty members can create book requests');
+      throw new ForbiddenException(
+        'Only faculty members can create book requests',
+      );
 
     const book = await this.bookRepo.findOne({ where: { id: dto.bookId } });
     if (!book) throw new NotFoundException('Book not found');
@@ -77,7 +79,9 @@ export class BookRequestsService {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
     if (user.role !== UserRole.FACULTY)
-      throw new ForbiddenException('Only faculty members can create book requests');
+      throw new ForbiddenException(
+        'Only faculty members can create book requests',
+      );
 
     const request = this.reqRepo.create();
     Object.assign(request, {
@@ -95,20 +99,74 @@ export class BookRequestsService {
   }
 
   /** Get all requests by a specific faculty user */
-  async getMyRequests(userId: number): Promise<BookRequest[]> {
-    return this.reqRepo.find({
-      where: { user: { id: userId } },
+  async getMyRequests(
+    userId: number,
+    page: number = 1,
+    limit: number = 10,
+    status?: string,
+  ): Promise<{
+    data: BookRequest[];
+    total: number;
+    page: number;
+    lastPage: number;
+  }> {
+    const whereClause: any = { user: { id: userId } };
+    if (status) {
+      whereClause.status = status;
+    }
+
+    const [data, total] = await this.reqRepo.findAndCount({
+      where: whereClause,
       relations: ['book', 'book.category', 'librarian'],
       order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return {
+      data,
+      total,
+      page,
+      lastPage: Math.ceil(total / limit) || 1,
+    };
   }
 
   /** Librarian: get all book requests */
-  async getAllRequests(): Promise<BookRequest[]> {
-    return this.reqRepo.find({
-      relations: ['user', 'user.department', 'book', 'book.category', 'librarian'],
+  async getAllRequests(
+    page: number = 1,
+    limit: number = 10,
+    status?: string,
+  ): Promise<{
+    data: BookRequest[];
+    total: number;
+    page: number;
+    lastPage: number;
+  }> {
+    const whereClause: any = {};
+    if (status) {
+      whereClause.status = status;
+    }
+
+    const [data, total] = await this.reqRepo.findAndCount({
+      where: whereClause,
+      relations: [
+        'user',
+        'user.department',
+        'book',
+        'book.category',
+        'librarian',
+      ],
       order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return {
+      data,
+      total,
+      page,
+      lastPage: Math.ceil(total / limit) || 1,
+    };
   }
 
   /** Librarian: get pending requests count */

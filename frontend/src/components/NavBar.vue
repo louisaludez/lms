@@ -59,7 +59,7 @@ function closeMobileMenu() {
 
         <router-link
           v-if="auth.isFaculty"
-          to="/faculty/requests"
+          to="/dashboard/faculty-requests"
           class="px-4 py-2 rounded-xl text-sm font-medium text-[#aed0e2] hover:text-white hover:bg-white/10 transition-all flex items-center gap-1.5"
           active-class="!text-white !bg-[#447794]/40"
         >
@@ -130,7 +130,7 @@ function closeMobileMenu() {
 
         <router-link
           v-if="auth.isFaculty"
-          to="/faculty/requests"
+          to="/dashboard/faculty-requests"
           @click="closeMobileMenu"
           class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-base font-medium text-[#aed0e2] hover:text-white hover:bg-white/10 transition-all"
           active-class="!text-white !bg-[#447794]/40"

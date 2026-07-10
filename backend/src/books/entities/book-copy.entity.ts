@@ -34,7 +34,12 @@ export class BookCopy {
   @Column({ length: 60 })
   barcode: string;
 
-  @Column({ name: 'copy_condition', type: 'enum', enum: BookCondition, default: BookCondition.GOOD })
+  @Column({
+    name: 'copy_condition',
+    type: 'enum',
+    enum: BookCondition,
+    default: BookCondition.GOOD,
+  })
   condition: BookCondition;
 
   @Column({ name: 'is_active', type: 'tinyint', width: 1, default: 1 })

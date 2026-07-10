@@ -34,6 +34,7 @@ const navItems = computed(() => {
   const role = auth.user?.role || ''
   return [
     { to: '/dashboard', name: 'DashboardHome', label: 'Dashboard  ', icon: HomeIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
+    { to: '/dashboard/faculty-requests', name: 'FacultyRequests', label: 'My Requests', icon: DocumentTextIcon, roles: ['faculty'] },
     { to: '/dashboard/circulation', name: 'Circulation', label: 'Circulation', icon: ArrowsRightLeftIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
     { to: '/dashboard/history', name: 'TransactionHistory', label: 'Transaction History', icon: DocumentTextIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
     { to: '/dashboard/attendance', name: 'Attendance', label: 'Attendance', icon: ClipboardDocumentListIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
@@ -59,31 +60,31 @@ const navItems = computed(() => {
     <!-- Sidebar -->
     <aside 
       :class="[
-        'fixed inset-y-0 left-0 z-50 w-64 bg-[#0e2236] flex flex-col flex-shrink-0 transform transition-transform duration-300 md:relative md:translate-x-0 print:hidden',
+        'fixed inset-y-0 left-0 z-50 w-64 bg-[#f4f7f6] border-r border-slate-200 flex flex-col flex-shrink-0 transform transition-transform duration-300 md:relative md:translate-x-0 print:hidden',
         isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
       ]"
     >
       <!-- Logo -->
-      <div class="h-16 flex items-center justify-between px-5 border-b border-[#447794]/20">
+      <div class="h-16 flex items-center justify-between px-5 border-b border-slate-200">
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 rounded-lg flex items-center justify-center">
             <img :src="ndcLogo" class="w-full h-full object-contain" alt="NDC Logo" />
           </div>
           <div>
-            <p class="text-white font-bold text-base leading-none">Lumina</p>
-            <p class="text-[#80b3ce] text-[10px] font-medium">Library System</p>
+            <p class="text-slate-800 font-bold text-base leading-none">Lumina</p>
+            <p class="text-slate-500 text-[10px] font-medium">Library System</p>
           </div>
         </div>
         <!-- Close button on mobile -->
-        <button @click="closeMobileSidebar" class="md:hidden text-[#80b3ce] hover:text-white p-1">
+        <button @click="closeMobileSidebar" class="md:hidden text-slate-400 hover:text-slate-600 p-1">
           <XMarkIcon class="w-6 h-6" />
         </button>
       </div>
 
       <!-- User info -->
-      <div class="px-4 py-4 border-b border-[#447794]/20">
-        <p class="text-white font-semibold text-sm">{{ auth.user?.firstName }} {{ auth.user?.lastName }}</p>
-        <p class="text-[#80b3ce] text-xs capitalize">{{ auth.user?.role }}</p>
+      <div class="px-4 py-4 border-b border-slate-200">
+        <p class="text-slate-800 font-semibold text-sm">{{ auth.user?.firstName }} {{ auth.user?.lastName }}</p>
+        <p class="text-slate-500 text-xs capitalize">{{ auth.user?.role }}</p>
       </div>
 
       <!-- Navigation -->
@@ -102,7 +103,7 @@ const navItems = computed(() => {
       </nav>
 
       <!-- Logout -->
-      <button @click="logout" class="flex items-center gap-3 px-5 py-4 text-[#80b3ce] hover:text-white hover:bg-white/5 transition-all text-sm border-t border-[#447794]/20 mt-auto">
+      <button @click="logout" class="flex items-center gap-3 px-5 py-4 text-slate-500 hover:text-[#5c726a] hover:bg-slate-200/50 transition-all text-sm border-t border-slate-200 mt-auto">
         <ArrowRightOnRectangleIcon class="w-5 h-5" />
         Sign Out
       </button>

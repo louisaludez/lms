@@ -9,17 +9,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
-import {
-  User,
-  UserRole,
-  AccountApprovalStatus,
-} from './entities/user.entity';
+import { User, UserRole, AccountApprovalStatus } from './entities/user.entity';
 import { Department } from './entities/department.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { Like } from 'typeorm';
+import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class UsersService {
@@ -29,6 +26,17 @@ export class UsersService {
     @InjectRepository(Department)
     private readonly deptRepo: Repository<Department>,
   ) {}
+
+  private get transporter(): nodemailer.Transporter {
+    return nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT || '587', 10),
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+  }
 
   async create(dto: CreateUserDto): Promise<User> {
     const exists = await this.userRepo.findOne({ where: { email: dto.email } });
@@ -75,11 +83,11 @@ export class UsersService {
 
   private async generateUniqueLibraryBarcode(): Promise<string> {
     for (let attempt = 0; attempt < 25; attempt++) {
-      const raw = randomBytes(9)
-        .toString('base64url')
-        .replace(/[^a-zA-Z0-9]/g, '');
-      const candidate = `LUM-${raw}`.slice(0, 60);
-      const taken = await this.userRepo.exist({ where: { barcode: candidate } });
+      const raw = randomBytes(4).toString('hex').toUpperCase(); // Exactly 8 characters
+      const candidate = `LUM-${raw}`; // Total 12 characters
+      const taken = await this.userRepo.exist({
+        where: { barcode: candidate },
+      });
       if (!taken) return candidate;
     }
     throw new InternalServerErrorException(
@@ -188,6 +196,8 @@ export class UsersService {
     page: number = 1,
     limit: number = 10,
     approvalStatus?: string,
+    sortBy?: string,
+    sortOrder: 'ASC' | 'DESC' = 'DESC',
   ): Promise<{
     data: User[];
     total: number;
@@ -196,8 +206,18 @@ export class UsersService {
   }> {
     const qb = this.userRepo
       .createQueryBuilder('user')
-      .leftJoinAndSelect('user.department', 'department')
-      .orderBy('user.createdAt', 'DESC');
+      .leftJoinAndSelect('user.department', 'department');
+
+    if (sortBy === 'name') {
+      qb.orderBy('user.firstName', sortOrder).addOrderBy(
+        'user.lastName',
+        sortOrder,
+      );
+    } else if (sortBy === 'department') {
+      qb.orderBy('department.name', sortOrder);
+    } else {
+      qb.orderBy('user.createdAt', sortOrder);
+    }
 
     if (role) qb.andWhere('user.role = :role', { role });
     if (approvalStatus)
@@ -210,40 +230,98 @@ export class UsersService {
         { s: `%${search}%` },
       );
     }
-    
+
     const [users, total] = await qb
       .skip((page - 1) * limit)
       .take(limit)
       .getManyAndCount();
 
-    return { data: users, total, page, lastPage: Math.ceil(total / limit) || 1 };
+    return {
+      data: users,
+      total,
+      page,
+      lastPage: Math.ceil(total / limit) || 1,
+    };
   }
 
-  async update(id: number, dto: UpdateUserDto, requesterRole?: UserRole): Promise<User> {
+  async update(
+    id: number,
+    dto: UpdateUserDto,
+    requesterRole?: UserRole,
+  ): Promise<User> {
     const user = await this.findById(id);
 
     if (dto.departmentId !== undefined) {
-      const dept = await this.deptRepo.findOne({ where: { id: dto.departmentId } });
+      const dept = await this.deptRepo.findOne({
+        where: { id: dto.departmentId },
+      });
       if (dept) user.department = dept;
     }
 
-    if (dto.firstName !== undefined)        user.firstName        = dto.firstName;
-    if (dto.lastName !== undefined)         user.lastName         = dto.lastName;
-    if (dto.middleName !== undefined)       user.middleName       = dto.middleName;
-    if (dto.email !== undefined)            user.email            = dto.email;
-    if (dto.role !== undefined)             user.role             = dto.role;
-    if (dto.yearLevel !== undefined)        user.yearLevel        = dto.yearLevel;
-    if (dto.section !== undefined)          user.section          = dto.section;
-    if (dto.eligibilityStatus !== undefined) user.eligibilityStatus = dto.eligibilityStatus;
-    if (dto.isActive !== undefined)         user.isActive         = dto.isActive;
-    
-    if (dto.accountApprovalStatus !== undefined && dto.accountApprovalStatus !== user.accountApprovalStatus) {
+    if (dto.firstName !== undefined) user.firstName = dto.firstName;
+    if (dto.lastName !== undefined) user.lastName = dto.lastName;
+    if (dto.middleName !== undefined) user.middleName = dto.middleName;
+    if (dto.email !== undefined) user.email = dto.email;
+    if (dto.role !== undefined) user.role = dto.role;
+    if (dto.yearLevel !== undefined) user.yearLevel = dto.yearLevel;
+    if (dto.section !== undefined) user.section = dto.section;
+    if (dto.eligibilityStatus !== undefined)
+      user.eligibilityStatus = dto.eligibilityStatus;
+    if (dto.isActive !== undefined) user.isActive = dto.isActive;
+
+    if (
+      dto.accountApprovalStatus !== undefined &&
+      dto.accountApprovalStatus !== user.accountApprovalStatus
+    ) {
       if (user.role === UserRole.LIBRARIAN) {
-        if (requesterRole !== UserRole.ADMIN && requesterRole !== UserRole.CHIEF_LIBRARIAN) {
-          throw new ForbiddenException('Only an admin or chief librarian can approve or update a librarian account status.');
+        if (
+          requesterRole !== UserRole.ADMIN &&
+          requesterRole !== UserRole.CHIEF_LIBRARIAN
+        ) {
+          throw new ForbiddenException(
+            'Only an admin or chief librarian can approve or update a librarian account status.',
+          );
         }
       }
+
+      const previousStatus = user.accountApprovalStatus;
       user.accountApprovalStatus = dto.accountApprovalStatus;
+
+      // Email Notification
+      if (previousStatus === AccountApprovalStatus.PENDING) {
+        const mailOptions = {
+          from: process.env.FROM_EMAIL || 'noreply@lumina-library.com',
+          to: user.email,
+          subject: '',
+          text: '',
+          html: '',
+        };
+
+        if (dto.accountApprovalStatus === AccountApprovalStatus.APPROVED) {
+          mailOptions.subject = 'Lumina Registration Approved';
+          mailOptions.text = `Hello ${user.firstName},\n\nYour registration has been approved.\nYour Library ID is: ${user.barcode}.\n\nYou can now log in and print your ID card from your profile.\n\nThank you,\nLumina Library Team`;
+          mailOptions.html = `<p>Hello ${user.firstName},</p><p>Your registration has been <strong>approved</strong>.</p><p>Your Library ID is: <strong>${user.barcode}</strong>.</p><p>You can now log in and print your ID card from your profile.</p><p>Thank you,<br/>Lumina Library Team</p>`;
+
+          this.transporter
+            .sendMail(mailOptions)
+            .catch((err) =>
+              console.error('Failed to send approval email:', err),
+            );
+        } else if (
+          dto.accountApprovalStatus === AccountApprovalStatus.REJECTED
+        ) {
+          const reason = dto.rejectionReason || 'No specific reason provided.';
+          mailOptions.subject = 'Lumina Registration Rejected';
+          mailOptions.text = `Hello ${user.firstName},\n\nUnfortunately, your registration was rejected.\n\nReason: ${reason}\n\nPlease contact the library administration for more details.\n\nThank you,\nLumina Library Team`;
+          mailOptions.html = `<p>Hello ${user.firstName},</p><p>Unfortunately, your registration was <strong>rejected</strong>.</p><p><strong>Reason:</strong> ${reason}</p><p>Please contact the library administration for more details.</p><p>Thank you,<br/>Lumina Library Team</p>`;
+
+          this.transporter
+            .sendMail(mailOptions)
+            .catch((err) =>
+              console.error('Failed to send rejection email:', err),
+            );
+        }
+      }
     }
 
     return this.userRepo.save(user);
@@ -256,7 +334,8 @@ export class UsersService {
     if (dto.lastName !== undefined) user.lastName = dto.lastName;
     if (dto.middleName !== undefined) user.middleName = dto.middleName;
     if (dto.gender !== undefined) user.gender = dto.gender;
-    if (dto.profilePhotoUrl !== undefined) user.profilePhotoUrl = dto.profilePhotoUrl;
+    if (dto.profilePhotoUrl !== undefined)
+      user.profilePhotoUrl = dto.profilePhotoUrl;
 
     return this.userRepo.save(user);
   }
@@ -270,7 +349,10 @@ export class UsersService {
 
     if (!user) throw new NotFoundException(`User #${id} not found`);
 
-    const isMatch = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+    const isMatch = await bcrypt.compare(
+      dto.currentPassword,
+      user.passwordHash,
+    );
     if (!isMatch) {
       throw new ConflictException('Incorrect current password');
     }

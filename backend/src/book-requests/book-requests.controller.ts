@@ -5,6 +5,7 @@ import {
   Patch,
   Param,
   Body,
+  Query,
   ParseIntPipe,
   UseGuards,
   Request,
@@ -31,7 +32,10 @@ export class BookRequestsController {
   @Post('borrow')
   @UseGuards(RolesGuard)
   @Roles('faculty')
-  createBorrowRequest(@Body() dto: CreateBorrowRequestDto, @Request() req: AuthReq) {
+  createBorrowRequest(
+    @Body() dto: CreateBorrowRequestDto,
+    @Request() req: AuthReq,
+  ) {
     return this.service.createBorrowRequest(req.user.id, dto);
   }
 
@@ -48,16 +52,34 @@ export class BookRequestsController {
 
   /** GET /api/v1/book-requests/my — Faculty gets their own requests */
   @Get('my')
-  getMyRequests(@Request() req: AuthReq) {
-    return this.service.getMyRequests(req.user.id);
+  getMyRequests(
+    @Request() req: AuthReq,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.service.getMyRequests(
+      req.user.id,
+      page ? Number(page) : 1,
+      limit ? Number(limit) : 10,
+      status,
+    );
   }
 
   /** GET /api/v1/book-requests — Librarian gets all requests */
   @Get()
   @UseGuards(RolesGuard)
   @Roles('librarian', 'chief_librarian', 'admin')
-  getAllRequests() {
-    return this.service.getAllRequests();
+  getAllRequests(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.service.getAllRequests(
+      page ? Number(page) : 1,
+      limit ? Number(limit) : 10,
+      status,
+    );
   }
 
   /** GET /api/v1/book-requests/pending-count — Librarian gets pending count */

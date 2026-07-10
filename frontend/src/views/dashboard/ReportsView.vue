@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import api from '@/api/axios'
-import { PrinterIcon, DocumentTextIcon, UserGroupIcon, BookOpenIcon, CheckCircleIcon, ExclamationCircleIcon, ClipboardDocumentListIcon, SparklesIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+import { PrinterIcon, DocumentTextIcon, UserGroupIcon, BookOpenIcon, CheckCircleIcon, ExclamationCircleIcon, ClipboardDocumentListIcon, SparklesIcon, ArrowPathIcon, FunnelIcon } from '@heroicons/vue/24/outline'
 
 const currentYear = new Date().getFullYear().toString()
 
@@ -15,11 +15,31 @@ const departments = [
   'Bachelor of Science (BS): Midwifery'
 ]
 
-// State for each report
-const entryReport = ref({ frequency: 'Daily', department: 'Bachelor of Arts (AB): English Language', year: currentYear })
-const borrowedReport = ref({ frequency: 'Monthly' })
-const returnedReport = ref({ frequency: 'Monthly' })
-const overdueReport = ref({ frequency: 'Monthly' })
+const reportTypes = [
+  'Library Entry and Exit',
+  'Books Borrowed',
+  'Books Returned',
+  'Overdue Books',
+  'Registered Users',
+  'Inventory',
+  'New Acquisitions'
+]
+
+const selectedReportType = ref('Library Entry and Exit')
+
+const reportParams = ref({
+  frequency: 'Monthly',
+  department: 'Bachelor of Arts (AB): English Language',
+  year: currentYear
+})
+
+watch(selectedReportType, (newType) => {
+  if (['Books Borrowed', 'Books Returned', 'Overdue Books'].includes(newType)) {
+    if (!commonFrequencies.includes(reportParams.value.frequency)) {
+      reportParams.value.frequency = 'Monthly'
+    }
+  }
+})
 
 // Print State
 const printData = ref<any>(null)
@@ -72,7 +92,7 @@ function triggerPrint() {
 </script>
 
 <template>
-  <div class="reports-container space-y-8 max-w-7xl mx-auto p-4 md:p-8 relative">
+  <div class="reports-container space-y-8 w-full max-w-[1600px] mx-auto p-4 md:p-8 relative">
     
     <!-- Loading Overlay for API Fetch -->
     <div v-if="isFetching" class="fixed inset-0 z-50 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center hide-on-print">
@@ -91,186 +111,69 @@ function triggerPrint() {
       <p class="text-sm text-slate-500 mt-2">Select the parameters and generate library reports to view and print.</p>
     </div>
 
-    <!-- Reports Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hide-on-print">
+    <!-- Unified Report Configuration Form -->
+    <div class="card bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 hide-on-print">
       
-      <!-- Library Entry and Exit Report -->
-      <div class="card bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full hover:shadow-md transition-shadow lg:col-span-3">
-        <div class="flex items-start gap-4 mb-6 border-b border-slate-100 pb-4">
-          <div class="p-3 bg-[#447794]/10 rounded-xl text-[#447794]">
-            <UserGroupIcon class="w-6 h-6" />
-          </div>
-          <div>
-            <h3 class="text-lg font-bold text-slate-800">Library Entry and Exit</h3>
-            <p class="text-sm text-slate-500">Track visitor statistics across different departments.</p>
-          </div>
+      <div class="flex items-start gap-4 mb-8 border-b border-slate-100 pb-6">
+        <div class="p-3 bg-[#447794]/10 rounded-xl text-[#447794]">
+          <FunnelIcon class="w-6 h-6" />
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-slate-800">Report Configuration</h3>
+          <p class="text-sm text-slate-500">Select a report type and configure its parameters.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Report Type Dropdown -->
+        <div class="col-span-1 md:col-span-3">
+          <label class="block text-sm font-semibold text-slate-700 mb-2">Report Type</label>
+          <select v-model="selectedReportType" class="w-full rounded-xl border-slate-300 shadow-sm focus:border-[#447794] focus:ring-[#447794] bg-slate-50 outline-none py-3 px-4 transition-colors">
+            <option v-for="type in reportTypes" :key="type" :value="type">{{ type }}</option>
+          </select>
         </div>
         
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 flex-1">
+        <!-- Dynamic Filters based on selectedReportType -->
+        <template v-if="selectedReportType === 'Library Entry and Exit'">
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Frequency</label>
-            <select v-model="entryReport.frequency" class="w-full rounded-lg border-slate-300 shadow-sm focus:border-[#447794] focus:ring-[#447794] text-sm bg-slate-50 outline-none">
+            <label class="block text-sm font-semibold text-slate-700 mb-2">Frequency</label>
+            <select v-model="reportParams.frequency" class="w-full rounded-xl border-slate-300 shadow-sm focus:border-[#447794] focus:ring-[#447794] bg-slate-50 outline-none py-3 px-4 transition-colors">
               <option v-for="f in entryFrequencies" :key="f" :value="f">{{ f }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Department</label>
-            <select v-model="entryReport.department" class="w-full rounded-lg border-slate-300 shadow-sm focus:border-[#447794] focus:ring-[#447794] text-sm bg-slate-50 outline-none">
+            <label class="block text-sm font-semibold text-slate-700 mb-2">Department</label>
+            <select v-model="reportParams.department" class="w-full rounded-xl border-slate-300 shadow-sm focus:border-[#447794] focus:ring-[#447794] bg-slate-50 outline-none py-3 px-4 transition-colors">
               <option v-for="d in departments" :key="d" :value="d">{{ d }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Year</label>
-            <input type="number" v-model="entryReport.year" class="w-full rounded-lg border-slate-300 shadow-sm focus:border-[#447794] focus:ring-[#447794] text-sm bg-slate-50 outline-none" />
+            <label class="block text-sm font-semibold text-slate-700 mb-2">Year</label>
+            <input type="number" v-model="reportParams.year" class="w-full rounded-xl border-slate-300 shadow-sm focus:border-[#447794] focus:ring-[#447794] bg-slate-50 outline-none py-3 px-4 transition-colors" />
           </div>
-        </div>
+        </template>
 
-        <button @click="viewReport('Library Entry and Exit', entryReport)" :disabled="isFetching" class="w-full md:w-1/3 ml-auto btn-primary bg-[#447794] text-white py-2.5 rounded-lg flex items-center justify-center gap-2 hover:bg-[#366179] transition-colors font-medium disabled:opacity-50">
-          <DocumentTextIcon class="w-5 h-5" /> Generate Report
-        </button>
-      </div>
-
-      <!-- Books Borrowed Report -->
-      <div class="card bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full hover:shadow-md transition-shadow">
-        <div class="flex items-start gap-4 mb-6">
-          <div class="p-3 bg-indigo-50 rounded-xl text-indigo-600">
-            <BookOpenIcon class="w-6 h-6" />
-          </div>
-          <div>
-            <h3 class="text-lg font-bold text-slate-800">Books Borrowed</h3>
-            <p class="text-sm text-slate-500">Analytics on book borrowing.</p>
-          </div>
-        </div>
-        
-        <div class="space-y-4 mb-6 flex-1">
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Frequency</label>
-            <select v-model="borrowedReport.frequency" class="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm bg-slate-50 outline-none">
+        <template v-else-if="['Books Borrowed', 'Books Returned', 'Overdue Books'].includes(selectedReportType)">
+          <div class="col-span-1 md:col-span-3">
+            <label class="block text-sm font-semibold text-slate-700 mb-2">Frequency</label>
+            <select v-model="reportParams.frequency" class="w-full rounded-xl border-slate-300 shadow-sm focus:border-[#447794] focus:ring-[#447794] bg-slate-50 outline-none py-3 px-4 transition-colors">
               <option v-for="f in commonFrequencies" :key="f" :value="f">{{ f }}</option>
             </select>
           </div>
-        </div>
+        </template>
 
-        <button @click="viewReport('Books Borrowed', borrowedReport)" :disabled="isFetching" class="w-full btn-primary bg-indigo-600 text-white py-2.5 rounded-lg flex items-center justify-center gap-2 hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50">
-          <DocumentTextIcon class="w-5 h-5" /> Generate Report
-        </button>
+        <template v-else>
+          <div class="col-span-1 md:col-span-3 flex items-center justify-center py-6 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+             <span class="text-sm text-slate-500">No additional parameters required for this report.</span>
+          </div>
+        </template>
       </div>
 
-      <!-- Books Returned Report -->
-      <div class="card bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full hover:shadow-md transition-shadow">
-        <div class="flex items-start gap-4 mb-6">
-          <div class="p-3 bg-emerald-50 rounded-xl text-emerald-600">
-            <CheckCircleIcon class="w-6 h-6" />
-          </div>
-          <div>
-            <h3 class="text-lg font-bold text-slate-800">Books Returned</h3>
-            <p class="text-sm text-slate-500">Analytics on book returning.</p>
-          </div>
-        </div>
-        
-        <div class="space-y-4 mb-6 flex-1">
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Frequency</label>
-            <select v-model="returnedReport.frequency" class="w-full rounded-lg border-slate-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm bg-slate-50 outline-none">
-              <option v-for="f in commonFrequencies" :key="f" :value="f">{{ f }}</option>
-            </select>
-          </div>
-        </div>
-
-        <button @click="viewReport('Books Returned', returnedReport)" :disabled="isFetching" class="w-full btn-primary bg-emerald-600 text-white py-2.5 rounded-lg flex items-center justify-center gap-2 hover:bg-emerald-700 transition-colors font-medium disabled:opacity-50">
-          <DocumentTextIcon class="w-5 h-5" /> Generate Report
+      <div class="mt-8 flex justify-end pt-6 border-t border-slate-100">
+        <button @click="viewReport(selectedReportType, reportParams)" :disabled="isFetching" class="w-full md:w-auto btn-primary bg-[#447794] text-white py-3 px-8 rounded-xl flex items-center justify-center gap-2 hover:bg-[#366179] transition-all font-medium disabled:opacity-50 shadow-lg shadow-[#447794]/20 hover:shadow-xl hover:-translate-y-0.5">
+          <DocumentTextIcon class="w-5 h-5" /> Generate {{ selectedReportType }} Report
         </button>
       </div>
-
-      <!-- Overdue Books Report -->
-      <div class="card bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full hover:shadow-md transition-shadow">
-        <div class="flex items-start gap-4 mb-6">
-          <div class="p-3 bg-rose-50 rounded-xl text-rose-600">
-            <ExclamationCircleIcon class="w-6 h-6" />
-          </div>
-          <div>
-            <h3 class="text-lg font-bold text-slate-800">Overdue Books</h3>
-            <p class="text-sm text-slate-500">Monitor exceeded return dates.</p>
-          </div>
-        </div>
-        
-        <div class="space-y-4 mb-6 flex-1">
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Frequency</label>
-            <select v-model="overdueReport.frequency" class="w-full rounded-lg border-slate-300 shadow-sm focus:border-rose-500 focus:ring-rose-500 text-sm bg-slate-50 outline-none">
-              <option v-for="f in commonFrequencies" :key="f" :value="f">{{ f }}</option>
-            </select>
-          </div>
-        </div>
-
-        <button @click="viewReport('Overdue Books', overdueReport)" :disabled="isFetching" class="w-full btn-primary bg-rose-600 text-white py-2.5 rounded-lg flex items-center justify-center gap-2 hover:bg-rose-700 transition-colors font-medium disabled:opacity-50">
-          <DocumentTextIcon class="w-5 h-5" /> Generate Report
-        </button>
-      </div>
-
-      <!-- Registered Users Report -->
-      <div class="card bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full hover:shadow-md transition-shadow">
-        <div class="flex items-start gap-4 mb-6">
-          <div class="p-3 bg-blue-50 rounded-xl text-blue-600">
-            <UserGroupIcon class="w-6 h-6" />
-          </div>
-          <div>
-            <h3 class="text-lg font-bold text-slate-800">Registered Users</h3>
-            <p class="text-sm text-slate-500">Complete list of registered users.</p>
-          </div>
-        </div>
-        
-        <div class="flex-1 flex items-center justify-center py-4 mb-6 border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
-           <span class="text-sm text-slate-400">No parameters needed</span>
-        </div>
-
-        <button @click="viewReport('Registered Users')" :disabled="isFetching" class="w-full btn-primary bg-blue-600 text-white py-2.5 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors font-medium disabled:opacity-50">
-          <DocumentTextIcon class="w-5 h-5" /> Generate Report
-        </button>
-      </div>
-
-      <!-- Inventory Report -->
-      <div class="card bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full hover:shadow-md transition-shadow">
-        <div class="flex items-start gap-4 mb-6">
-          <div class="p-3 bg-amber-50 rounded-xl text-amber-600">
-            <ClipboardDocumentListIcon class="w-6 h-6" />
-          </div>
-          <div>
-            <h3 class="text-lg font-bold text-slate-800">Inventory Report</h3>
-            <p class="text-sm text-slate-500">Annual overview of all assets.</p>
-          </div>
-        </div>
-        
-        <div class="flex-1 flex items-center justify-center py-4 mb-6 border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
-           <span class="text-sm text-slate-400">Current Library Inventory</span>
-        </div>
-
-        <button @click="viewReport('Inventory')" :disabled="isFetching" class="w-full btn-primary bg-amber-500 text-white py-2.5 rounded-lg flex items-center justify-center gap-2 hover:bg-amber-600 transition-colors font-medium disabled:opacity-50">
-          <DocumentTextIcon class="w-5 h-5" /> Generate Report
-        </button>
-      </div>
-
-      <!-- New Acquisitions Report -->
-      <div class="card bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full hover:shadow-md transition-shadow">
-        <div class="flex items-start gap-4 mb-6">
-          <div class="p-3 bg-purple-50 rounded-xl text-purple-600">
-            <SparklesIcon class="w-6 h-6" />
-          </div>
-          <div>
-            <h3 class="text-lg font-bold text-slate-800">New Acquisitions</h3>
-            <p class="text-sm text-slate-500">Recently added books/materials.</p>
-          </div>
-        </div>
-        
-        <div class="flex-1 flex items-center justify-center py-4 mb-6 border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
-           <span class="text-sm text-slate-400">Added in the last year</span>
-        </div>
-
-        <button @click="viewReport('New Acquisitions')" :disabled="isFetching" class="w-full btn-primary bg-purple-600 text-white py-2.5 rounded-lg flex items-center justify-center gap-2 hover:bg-purple-700 transition-colors font-medium disabled:opacity-50">
-          <DocumentTextIcon class="w-5 h-5" /> Generate Report
-        </button>
-      </div>
-
     </div>
 
     <!-- 
@@ -355,7 +258,6 @@ function triggerPrint() {
               <th class="py-3 px-4 w-1/3">Book Title</th>
               <th class="py-3 px-4">Due Date</th>
               <th class="py-3 px-4 text-right">Days Overdue</th>
-              <th class="py-3 px-4 text-right">Fine</th>
             </tr>
           </thead>
           <tbody>
@@ -365,9 +267,8 @@ function triggerPrint() {
               <td class="py-3 px-4">{{ row.title }}</td>
               <td class="py-3 px-4 whitespace-nowrap">{{ new Date(row.due_date).toLocaleDateString() }}</td>
               <td class="py-3 px-4 text-right font-bold text-rose-600">{{ row.overdue_days }}</td>
-              <td class="py-3 px-4 text-right text-rose-600 font-medium">₱{{ Number(row.fine_amount).toFixed(2) }}</td>
             </tr>
-            <tr v-if="!printData || !printData.length"><td colspan="6" class="py-8 text-center text-slate-500 italic border-b border-slate-200">No overdue books found.</td></tr>
+            <tr v-if="!printData || !printData.length"><td colspan="5" class="py-8 text-center text-slate-500 italic border-b border-slate-200">No overdue books found.</td></tr>
           </tbody>
         </table>
 
@@ -379,6 +280,7 @@ function triggerPrint() {
               <th class="py-3 px-4">Email</th>
               <th class="py-3 px-4">Role</th>
               <th class="py-3 px-4">Department</th>
+              <th class="py-3 px-4">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -391,8 +293,17 @@ function triggerPrint() {
                 </span>
               </td>
               <td class="py-3 px-4">{{ row.department || '-' }}</td>
+              <td class="py-3 px-4 capitalize">
+                <span :class="{
+                  'text-amber-600 bg-amber-50': row.account_approval_status === 'pending',
+                  'text-emerald-600 bg-emerald-50': row.account_approval_status === 'approved',
+                  'text-rose-600 bg-rose-50': row.account_approval_status === 'rejected'
+                }" class="px-2.5 py-1 rounded-md text-xs font-semibold print:bg-transparent print:p-0 print:text-sm">
+                  {{ row.account_approval_status || 'approved' }}
+                </span>
+              </td>
             </tr>
-            <tr v-if="!printData || !printData.length"><td colspan="4" class="py-8 text-center text-slate-500 italic border-b border-slate-200">No users found.</td></tr>
+            <tr v-if="!printData || !printData.length"><td colspan="5" class="py-8 text-center text-slate-500 italic border-b border-slate-200">No users found.</td></tr>
           </tbody>
         </table>
 

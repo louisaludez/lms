@@ -36,18 +36,18 @@ const router = createRouter({
       component: () => import('@/views/StudentProfileView.vue'),
       meta: { requiresAuth: true },
     },
-    {
-      path: '/faculty/requests',
-      name: 'FacultyRequests',
-      component: () => import('@/views/FacultyBookRequestsView.vue'),
-      meta: { requiresAuth: true, roles: ['faculty'] },
-    },
-    // Librarian / Admin dashboard routes
+    // Dashboard routes
     {
       path: '/dashboard',
       component: () => import('@/layouts/DashboardLayout.vue'),
-      meta: { requiresAuth: true, roles: ['librarian', 'chief_librarian', 'admin'] },
+      meta: { requiresAuth: true, roles: ['librarian', 'chief_librarian', 'admin', 'faculty'] },
       children: [
+        {
+          path: 'faculty-requests',
+          name: 'FacultyRequests',
+          component: () => import('@/views/FacultyBookRequestsView.vue'),
+          meta: { roles: ['faculty'] },
+        },
         {
           path: '',
           name: 'DashboardHome',

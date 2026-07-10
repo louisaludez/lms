@@ -7,11 +7,15 @@ import NavBar from '@/components/NavBar.vue'
 import {
   UserCircleIcon, BookOpenIcon, ExclamationTriangleIcon,
   ClockIcon, CheckCircleIcon, ArrowPathIcon, ArrowLeftIcon,
+  ChartPieIcon, ChartBarIcon
 } from '@heroicons/vue/24/outline'
 import { ArrowDownTrayIcon, QrCodeIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
 import { ExclamationCircleIcon } from '@heroicons/vue/24/solid'
 import JsBarcode from 'jsbarcode'
 import { toPng } from 'html-to-image'
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js'
+import { Doughnut, Bar } from 'vue-chartjs'
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement)
 import ProfileSettingsModal from '@/components/ProfileSettingsModal.vue'
 
 const router = useRouter()
@@ -91,6 +95,91 @@ async function handleRenew(txId: number) {
     alert(e.response?.data?.message ?? 'Renewal failed')
   }
 }
+
+// Chart Configurations
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  cutout: '70%',
+  plugins: {
+    legend: {
+      position: 'bottom' as const,
+      labels: {
+        usePointStyle: true,
+        padding: 20,
+        font: { family: "'Inter', sans-serif", size: 12 }
+      }
+    },
+    tooltip: {
+      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+      padding: 12,
+      cornerRadius: 8,
+    }
+  }
+}
+
+const barChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  scales: {
+    y: {
+      beginAtZero: true,
+      ticks: { stepSize: 1 }
+    }
+  },
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+      padding: 12,
+      cornerRadius: 8,
+    }
+  }
+}
+
+const borrowingStatusData = computed(() => {
+  const returned = store.myTransactions.filter(t => t.status === 'returned').length
+  const active = store.myTransactions.filter(t => t.status === 'active').length
+  const overdue = store.myTransactions.filter(t => t.status === 'overdue').length
+  
+  return {
+    labels: ['Returned', 'Currently Borrowed', 'Overdue'],
+    datasets: [{
+      data: [returned, active, overdue],
+      backgroundColor: ['#10b981', '#0ea5e9', '#f43f5e'],
+      borderWidth: 0,
+      hoverOffset: 4
+    }]
+  }
+})
+
+const monthlyActivityData = computed(() => {
+  // Group by last 6 months
+  const months = []
+  const data = []
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date()
+    d.setMonth(d.getMonth() - i)
+    months.push(format(d, 'MMM'))
+    
+    // count checkouts in this month
+    const count = store.myTransactions.filter(t => {
+      const txDate = new Date(t.checkoutDate)
+      return txDate.getMonth() === d.getMonth() && txDate.getFullYear() === d.getFullYear()
+    }).length
+    data.push(count)
+  }
+
+  return {
+    labels: months,
+    datasets: [{
+      label: 'Books Borrowed',
+      data: data,
+      backgroundColor: '#447794',
+      borderRadius: 6,
+    }]
+  }
+})
 </script>
 
 <template>
@@ -231,27 +320,54 @@ async function handleRenew(txId: number) {
         <ExclamationCircleIcon class="w-7 h-7 text-amber-500 flex-shrink-0 mt-0.5" />
         <div>
           <p class="font-semibold text-amber-800">Your account is suspended</p>
-          <p class="text-amber-700 text-sm mt-1">
-            You have <strong>{{ store.overdueCount }}</strong> overdue item(s) with a total fine of
-            <strong>₱{{ store.totalFinesDue.toFixed(2) }}</strong>.
-            Please return the overdue books and settle your fines at the library counter to restore your borrowing privileges.
+          <p class="text-sm text-rose-700 mt-1">
+            You have <strong>{{ store.overdueCount }}</strong> overdue item(s).
+            Please return the overdue books at the library counter to restore your borrowing privileges.
           </p>
         </div>
       </div>
 
-      <!-- Quick Stats -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="card p-5 text-center">
-          <p class="text-3xl font-bold text-[#447794]">{{ store.myActiveTransactions.length }}</p>
-          <p class="text-xs text-slate-500 mt-1 font-medium">Currently Borrowed</p>
+      <!-- Charts Section -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="card p-6">
+          <h2 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+            <UserCircleIcon class="w-5 h-5 text-[#447794]" />
+            Borrowing Status
+          </h2>
+          <div class="h-64 flex items-center justify-center relative">
+            <Doughnut
+              v-if="store.myTransactions.length > 0"
+              :data="borrowingStatusData"
+              :options="chartOptions"
+            />
+            <div v-else class="text-slate-400 text-sm flex flex-col items-center">
+              <ChartPieIcon class="w-10 h-10 mb-2 opacity-50" />
+              No borrowing data available
+            </div>
+            <!-- Center Text -->
+            <div v-if="store.myTransactions.length > 0" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span class="text-3xl font-bold text-slate-800">{{ store.myTransactions.length }}</span>
+              <span class="text-xs text-slate-500 font-medium">Total Books</span>
+            </div>
+          </div>
         </div>
-        <div class="card p-5 text-center">
-          <p class="text-3xl font-bold text-rose-500">{{ store.overdueCount }}</p>
-          <p class="text-xs text-slate-500 mt-1 font-medium">Overdue</p>
-        </div>
-        <div class="card p-5 text-center">
-          <p class="text-3xl font-bold text-slate-600">{{ store.myTransactions.length }}</p>
-          <p class="text-xs text-slate-500 mt-1 font-medium">Total History</p>
+
+        <div class="card p-6">
+          <h2 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+            <ChartBarIcon class="w-5 h-5 text-[#447794]" />
+            Borrowing Activity
+          </h2>
+          <div class="h-64 flex items-center justify-center">
+            <Bar
+              v-if="store.myTransactions.length > 0"
+              :data="monthlyActivityData"
+              :options="barChartOptions"
+            />
+            <div v-else class="text-slate-400 text-sm flex flex-col items-center">
+              <ChartBarIcon class="w-10 h-10 mb-2 opacity-50" />
+              No activity data available
+            </div>
+          </div>
         </div>
       </div>
 
@@ -311,7 +427,7 @@ async function handleRenew(txId: number) {
                   <!-- Overdue indicator -->
                   <span v-if="tx.status === 'overdue'" class="text-xs font-medium text-rose-600 flex items-center gap-1">
                     <ExclamationTriangleIcon class="w-3.5 h-3.5 flex-shrink-0" />
-                    {{ tx.overdueDays }} day(s) overdue — Fine: ₱{{ Number(tx.fineAmount).toFixed(2) }}
+                    {{ tx.overdueDays }} day(s) overdue
                   </span>
                 </div>
               </div>
@@ -350,7 +466,6 @@ async function handleRenew(txId: number) {
                 <th class="table-header px-4 py-3 text-left">Checkout</th>
                 <th class="table-header px-4 py-3 text-left">Due</th>
                 <th class="table-header px-4 py-3 text-left">Returned</th>
-                <th class="table-header px-4 py-3 text-left">Fine</th>
                 <th class="table-header px-4 py-3 text-left">Status</th>
               </tr>
             </thead>
@@ -366,12 +481,6 @@ async function handleRenew(txId: number) {
                 <td class="table-cell px-4">{{ formatDate(tx.checkoutDate) }}</td>
                 <td class="table-cell px-4">{{ formatDate(tx.dueDate) }}</td>
                 <td class="table-cell px-4">{{ tx.returnDate ? formatDate(tx.returnDate) : '—' }}</td>
-                <td class="table-cell px-4">
-                  <span v-if="Number(tx.fineAmount) > 0" class="text-rose-600 font-medium">
-                    ₱{{ Number(tx.fineAmount).toFixed(2) }}
-                  </span>
-                  <span v-else class="text-emerald-500">—</span>
-                </td>
                 <td class="table-cell px-4">
                   <span :class="statusClass(tx.status)">{{ tx.status }}</span>
                 </td>

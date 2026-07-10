@@ -4,9 +4,10 @@ import api from '@/api/axios'
 import {
   UserPlusIcon, MagnifyingGlassIcon, PencilSquareIcon,
   TrashIcon, XMarkIcon, CheckIcon, FunnelIcon,
-  UserCircleIcon, HandThumbUpIcon, HandThumbDownIcon,
+  UserCircleIcon, ArrowsUpDownIcon
 } from '@heroicons/vue/24/outline'
 import Pagination from '@/components/Pagination.vue'
+import DropdownFilter from '@/components/DropdownFilter.vue'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Department { id: number; name: string; code: string }
@@ -35,6 +36,22 @@ const searchQuery  = ref('')
 const filterRole           = ref('librarian')
 const filterApprovalStatus = ref('')
 const reviewingId          = ref<number | null>(null)
+
+const sortBy               = ref('createdAt')
+const sortOrder            = ref<'ASC'|'DESC'>('DESC')
+
+const sortOptions = [
+  { label: 'Date Joined', value: 'createdAt' },
+  { label: 'Name (A-Z)', value: 'name' },
+  { label: 'Department', value: 'department' }
+]
+
+const approvalOptions = [
+  { label: 'All Approvals', value: '' },
+  { label: 'Pending', value: 'pending' },
+  { label: 'Approved', value: 'approved' },
+  { label: 'Rejected', value: 'rejected' }
+]
 
 // Modal
 type ModalMode = 'create' | 'edit' | null
@@ -71,7 +88,12 @@ const currentLimit = ref(10)
 async function fetchUsers(page = 1) {
   loading.value = true
   try {
-    const params: Record<string, string | number> = { page, limit: currentLimit.value }
+    const params: Record<string, string | number> = { 
+      page, 
+      limit: currentLimit.value,
+      sortBy: sortBy.value,
+      sortOrder: sortOrder.value 
+    }
     if (searchQuery.value) params.search = searchQuery.value
     if (filterRole.value) params.role = filterRole.value
     if (filterApprovalStatus.value) params.approvalStatus = filterApprovalStatus.value
@@ -98,6 +120,15 @@ function onSearch() {
 
 function onLimitChange(newLimit: number) {
   currentLimit.value = newLimit
+  fetchUsers(1)
+}
+
+function handleSortChange() {
+  if (sortBy.value === 'name' && sortOrder.value === 'DESC') {
+    sortOrder.value = 'ASC'
+  } else if (sortBy.value === 'createdAt') {
+    sortOrder.value = 'DESC'
+  }
   fetchUsers(1)
 }
 
@@ -227,7 +258,7 @@ function approvalBadge(status: string) {
 </script>
 
 <template>
-  <div class="max-w-full">
+  <div class="w-full max-w-[1600px] mx-auto">
 
     <!-- Header -->
     <div class="flex items-center justify-between mb-5">
@@ -258,13 +289,27 @@ function approvalBadge(status: string) {
         />
       </div>
       <div class="flex items-center gap-2">
-        <FunnelIcon class="w-4 h-4 text-slate-400" />
-        <select v-model="filterApprovalStatus" @change="fetchUsers(1)" class="input text-sm w-40">
-          <option value="">All approvals</option>
-          <option value="pending">Pending approval</option>
-          <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
-        </select>
+        <DropdownFilter
+          v-model="filterApprovalStatus"
+          :options="approvalOptions"
+          @change="fetchUsers(1)"
+          width="w-40"
+        >
+          <template #icon>
+            <FunnelIcon class="w-4 h-4 text-slate-400" />
+          </template>
+        </DropdownFilter>
+
+        <DropdownFilter
+          v-model="sortBy"
+          :options="sortOptions"
+          @change="handleSortChange"
+          width="w-44"
+        >
+          <template #icon>
+            <ArrowsUpDownIcon class="w-4 h-4 text-slate-400" />
+          </template>
+        </DropdownFilter>
       </div>
     </div>
 
@@ -353,7 +398,7 @@ function approvalBadge(status: string) {
                       class="p-1.5 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors disabled:opacity-50"
                       title="Approve account"
                     >
-                      <HandThumbUpIcon class="w-4 h-4" />
+                      <CheckIcon class="w-4 h-4" />
                     </button>
                     <button
                       type="button"
@@ -362,7 +407,7 @@ function approvalBadge(status: string) {
                       class="p-1.5 rounded-lg bg-rose-100 text-rose-600 hover:bg-rose-200 transition-colors disabled:opacity-50"
                       title="Reject account"
                     >
-                      <HandThumbDownIcon class="w-4 h-4" />
+                      <XMarkIcon class="w-4 h-4" />
                     </button>
                   </template>
                   <button

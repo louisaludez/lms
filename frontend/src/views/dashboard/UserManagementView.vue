@@ -4,12 +4,13 @@ import api from '@/api/axios'
 import {
   UserPlusIcon, MagnifyingGlassIcon, PencilSquareIcon,
   TrashIcon, XMarkIcon, CheckIcon, FunnelIcon,
-  UserCircleIcon, HandThumbUpIcon, HandThumbDownIcon,
-  QrCodeIcon, ArrowDownTrayIcon, ArrowPathIcon,
+  UserCircleIcon,
+  QrCodeIcon, ArrowDownTrayIcon, ArrowPathIcon, EyeIcon, ArrowsUpDownIcon
 } from '@heroicons/vue/24/outline'
 import JsBarcode from 'jsbarcode'
 import { toPng } from 'html-to-image'
 import Pagination from '@/components/Pagination.vue'
+import DropdownFilter from '@/components/DropdownFilter.vue'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Department { id: number; name: string; code: string }
@@ -39,6 +40,30 @@ const searchQuery  = ref('')
 const filterRole           = ref('')
 const filterApprovalStatus = ref('')
 const reviewingId          = ref<number | null>(null)
+
+const sortBy               = ref('createdAt')
+const sortOrder            = ref<'ASC'|'DESC'>('DESC')
+
+const sortOptions = [
+  { label: 'Date Joined', value: 'createdAt' },
+  { label: 'Name (A-Z)', value: 'name' },
+  { label: 'Department', value: 'department' }
+]
+
+const roleOptions = [
+  { label: 'All Roles', value: '' },
+  { label: 'Student', value: 'student' },
+  { label: 'Faculty', value: 'faculty' },
+  { label: 'Librarian', value: 'librarian' },
+  { label: 'Admin', value: 'admin' }
+]
+
+const approvalOptions = [
+  { label: 'All Approvals', value: '' },
+  { label: 'Pending', value: 'pending' },
+  { label: 'Approved', value: 'approved' },
+  { label: 'Rejected', value: 'rejected' }
+]
 
 // View ID
 const viewingIdUser = ref<UserRow | null>(null)
@@ -107,6 +132,11 @@ const form = ref(blankForm())
 const deleteTarget = ref<UserRow | null>(null)
 const deleting     = ref(false)
 
+// Reject confirm
+const rejectTarget    = ref<UserRow | null>(null)
+const rejectionReason = ref('')
+const rejecting       = ref(false)
+
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 onMounted(() => {
   fetchUsers()
@@ -122,7 +152,12 @@ const currentLimit = ref(10)
 async function fetchUsers(page = 1) {
   loading.value = true
   try {
-    const params: Record<string, string | number> = { page, limit: currentLimit.value }
+    const params: Record<string, string | number> = { 
+      page, 
+      limit: currentLimit.value,
+      sortBy: sortBy.value,
+      sortOrder: sortOrder.value 
+    }
     if (searchQuery.value) params.search = searchQuery.value
     if (filterRole.value) params.role = filterRole.value
     if (filterApprovalStatus.value) params.approvalStatus = filterApprovalStatus.value
@@ -149,6 +184,15 @@ function onSearch() {
 
 function onLimitChange(newLimit: number) {
   currentLimit.value = newLimit
+  fetchUsers(1)
+}
+
+function handleSortChange() {
+  if (sortBy.value === 'name' && sortOrder.value === 'DESC') {
+    sortOrder.value = 'ASC'
+  } else if (sortBy.value === 'createdAt') {
+    sortOrder.value = 'DESC'
+  }
   fetchUsers(1)
 }
 
@@ -269,6 +313,34 @@ async function confirmDelete() {
   }
 }
 
+function openRejectModal(user: UserRow) {
+  rejectTarget.value = user
+  rejectionReason.value = ''
+  viewingIdUser.value = null
+}
+
+async function confirmReject() {
+  if (!rejectTarget.value) return
+  if (!rejectionReason.value.trim()) {
+    alert('Please provide a reason for rejection.')
+    return
+  }
+  
+  rejecting.value = true
+  try {
+    await api.patch(`/users/${rejectTarget.value.id}`, { 
+      accountApprovalStatus: 'rejected',
+      rejectionReason: rejectionReason.value.trim()
+    })
+    rejectTarget.value = null
+    await fetchUsers(currentPage.value)
+  } catch (e: any) {
+    alert(e.response?.data?.message ?? 'Could not reject user')
+  } finally {
+    rejecting.value = false
+  }
+}
+
 function handleFileChange(e: Event) {
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
@@ -316,7 +388,7 @@ function approvalBadge(status: string) {
 </script>
 
 <template>
-  <div class="max-w-full">
+  <div class="w-full max-w-[1600px] mx-auto">
 
     <!-- Header -->
     <div class="flex items-center justify-between mb-5">
@@ -347,20 +419,34 @@ function approvalBadge(status: string) {
         />
       </div>
       <div class="flex items-center gap-2">
-        <FunnelIcon class="w-4 h-4 text-slate-400" />
-        <select v-model="filterRole" @change="fetchUsers(1)" class="input text-sm w-36">
-          <option value="">All Roles</option>
-          <option value="student">Student</option>
-          <option value="faculty">Faculty</option>
-          <option value="librarian">Librarian</option>
-          <option value="admin">Admin</option>
-        </select>
-        <select v-model="filterApprovalStatus" @change="fetchUsers(1)" class="input text-sm w-40">
-          <option value="">All approvals</option>
-          <option value="pending">Pending approval</option>
-          <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
-        </select>
+        <DropdownFilter
+          v-model="filterRole"
+          :options="roleOptions"
+          @change="fetchUsers(1)"
+          width="w-36"
+        >
+          <template #icon>
+            <FunnelIcon class="w-4 h-4 text-slate-400" />
+          </template>
+        </DropdownFilter>
+
+        <DropdownFilter
+          v-model="filterApprovalStatus"
+          :options="approvalOptions"
+          @change="fetchUsers(1)"
+          width="w-40"
+        />
+
+        <DropdownFilter
+          v-model="sortBy"
+          :options="sortOptions"
+          @change="handleSortChange"
+          width="w-44"
+        >
+          <template #icon>
+            <ArrowsUpDownIcon class="w-4 h-4 text-slate-400" />
+          </template>
+        </DropdownFilter>
       </div>
     </div>
 
@@ -444,28 +530,18 @@ function approvalBadge(status: string) {
                   <template v-if="user.accountApprovalStatus === 'pending'">
                     <button
                       type="button"
-                      :disabled="reviewingId === user.id"
-                      @click="setApprovalStatus(user.id, 'approved')"
-                      class="p-1.5 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors disabled:opacity-50"
-                      title="Approve account"
+                      @click="viewingIdUser = user"
+                      class="p-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors"
+                      title="Review Registration"
                     >
-                      <HandThumbUpIcon class="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      :disabled="reviewingId === user.id"
-                      @click="setApprovalStatus(user.id, 'rejected')"
-                      class="p-1.5 rounded-lg bg-rose-100 text-rose-600 hover:bg-rose-200 transition-colors disabled:opacity-50"
-                      title="Reject account"
-                    >
-                      <HandThumbDownIcon class="w-4 h-4" />
+                      <EyeIcon class="w-4 h-4" />
                     </button>
                   </template>
                   <button
-                    v-if="user.role === 'student' || user.role === 'faculty'"
+                    v-else-if="user.role === 'student' || user.role === 'faculty'"
                     @click="viewingIdUser = user"
                     class="p-1.5 rounded-lg bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition-colors"
-                    title="View Digital ID"
+                    title="View Digital ID / Profile"
                   >
                     <QrCodeIcon class="w-4 h-4" />
                   </button>
@@ -639,6 +715,40 @@ function approvalBadge(status: string) {
       </div>
     </Teleport>
 
+    <!-- Reject Confirm Modal -->
+    <Teleport to="body">
+      <div v-if="rejectTarget" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6">
+          <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+            <XMarkIcon class="w-6 h-6 text-amber-600" />
+          </div>
+          <h3 class="font-bold text-slate-800 text-center mb-1">Reject Registration</h3>
+          <p class="text-sm text-slate-500 text-center mb-5">
+            Please provide a reason for rejecting
+            <strong>{{ rejectTarget.firstName }} {{ rejectTarget.lastName }}'s</strong> registration. This will be emailed to them.
+          </p>
+          
+          <textarea
+            v-model="rejectionReason"
+            placeholder="Enter reason for rejection..."
+            class="input w-full h-24 mb-5 resize-none"
+            required
+          ></textarea>
+
+          <div class="flex gap-3">
+            <button @click="rejectTarget = null" class="btn-ghost flex-1 justify-center">Cancel</button>
+            <button
+              @click="confirmReject"
+              :disabled="rejecting"
+              class="flex-1 justify-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 transition-all"
+            >
+              {{ rejecting ? 'Rejecting...' : 'Confirm Reject' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- View ID / Profile Modal -->
     <Teleport to="body">
       <div v-if="viewingIdUser" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -693,6 +803,26 @@ function approvalBadge(status: string) {
                   <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Joined Date</p>
                   <p class="text-slate-800 font-medium">{{ new Date(viewingIdUser.createdAt).toLocaleDateString() }}</p>
                 </div>
+              </div>
+
+              <!-- Registration Review Actions -->
+              <div v-if="viewingIdUser.accountApprovalStatus === 'pending'" class="mt-auto pt-6 border-t border-slate-100 flex gap-3">
+                <button
+                  :disabled="reviewingId === viewingIdUser.id"
+                  @click="openRejectModal(viewingIdUser)"
+                  class="flex-1 flex justify-center items-center px-4 py-2.5 rounded-xl text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors disabled:opacity-50"
+                >
+                  <XMarkIcon class="w-5 h-5 mr-2" />
+                  Reject Registration
+                </button>
+                <button
+                  :disabled="reviewingId === viewingIdUser.id"
+                  @click="setApprovalStatus(viewingIdUser.id, 'approved'); viewingIdUser = null"
+                  class="flex-1 flex justify-center items-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-sm shadow-emerald-200"
+                >
+                  <CheckIcon class="w-5 h-5 mr-2" />
+                  Approve Registration
+                </button>
               </div>
             </div>
           </div>

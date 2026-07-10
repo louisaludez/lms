@@ -5,11 +5,32 @@ import { useLibraryStore } from '@/stores/useLibraryStore'
 import {
   DocumentTextIcon, CheckCircleIcon, XCircleIcon,
   FunnelIcon, ChatBubbleBottomCenterTextIcon,
+  ArrowsUpDownIcon, MagnifyingGlassIcon
 } from '@heroicons/vue/24/outline'
+import DropdownFilter from '@/components/DropdownFilter.vue'
+import Pagination from '@/components/Pagination.vue'
 
 const store = useLibraryStore()
 
+const searchQuery = ref('')
+const currentLimit = ref(10)
 const filterStatus = ref<string>('all')
+const sortBy = ref('date')
+const sortOrder = ref<'ASC'|'DESC'>('DESC')
+
+const statusOptions = [
+  { label: 'All Statuses', value: 'all' },
+  { label: 'Pending', value: 'pending' },
+  { label: 'Approved', value: 'approved' },
+  { label: 'Rejected', value: 'rejected' },
+  { label: 'Fulfilled', value: 'fulfilled' }
+]
+
+const sortOptions = [
+  { label: 'Date Requested', value: 'date' },
+  { label: 'Title (A-Z)', value: 'title' },
+  { label: 'Faculty Name', value: 'faculty' }
+]
 const actionModal = ref<{ show: boolean; requestId: number | null; action: string }>({
   show: false,
   requestId: null,
@@ -19,17 +40,72 @@ const librarianNotes = ref('')
 const actionLoading = ref(false)
 
 onMounted(() => {
-  store.fetchAllBookRequests()
+  fetchRequests(1)
 })
+
+function fetchRequests(page = 1) {
+  store.fetchAllBookRequests(
+    page,
+    currentLimit.value,
+    filterStatus.value === 'all' ? undefined : filterStatus.value
+  )
+}
+
+function onLimitChange(newLimit: number) {
+  currentLimit.value = newLimit
+  fetchRequests(1)
+}
+
+function onFilterChange() {
+  fetchRequests(1)
+}
 
 function formatDate(dateStr: string) {
   try { return format(parseISO(dateStr), 'MMM d, yyyy h:mm a') } catch { return dateStr }
 }
 
 const filteredRequests = computed(() => {
-  if (filterStatus.value === 'all') return store.allBookRequests
-  return store.allBookRequests.filter(r => r.status === filterStatus.value)
+  // Sort and search is client-side for the current page
+  let res = [...store.allBookRequests]
+  
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    res = res.filter(req => {
+      const title = (req.requestType === 'borrow' ? req.book?.title : req.title) || ''
+      const author = req.author || ''
+      const faculty = `${req.user?.firstName} ${req.user?.lastName}`
+      return title.toLowerCase().includes(q) || author.toLowerCase().includes(q) || faculty.toLowerCase().includes(q)
+    })
+  }
+
+  res.sort((a, b) => {
+    let valA, valB
+    if (sortBy.value === 'title') {
+      valA = (a.requestType === 'borrow' ? a.book?.title : a.title) || ''
+      valB = (b.requestType === 'borrow' ? b.book?.title : b.title) || ''
+    } else if (sortBy.value === 'faculty') {
+      valA = `${a.user?.lastName} ${a.user?.firstName}`.toLowerCase()
+      valB = `${b.user?.lastName} ${b.user?.firstName}`.toLowerCase()
+    } else {
+      valA = new Date(a.createdAt).getTime()
+      valB = new Date(b.createdAt).getTime()
+    }
+    
+    if (valA < valB) return sortOrder.value === 'ASC' ? -1 : 1
+    if (valA > valB) return sortOrder.value === 'ASC' ? 1 : -1
+    return 0
+  })
+  
+  return res
 })
+
+function handleSortChange() {
+  if ((sortBy.value === 'title' || sortBy.value === 'faculty') && sortOrder.value === 'DESC') {
+    sortOrder.value = 'ASC'
+  } else if (sortBy.value === 'date') {
+    sortOrder.value = 'DESC'
+  }
+}
 
 function openActionModal(requestId: number, action: string) {
   actionModal.value = { show: true, requestId, action }
@@ -50,6 +126,7 @@ async function confirmAction() {
       actionModal.value.action,
       librarianNotes.value || undefined,
     )
+    fetchRequests(store.allBookRequestsPage)
     closeModal()
   } catch (e: any) {
     alert(e.response?.data?.message ?? 'Action failed')
@@ -68,13 +145,11 @@ function statusBadgeClass(status: string) {
   return map[status] ?? 'bg-slate-100 text-slate-600'
 }
 
-const pendingCount = computed(() =>
-  store.allBookRequests.filter(r => r.status === 'pending').length
-)
+const pendingCount = computed(() => store.pendingRequestCount)
 </script>
 
 <template>
-  <div class="max-w-5xl">
+  <div class="w-full max-w-[1600px] mx-auto">
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div class="flex items-center gap-3">
@@ -92,21 +167,39 @@ const pendingCount = computed(() =>
     </div>
 
     <!-- Filters -->
-    <div class="flex items-center gap-2 mb-4">
-      <FunnelIcon class="w-4 h-4 text-slate-400" />
-      <button
-        v-for="s in ['all', 'pending', 'approved']"
-        :key="s"
-        @click="filterStatus = s"
-        :class="[
-          'px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all',
-          filterStatus === s
-            ? 'bg-[#447794] text-white'
-            : 'bg-white border border-slate-200 text-slate-600 hover:border-[#447794]/40'
-        ]"
-      >
-        {{ s }}
-      </button>
+    <div class="flex flex-col sm:flex-row gap-4 mb-4">
+      <div class="relative flex-1 max-w-sm">
+        <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input
+          v-model="searchQuery"
+          type="search"
+          placeholder="Search by title, author, or faculty..."
+          class="input pl-9 text-sm w-full"
+        />
+      </div>
+      <div class="flex items-center gap-2">
+        <DropdownFilter
+          v-model="filterStatus"
+          :options="statusOptions"
+          @change="onFilterChange"
+          width="w-40"
+        >
+          <template #icon>
+            <FunnelIcon class="w-4 h-4 text-slate-400" />
+          </template>
+        </DropdownFilter>
+
+        <DropdownFilter
+          v-model="sortBy"
+          :options="sortOptions"
+          @change="handleSortChange"
+          width="w-48"
+        >
+          <template #icon>
+            <ArrowsUpDownIcon class="w-4 h-4 text-slate-400" />
+          </template>
+        </DropdownFilter>
+      </div>
     </div>
 
     <!-- Loading -->
@@ -185,6 +278,17 @@ const pendingCount = computed(() =>
           </tbody>
         </table>
       </div>
+
+      <!-- Pagination -->
+      <Pagination
+        v-if="store.allBookRequestsTotal > 0"
+        :current-page="store.allBookRequestsPage"
+        :last-page="store.allBookRequestsLastPage"
+        :total-items="store.allBookRequestsTotal"
+        :limit="currentLimit"
+        @update:page="fetchRequests"
+        @update:limit="onLimitChange"
+      />
     </div>
 
     <!-- Action Modal -->

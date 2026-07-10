@@ -9,6 +9,8 @@ import { Book } from './entities/book.entity';
 import { BookCopy } from './entities/book-copy.entity';
 import { Category } from './entities/category.entity';
 import { SearchBooksDto, CreateBookDto, UpdateBookDto } from './dto/book.dto';
+import { Readable } from 'stream';
+import csv = require('csv-parser');
 
 export interface PaginatedBooks {
   data: Book[];
@@ -278,11 +280,18 @@ export class BooksService {
   }
 
   // ── ADMIN: LIST ALL BOOKS (incl. inactive) ─────────────────────────────
-  async findAll(search?: string, categoryId?: number, page: number = 1, limit: number = 10): Promise<PaginatedBooks> {
+  async findAll(search?: string, categoryId?: number, page: number = 1, limit: number = 10, sortBy?: string, sortOrder: 'ASC' | 'DESC' = 'DESC'): Promise<PaginatedBooks> {
     const qb = this.bookRepo
       .createQueryBuilder('book')
-      .leftJoinAndSelect('book.category', 'category')
-      .orderBy('book.createdAt', 'DESC');
+      .leftJoinAndSelect('book.category', 'category');
+
+    if (sortBy === 'title') {
+      qb.orderBy('book.title', sortOrder);
+    } else if (sortBy === 'copies') {
+      qb.orderBy('book.availableCopies', sortOrder);
+    } else {
+      qb.orderBy('book.createdAt', sortOrder);
+    }
 
     if (search) {
       qb.andWhere(
@@ -352,5 +361,100 @@ export class BooksService {
     const book = await this.findById(id);
     book.isActive = false;
     await this.bookRepo.save(book as any);
+  }
+
+  // ── BULK UPLOAD ────────────────────────────────────────────────────
+  async bulkUpload(file: Express.Multer.File): Promise<{ success: number; failed: number; errors: string[] }> {
+    return new Promise((resolve, reject) => {
+      const results: any[] = [];
+      const errors: string[] = [];
+      
+      const stream = Readable.from(file.buffer);
+      
+      stream
+        .pipe(csv())
+        .on('data', (data: any) => results.push(data))
+        .on('end', async () => {
+          let success = 0;
+          let failed = 0;
+          
+          // Get all categories to match by name
+          const categories = await this.getCategories();
+          
+          for (let i = 0; i < results.length; i++) {
+            const row = results[i];
+            try {
+              // Map CSV columns to book data
+              const title = row['Title'] || row['title'];
+              const isbn = row['ISBN'] || row['isbn'];
+              const callNumber = row['Call Number'] || row['callNumber'] || row['call_number'];
+              
+              if (!title || !isbn || !callNumber) {
+                failed++;
+                errors.push(`Row ${i + 1}: Missing required fields (Title, ISBN, Call Number)`);
+                continue;
+              }
+              
+              const categoryName = row['Category'] || row['category'];
+              let categoryId: number | undefined = undefined;
+              if (categoryName) {
+                const cat = categories.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
+                if (cat) {
+                  categoryId = cat.id;
+                }
+              }
+              
+              const existingBook = await this.bookRepo.findOne({ where: { isbn } });
+
+              if (existingBook) {
+                const updateDto: UpdateBookDto = {
+                  title,
+                  callNumber,
+                  authors: row['Authors'] || row['authors'] || undefined,
+                  publisher: row['Publisher'] || row['publisher'] || undefined,
+                  publishYear: row['Publish Year'] || row['publishYear'] ? Number(row['Publish Year'] || row['publishYear']) : undefined,
+                  categoryId,
+                  language: row['Language'] || row['language'] || 'English',
+                  edition: row['Edition'] || row['edition'] || undefined,
+                  locationShelf: row['Location Shelf'] || row['locationShelf'] || undefined,
+                  itemType: row['Item Type'] || row['itemType'] || 'BOOKS',
+                  isReferenceOnly: (row['Reference Only'] || row['isReferenceOnly'])?.toString().toLowerCase() === 'true',
+                  description: row['Description'] || row['description'] || undefined,
+                };
+                
+                await this.update(existingBook.id, updateDto);
+              } else {
+                const createDto: CreateBookDto = {
+                  title,
+                  isbn,
+                  callNumber,
+                  authors: row['Authors'] || row['authors'] || undefined,
+                  publisher: row['Publisher'] || row['publisher'] || undefined,
+                  publishYear: row['Publish Year'] || row['publishYear'] ? Number(row['Publish Year'] || row['publishYear']) : undefined,
+                  categoryId,
+                  language: row['Language'] || row['language'] || 'English',
+                  edition: row['Edition'] || row['edition'] || undefined,
+                  locationShelf: row['Location Shelf'] || row['locationShelf'] || undefined,
+                  totalCopies: row['Total Copies'] || row['totalCopies'] ? Number(row['Total Copies'] || row['totalCopies']) : 1,
+                  itemType: row['Item Type'] || row['itemType'] || 'BOOKS',
+                  isReferenceOnly: (row['Reference Only'] || row['isReferenceOnly'])?.toString().toLowerCase() === 'true',
+                  description: row['Description'] || row['description'] || undefined,
+                };
+                
+                await this.create(createDto);
+              }
+              success++;
+            } catch (e: any) {
+              failed++;
+              errors.push(`Row ${i + 1} (${row['Title'] || 'Unknown'}): ${e.message}`);
+            }
+          }
+          
+          resolve({ success, failed, errors });
+        })
+        .on('error', (error: any) => {
+          reject(new BadRequestException(`Failed to parse CSV: ${error.message}`));
+        });
+    });
   }
 }

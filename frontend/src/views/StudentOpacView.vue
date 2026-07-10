@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import { useLibraryStore, useAuthStore } from '@/stores/useLibraryStore'
 import { MagnifyingGlassIcon, FunnelIcon, BookOpenIcon, XMarkIcon, UserCircleIcon } from '@heroicons/vue/24/outline'
 import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/vue/24/solid'
-import BookCard from '@/components/BookCard.vue'
 import NavBar from '@/components/NavBar.vue'
 
 const router = useRouter()
@@ -268,19 +267,80 @@ function clearSearch() {
         </div>
 
         <!-- Books grouped by Item Type -->
-        <div v-else-if="store.books.length > 0" class="space-y-10">
-          <div v-for="(groupBooks, type) in groupedBooks" :key="type">
-            <div class="flex items-center gap-3 mb-5 border-b border-slate-200 pb-3">
-              <h3 class="text-xl font-bold text-slate-800">{{ type }}</h3>
-              <span class="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold">{{ groupBooks.length }} items</span>
+        <div v-else-if="store.books.length > 0" class="space-y-8">
+          <div v-for="(groupBooks, type) in groupedBooks" :key="type" class="card overflow-hidden">
+            <div class="bg-slate-50 px-5 py-4 border-b border-slate-100 flex items-center gap-3">
+              <h3 class="font-bold text-slate-800">{{ type }}</h3>
+              <span class="px-2.5 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 text-xs font-semibold">{{ groupBooks.length }} items</span>
             </div>
-            <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
-              <BookCard
-                v-for="book in groupBooks"
-                :key="book.id"
-                :book="book"
-                @click="router.push({ name: 'BookDetail', params: { id: book.id } })"
-              />
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left">
+                <thead class="bg-white border-b border-slate-100">
+                  <tr>
+                    <th class="table-header px-5 py-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Title / Details</th>
+                    <th class="table-header px-5 py-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Category</th>
+                    <th class="table-header px-5 py-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Call Number</th>
+                    <th class="table-header px-5 py-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Availability</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                  <tr
+                    v-for="book in groupBooks"
+                    :key="book.id"
+                    @click="router.push({ name: 'BookDetail', params: { id: book.id } })"
+                    class="hover:bg-slate-50/70 transition-colors cursor-pointer group"
+                  >
+                    <!-- Title / Details -->
+                    <td class="px-5 py-4">
+                      <div class="flex items-center gap-4">
+                        <div class="w-10 h-14 bg-gradient-to-b from-[#1a3f5c] to-[#061222] rounded shadow-sm flex items-center justify-center overflow-hidden flex-shrink-0">
+                          <img v-if="book.coverImageUrl" :src="book.coverImageUrl" class="w-full h-full object-cover" />
+                          <BookOpenIcon v-else class="w-5 h-5 text-white/30" />
+                        </div>
+                        <div class="min-w-0 max-w-[300px] lg:max-w-[400px]">
+                          <p class="font-semibold text-slate-800 text-sm group-hover:text-[#447794] transition-colors line-clamp-1">{{ book.title }}</p>
+                          <p v-if="book.authors?.length" class="text-xs text-slate-500 mt-0.5 truncate">{{ book.authors.join(', ') }}</p>
+                          <p class="text-[10px] text-slate-400 mt-1">
+                            {{ book.publishYear ?? '' }} <span v-if="book.publishYear && book.publisher">·</span> {{ book.publisher }}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    
+                    <!-- Category -->
+                    <td class="px-5 py-4 whitespace-nowrap">
+                      <span v-if="book.category" class="inline-block px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-semibold">
+                        {{ book.category.name }}
+                      </span>
+                      <span v-else class="text-xs text-slate-400">—</span>
+                    </td>
+                    
+                    <!-- Call Number -->
+                    <td class="px-5 py-4 whitespace-nowrap">
+                      <p class="font-mono text-xs text-slate-700">{{ book.callNumber }}</p>
+                    </td>
+                    
+                    <!-- Availability -->
+                    <td class="px-5 py-4 whitespace-nowrap">
+                      <div class="flex items-center gap-2">
+                        <span v-if="book.availableCopies > 0 && !book.isReferenceOnly"
+                              class="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                          <CheckCircleIcon class="w-3.5 h-3.5" /> {{ book.availableCopies }}/{{ book.totalCopies }} Available
+                        </span>
+                        <span v-else-if="book.isReferenceOnly"
+                              class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-sky-100 text-sky-700">
+                          Reference Only
+                        </span>
+                        <span v-else
+                              class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-700">
+                          Unavailable
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

@@ -79,6 +79,13 @@ export interface PaginatedBooks {
   lastPage: number
 }
 
+export interface PaginatedBookRequests {
+  data: BookRequestItem[]
+  total: number
+  page: number
+  lastPage: number
+}
+
 function formatApiMessage(e: unknown, fallback: string): string {
   const msg = (e as { response?: { data?: { message?: unknown } } }).response?.data?.message
   if (Array.isArray(msg)) return msg.map(String).join(' ')
@@ -247,6 +254,12 @@ export const useLibraryStore = defineStore('library', () => {
   const allBookRequests = ref<BookRequestItem[]>([])
   const loadingBookRequests = ref(false)
   const pendingRequestCount = ref(0)
+  const myBookRequestsPage = ref(1)
+  const myBookRequestsLastPage = ref(1)
+  const myBookRequestsTotal = ref(0)
+  const allBookRequestsPage = ref(1)
+  const allBookRequestsLastPage = ref(1)
+  const allBookRequestsTotal = ref(0)
 
   // Dashboard stats
   const stats = ref({ totalBooks: 0, totalCopies: 0, availableCopies: 0 })
@@ -338,21 +351,31 @@ export const useLibraryStore = defineStore('library', () => {
     return data
   }
 
-  async function fetchMyBookRequests() {
+  async function fetchMyBookRequests(page = 1, limit = 10, status?: string) {
     loadingBookRequests.value = true
     try {
-      const { data } = await api.get<BookRequestItem[]>('/book-requests/my')
-      myBookRequests.value = data
+      const params: Record<string, any> = { page, limit }
+      if (status) params.status = status
+      const { data } = await api.get<PaginatedBookRequests>('/book-requests/my', { params })
+      myBookRequests.value = data.data
+      myBookRequestsTotal.value = data.total
+      myBookRequestsPage.value = data.page
+      myBookRequestsLastPage.value = data.lastPage
     } finally {
       loadingBookRequests.value = false
     }
   }
 
-  async function fetchAllBookRequests() {
+  async function fetchAllBookRequests(page = 1, limit = 10, status?: string) {
     loadingBookRequests.value = true
     try {
-      const { data } = await api.get<BookRequestItem[]>('/book-requests')
-      allBookRequests.value = data
+      const params: Record<string, any> = { page, limit }
+      if (status) params.status = status
+      const { data } = await api.get<PaginatedBookRequests>('/book-requests', { params })
+      allBookRequests.value = data.data
+      allBookRequestsTotal.value = data.total
+      allBookRequestsPage.value = data.page
+      allBookRequestsLastPage.value = data.lastPage
     } finally {
       loadingBookRequests.value = false
     }
@@ -409,6 +432,8 @@ export const useLibraryStore = defineStore('library', () => {
     publishYearStart, publishYearEnd,
     myTransactions, myActiveTransactions, loadingTransactions,
     myBookRequests, allBookRequests, loadingBookRequests, pendingRequestCount,
+    myBookRequestsPage, myBookRequestsLastPage, myBookRequestsTotal,
+    allBookRequestsPage, allBookRequestsLastPage, allBookRequestsTotal,
     stats, txStats,
     hasOverdue, overdueCount, totalFinesDue,
     searchBooks, fetchBook, fetchCategories, fetchMyTransactions, renewBook, reserveBook,

@@ -11,7 +11,11 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { BooksService } from './books.service';
 import { SearchBooksDto, CreateBookDto, UpdateBookDto } from './dto/book.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -50,12 +54,16 @@ export class BooksController {
     @Query('categoryId') categoryId?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'ASC' | 'DESC',
   ) {
     return this.booksService.findAll(
-      search, 
+      search,
       categoryId ? Number(categoryId) : undefined,
       page ? Number(page) : 1,
-      limit ? Number(limit) : 10
+      limit ? Number(limit) : 10,
+      sortBy,
+      sortOrder,
     );
   }
 
@@ -71,6 +79,18 @@ export class BooksController {
   @Roles('librarian', 'chief_librarian', 'admin')
   create(@Body() dto: CreateBookDto) {
     return this.booksService.create(dto);
+  }
+
+  /** POST /api/v1/books/bulk-upload — bulk upload books via CSV */
+  @Post('bulk-upload')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('librarian', 'chief_librarian', 'admin')
+  @UseInterceptors(FileInterceptor('file'))
+  async bulkUpload(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+    return this.booksService.bulkUpload(file);
   }
 
   /** PATCH /api/v1/books/:id — update */

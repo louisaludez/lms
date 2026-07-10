@@ -73,4 +73,8 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   profilePhotoUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  rejectionReason?: string;
 }

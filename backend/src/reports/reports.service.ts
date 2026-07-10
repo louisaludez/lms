@@ -48,7 +48,11 @@ export class ReportsService {
     `);
   }
 
-  async getEntryExitReport(frequency: string, department: string, year: string) {
+  async getEntryExitReport(
+    frequency: string,
+    department: string,
+    year: string,
+  ) {
     let dateGroupSql = '';
     if (frequency === 'Daily') {
       dateGroupSql = `DATE_FORMAT(a.scanned_at, '%Y-%m-%d')`;
@@ -60,7 +64,8 @@ export class ReportsService {
       dateGroupSql = `YEAR(a.scanned_at)`;
     }
 
-    return this.dataSource.query(`
+    return this.dataSource.query(
+      `
       SELECT 
         ${dateGroupSql} as period,
         COUNT(CASE WHEN a.entry_type = 'entry' THEN 1 END) as entries,
@@ -71,11 +76,16 @@ export class ReportsService {
       WHERE YEAR(a.scanned_at) = ? AND d.name = ?
       GROUP BY period
       ORDER BY period ASC
-    `, [year, department]);
+    `,
+      [year, department],
+    );
   }
 
   async getBorrowedReport(frequency: string) {
-    let dateGroupSql = frequency === 'Monthly' ? `DATE_FORMAT(t.checkout_date, '%Y-%m')` : `YEAR(t.checkout_date)`;
+    const dateGroupSql =
+      frequency === 'Monthly'
+        ? `DATE_FORMAT(t.checkout_date, '%Y-%m')`
+        : `YEAR(t.checkout_date)`;
     return this.dataSource.query(`
       SELECT 
         ${dateGroupSql} as period,
@@ -92,7 +102,10 @@ export class ReportsService {
   }
 
   async getReturnedReport(frequency: string) {
-    let dateGroupSql = frequency === 'Monthly' ? `DATE_FORMAT(t.return_date, '%Y-%m')` : `YEAR(t.return_date)`;
+    const dateGroupSql =
+      frequency === 'Monthly'
+        ? `DATE_FORMAT(t.return_date, '%Y-%m')`
+        : `YEAR(t.return_date)`;
     return this.dataSource.query(`
       SELECT 
         ${dateGroupSql} as period,
@@ -109,7 +122,10 @@ export class ReportsService {
   }
 
   async getOverdueReport(frequency: string) {
-    let dateGroupSql = frequency === 'Monthly' ? `DATE_FORMAT(t.due_date, '%Y-%m')` : `YEAR(t.due_date)`;
+    const dateGroupSql =
+      frequency === 'Monthly'
+        ? `DATE_FORMAT(t.due_date, '%Y-%m')`
+        : `YEAR(t.due_date)`;
     return this.dataSource.query(`
       SELECT 
         ${dateGroupSql} as period,
@@ -131,7 +147,7 @@ export class ReportsService {
 
   async getRegisteredUsersReport() {
     return this.dataSource.query(`
-      SELECT u.id, u.first_name, u.last_name, u.email, u.role, d.name as department
+      SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.account_approval_status, d.name as department
       FROM users u
       LEFT JOIN departments d ON u.department_id = d.id
       ORDER BY d.name, u.last_name, u.first_name

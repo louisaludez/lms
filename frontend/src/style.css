@@ -1,20 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary:    #447794;
-  --color-accent:     #2D5B75;
-  --color-dark:       #123249;
-  --color-deep:       #061222;
-  --color-primary-50: #eef5f9;
-  --color-primary-100: #d5e8f0;
-  --color-primary-200: #aed0e2;
-  --color-primary-300: #80b3ce;
-  --color-primary-400: #5a95ba;
-  --color-primary-500: #447794;
-  --color-primary-600: #2D5B75;
-  --color-primary-700: #1e3d52;
-  --color-primary-800: #123249;
-  --color-primary-900: #061222;
+  --color-primary:    #5c726a;
+  --color-accent:     #4a5e57;
+  --color-dark:       #3b4d47;
+  --color-deep:       #293632;
+  --color-primary-50: #f4f7f6;
+  --color-primary-100: #e4ebe9;
+  --color-primary-200: #cad9d4;
+  --color-primary-300: #a5beb6;
+  --color-primary-400: #7c9f95;
+  --color-primary-500: #5c726a;
+  --color-primary-600: #4a5e57;
+  --color-primary-700: #3b4d47;
+  --color-primary-800: #293632;
+  --color-primary-900: #1a2220;
 
   --font-family-sans: 'Inter', system-ui, sans-serif;
 }
@@ -33,13 +33,13 @@
 @layer components {
   /* Buttons */
   .btn-primary {
-    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#447794] text-white font-semibold text-sm
-           shadow-md shadow-[#447794]/30 hover:bg-[#2D5B75] active:scale-95
-           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#447794]/50 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#5c726a] text-white font-semibold text-sm
+           shadow-md shadow-[#5c726a]/30 hover:bg-[#4a5e57] active:scale-95
+           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#5c726a]/50 disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-ghost {
-    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[#447794]/30 text-[#447794] font-semibold text-sm
-           hover:bg-[#447794]/10 active:scale-95 transition-all duration-200 focus:outline-none;
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[#5c726a]/30 text-[#5c726a] font-semibold text-sm
+           hover:bg-[#5c726a]/10 active:scale-95 transition-all duration-200 focus:outline-none;
   }
   .btn-danger {
     @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 text-white font-semibold text-sm
@@ -51,18 +51,18 @@
     @apply bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden;
   }
   .card-dark {
-    @apply bg-[#123249] rounded-2xl shadow-xl text-white overflow-hidden;
+    @apply bg-[#3b4d47] rounded-2xl shadow-xl text-white overflow-hidden;
   }
 
   /* Input */
   .input {
     @apply w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800
-           focus:outline-none focus:ring-2 focus:ring-[#447794]/40 focus:border-[#447794]
+           focus:outline-none focus:ring-2 focus:ring-[#5c726a]/40 focus:border-[#5c726a]
            placeholder:text-slate-400 bg-white transition-all duration-150;
   }
   .select {
     @apply w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800
-           focus:outline-none focus:ring-2 focus:ring-[#447794]/40 focus:border-[#447794]
+           focus:outline-none focus:ring-2 focus:ring-[#5c726a]/40 focus:border-[#5c726a]
            bg-white transition-all duration-150 appearance-none;
   }
 
@@ -75,11 +75,11 @@
 
   /* Nav link */
   .nav-link {
-    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-300 font-medium text-sm
-           hover:bg-[#447794]/20 hover:text-white transition-all duration-150;
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-500 font-medium text-sm
+           hover:bg-[#5c726a]/10 hover:text-[#5c726a] transition-all duration-150;
   }
   .nav-link.active {
-    @apply bg-[#447794] text-white shadow-md shadow-[#447794]/40;
+    @apply bg-[#5c726a] text-white shadow-md shadow-[#5c726a]/40;
   }
 
   /* Stat card */

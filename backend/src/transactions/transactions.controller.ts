@@ -41,7 +41,7 @@ export class TransactionsController {
   /** POST /api/v1/transactions/renew */
   @Post('renew')
   renew(@Body() dto: RenewalDto, @Request() req: AuthReq) {
-    return this.txService.renew(dto, req.user.id);
+    return this.txService.renew(dto, req.user);
   }
 
   /** GET /api/v1/transactions/my */

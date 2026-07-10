@@ -1,17 +1,69 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import { useLibraryStore } from '@/stores/useLibraryStore'
 import {
   BookOpenIcon, ArrowsRightLeftIcon, ExclamationTriangleIcon,
-  CheckCircleIcon, UserGroupIcon,
+  CheckCircleIcon, UserGroupIcon, ChartPieIcon
 } from '@heroicons/vue/24/outline'
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
+import { Doughnut } from 'vue-chartjs'
+
+ChartJS.register(ArcElement, Tooltip, Legend)
 
 const store = useLibraryStore()
 onMounted(() => store.fetchStats())
+
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  cutout: '70%',
+  plugins: {
+    legend: {
+      position: 'bottom' as const,
+      labels: {
+        usePointStyle: true,
+        padding: 20,
+        font: { family: "'Inter', sans-serif", size: 12 }
+      }
+    },
+    tooltip: {
+      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+      padding: 12,
+      cornerRadius: 8,
+    }
+  }
+}
+
+const inventoryData = computed(() => {
+  const checkedOut = store.stats.totalCopies - store.stats.availableCopies
+  return {
+    labels: ['Available', 'Checked Out'],
+    datasets: [{
+      data: [store.stats.availableCopies, checkedOut],
+      backgroundColor: ['#10b981', '#f59e0b'],
+      borderWidth: 0,
+      hoverOffset: 4
+    }]
+  }
+})
+
+const borrowingData = computed(() => {
+  const onTime = store.txStats.active
+  const overdue = store.txStats.overdue
+  return {
+    labels: ['Active (On Time)', 'Overdue'],
+    datasets: [{
+      data: [onTime, overdue],
+      backgroundColor: ['#0ea5e9', '#f43f5e'],
+      borderWidth: 0,
+      hoverOffset: 4
+    }]
+  }
+})
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 w-full max-w-[1600px] mx-auto">
     <!-- Stat Cards -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="stat-card">
@@ -69,27 +121,50 @@ onMounted(() => store.fetchStats())
       </div>
     </div>
 
-    <!-- Quick info -->
-    <div class="card p-6">
-      <h2 class="font-semibold text-slate-700 mb-4">System Overview</h2>
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-        <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
-          <p class="text-slate-500 text-xs mb-1">Total Copies</p>
-          <p class="font-bold text-slate-800 text-xl">{{ store.stats.totalCopies }}</p>
+    <!-- System Overview Charts -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="card p-6">
+        <h2 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+          <BookOpenIcon class="w-5 h-5 text-[#447794]" />
+          Inventory Status
+        </h2>
+        <div class="h-64 flex items-center justify-center relative">
+          <Doughnut
+            v-if="store.stats.totalCopies > 0"
+            :data="inventoryData"
+            :options="chartOptions"
+          />
+          <div v-else class="text-slate-400 text-sm flex flex-col items-center">
+            <ChartPieIcon class="w-10 h-10 mb-2 opacity-50" />
+            No inventory data
+          </div>
+          <!-- Center Text -->
+          <div v-if="store.stats.totalCopies > 0" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span class="text-3xl font-bold text-slate-800">{{ store.stats.totalCopies }}</span>
+            <span class="text-xs text-slate-500 font-medium">Total Copies</span>
+          </div>
         </div>
-        <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
-          <p class="text-slate-500 text-xs mb-1">Returned Today</p>
-          <p class="font-bold text-slate-800 text-xl">{{ store.txStats.returnedToday }}</p>
-        </div>
-        <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
-          <p class="text-slate-500 text-xs mb-1">Overdue Rate</p>
-          <p class="font-bold text-slate-800 text-xl">
-            {{
-              store.txStats.active + store.txStats.overdue > 0
-                ? Math.round((store.txStats.overdue / (store.txStats.active + store.txStats.overdue)) * 100)
-                : 0
-            }}%
-          </p>
+      </div>
+
+      <div class="card p-6">
+        <h2 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+          <ArrowsRightLeftIcon class="w-5 h-5 text-[#447794]" />
+          Current Borrowings
+        </h2>
+        <div class="h-64 flex items-center justify-center relative">
+          <Doughnut
+            v-if="(store.txStats.active + store.txStats.overdue) > 0"
+            :data="borrowingData"
+            :options="chartOptions"
+          />
+          <div v-else class="text-slate-400 text-sm flex flex-col items-center">
+            <ChartPieIcon class="w-10 h-10 mb-2 opacity-50" />
+            No active borrowings
+          </div>
+          <div v-if="(store.txStats.active + store.txStats.overdue) > 0" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span class="text-3xl font-bold text-slate-800">{{ store.txStats.active + store.txStats.overdue }}</span>
+            <span class="text-xs text-slate-500 font-medium">Total Active</span>
+          </div>
         </div>
       </div>
     </div>

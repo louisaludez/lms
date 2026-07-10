@@ -1,12 +1,37 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import api from '@/api/axios'
-import { DocumentTextIcon, MagnifyingGlassIcon, FunnelIcon } from '@heroicons/vue/24/outline'
+import { DocumentTextIcon, MagnifyingGlassIcon, FunnelIcon, ArrowsUpDownIcon } from '@heroicons/vue/24/outline'
+import DropdownFilter from '@/components/DropdownFilter.vue'
 
 const transactions = ref<any[]>([])
 const loading = ref(true)
 const searchQuery = ref('')
 const filterType = ref('')
+const sortBy = ref('date')
+const sortOrder = ref<'ASC'|'DESC'>('DESC')
+
+const typeOptions = [
+  { label: 'All Types', value: '' },
+  { label: 'Checkout', value: 'checkout' },
+  { label: 'Return', value: 'return' },
+  { label: 'Renewal', value: 'renewal' },
+  { label: 'Lost', value: 'lost' }
+]
+
+const sortOptions = [
+  { label: 'Date', value: 'date' },
+  { label: 'User Name', value: 'user' },
+  { label: 'Book Title', value: 'book' }
+]
+
+function handleSortChange() {
+  if ((sortBy.value === 'user' || sortBy.value === 'book') && sortOrder.value === 'DESC') {
+    sortOrder.value = 'ASC'
+  } else if (sortBy.value === 'date') {
+    sortOrder.value = 'DESC'
+  }
+}
 
 onMounted(async () => {
   try {
@@ -36,12 +61,30 @@ const filteredTransactions = computed(() => {
     )
   }
   
+  result = [...result].sort((a, b) => {
+    let valA, valB
+    if (sortBy.value === 'user') {
+      valA = `${a.user.lastName} ${a.user.firstName}`.toLowerCase()
+      valB = `${b.user.lastName} ${b.user.firstName}`.toLowerCase()
+    } else if (sortBy.value === 'book') {
+      valA = a.bookCopy.book.title.toLowerCase()
+      valB = b.bookCopy.book.title.toLowerCase()
+    } else {
+      valA = new Date(a.createdAt).getTime()
+      valB = new Date(b.createdAt).getTime()
+    }
+    
+    if (valA < valB) return sortOrder.value === 'ASC' ? -1 : 1
+    if (valA > valB) return sortOrder.value === 'ASC' ? 1 : -1
+    return 0
+  })
+  
   return result
 })
 </script>
 
 <template>
-  <div class="space-y-6 max-w-7xl mx-auto">
+  <div class="space-y-6 w-full max-w-[1600px] mx-auto">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
       <div>
@@ -64,14 +107,26 @@ const filteredTransactions = computed(() => {
         />
       </div>
       <div class="flex items-center gap-2">
-        <FunnelIcon class="w-5 h-5 text-slate-400" />
-        <select v-model="filterType" class="input min-w-[160px]">
-          <option value="">All Types</option>
-          <option value="checkout">Checkout</option>
-          <option value="return">Return</option>
-          <option value="renewal">Renewal</option>
-          <option value="lost">Lost</option>
-        </select>
+        <DropdownFilter
+          v-model="filterType"
+          :options="typeOptions"
+          width="w-40"
+        >
+          <template #icon>
+            <FunnelIcon class="w-5 h-5 text-slate-400" />
+          </template>
+        </DropdownFilter>
+        
+        <DropdownFilter
+          v-model="sortBy"
+          :options="sortOptions"
+          @change="handleSortChange"
+          width="w-44"
+        >
+          <template #icon>
+            <ArrowsUpDownIcon class="w-5 h-5 text-slate-400" />
+          </template>
+        </DropdownFilter>
       </div>
     </div>
 

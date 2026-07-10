@@ -39,7 +39,7 @@ function formatTime(dt: string) {
 </script>
 
 <template>
-  <div class="space-y-6 max-w-5xl">
+  <div class="space-y-6 w-full max-w-[1600px] mx-auto">
     <!-- Count pills -->
     <div class="flex gap-4">
       <div class="card px-6 py-4 flex items-center gap-4">

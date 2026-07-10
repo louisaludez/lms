@@ -4,9 +4,11 @@ import api from '@/api/axios'
 import {
   BookOpenIcon, PlusIcon, MagnifyingGlassIcon,
   PencilSquareIcon, TrashIcon, XMarkIcon,
-  CheckIcon, FunnelIcon,
+  CheckIcon, FunnelIcon, ArrowsUpDownIcon,
+  ArrowUpTrayIcon, DocumentArrowDownIcon
 } from '@heroicons/vue/24/outline'
 import Pagination from '@/components/Pagination.vue'
+import DropdownFilter from '@/components/DropdownFilter.vue'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Category { id: number; name: string }
@@ -38,6 +40,21 @@ const categories  = ref<Category[]>([])
 const loading     = ref(false)
 const searchQuery = ref('')
 const filterCat   = ref('')
+const sortBy      = ref('createdAt')
+const sortOrder   = ref<'ASC'|'DESC'>('DESC')
+
+const sortOptions = [
+  { label: 'Recently Added', value: 'createdAt' },
+  { label: 'Title (A-Z)', value: 'title' },
+  { label: 'Available Copies', value: 'copies' }
+]
+
+const categoryOptions = computed(() => {
+  return [
+    { label: 'All Categories', value: '' },
+    ...categories.value.map(c => ({ label: c.name, value: c.id }))
+  ]
+})
 
 type ModalMode = 'create' | 'edit' | null
 const modalMode  = ref<ModalMode>(null)
@@ -45,6 +62,13 @@ const showTypeModal = ref(false)
 const saving     = ref(false)
 const modalError = ref('')
 const editingId  = ref<number | null>(null)
+
+// ── Bulk Upload State ────────────────────────────────────────────────────────
+const showBulkModal = ref(false)
+const bulkFile = ref<File | null>(null)
+const bulkLoading = ref(false)
+const bulkError = ref('')
+const bulkResult = ref<{ success: number; failed: number; errors: string[] } | null>(null)
 
 const itemTypes = ['Journals', 'Thesis', 'CD', 'BOOKS', 'DVD', 'Cartographic Materials', 'Electronics']
 
@@ -115,7 +139,12 @@ const currentLimit = ref(10)
 async function fetchBooks(page = 1) {
   loading.value = true
   try {
-    const params: Record<string, string | number> = { page, limit: currentLimit.value }
+    const params: Record<string, string | number> = { 
+      page, 
+      limit: currentLimit.value,
+      sortBy: sortBy.value,
+      sortOrder: sortOrder.value 
+    }
     if (searchQuery.value) params.search     = searchQuery.value
     if (filterCat.value)   params.categoryId = filterCat.value
     const { data } = await api.get<{ data: BookRow[], total: number, page: number, lastPage: number }>('/books/all', { params })
@@ -136,6 +165,17 @@ function onSearch() {
 
 function onLimitChange(newLimit: number) {
   currentLimit.value = newLimit
+  fetchBooks(1)
+}
+
+function handleSortChange() {
+  // Toggle order if clicking the same sort option, except if it's the first time
+  // Or just always use DESC for createdAt and ASC for title as defaults, but simpler is let them change
+  if (sortBy.value === 'title' && sortOrder.value === 'DESC') {
+    sortOrder.value = 'ASC'
+  } else if (sortBy.value === 'createdAt') {
+    sortOrder.value = 'DESC'
+  }
   fetchBooks(1)
 }
 
@@ -237,6 +277,55 @@ async function confirmDelete() {
   }
 }
 
+// ── Bulk Upload ───────────────────────────────────────────────────────────────
+function handleBulkFileChange(e: Event) {
+  const target = e.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    bulkFile.value = target.files[0]
+  } else {
+    bulkFile.value = null
+  }
+}
+
+async function submitBulkUpload() {
+  if (!bulkFile.value) return
+  bulkLoading.value = true
+  bulkError.value = ''
+  bulkResult.value = null
+  try {
+    const fd = new FormData()
+    fd.append('file', bulkFile.value)
+    const { data } = await api.post('/books/bulk-upload', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    bulkResult.value = data
+    fetchBooks(1)
+  } catch (e: any) {
+    bulkError.value = e.response?.data?.message ?? 'Bulk upload failed'
+  } finally {
+    bulkLoading.value = false
+  }
+}
+
+function downloadCsvTemplate() {
+  const headers = ['Title', 'Author', 'ISBN', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Edition', 'Item Type', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
+  const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\\n"
+  const encodedUri = encodeURI(csvContent)
+  const link = document.createElement("a")
+  link.setAttribute("href", encodedUri)
+  link.setAttribute("download", "Lumina_Book_Bulk_Template.csv")
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+function closeBulkModal() {
+  showBulkModal.value = false
+  bulkFile.value = null
+  bulkError.value = ''
+  bulkResult.value = null
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function availBadge(available: number, total: number) {
   if (available === 0) return 'bg-rose-100 text-rose-700'
@@ -246,7 +335,7 @@ function availBadge(available: number, total: number) {
 </script>
 
 <template>
-  <div class="max-w-full">
+  <div class="w-full max-w-[1600px] mx-auto">
 
     <!-- Header -->
     <div class="flex items-center justify-between mb-5">
@@ -259,9 +348,14 @@ function availBadge(available: number, total: number) {
           <p class="text-xs text-slate-500">{{ totalItems }} item{{ totalItems !== 1 ? 's' : '' }} in catalog</p>
         </div>
       </div>
-      <button @click="openCreate" class="btn-primary">
-        <PlusIcon class="w-4 h-4" /> Add Item
-      </button>
+      <div class="flex items-center gap-3">
+        <button @click="showBulkModal = true" class="btn-ghost border border-slate-200">
+          <ArrowUpTrayIcon class="w-4 h-4" /> Bulk Upload
+        </button>
+        <button @click="openCreate" class="btn-primary">
+          <PlusIcon class="w-4 h-4" /> Add Item
+        </button>
+      </div>
     </div>
 
     <!-- Filters -->
@@ -277,11 +371,27 @@ function availBadge(available: number, total: number) {
         />
       </div>
       <div class="flex items-center gap-2">
-        <FunnelIcon class="w-4 h-4 text-slate-400" />
-        <select v-model="filterCat" @change="fetchBooks(1)" class="input text-sm w-44">
-          <option value="">All Categories</option>
-          <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-        </select>
+        <DropdownFilter
+          v-model="filterCat"
+          :options="categoryOptions"
+          @change="fetchBooks(1)"
+          width="w-48"
+        >
+          <template #icon>
+            <FunnelIcon class="w-4 h-4 text-slate-400" />
+          </template>
+        </DropdownFilter>
+
+        <DropdownFilter
+          v-model="sortBy"
+          :options="sortOptions"
+          @change="handleSortChange"
+          width="w-48"
+        >
+          <template #icon>
+            <ArrowsUpDownIcon class="w-4 h-4 text-slate-400" />
+          </template>
+        </DropdownFilter>
       </div>
     </div>
 
@@ -549,4 +659,84 @@ function availBadge(available: number, total: number) {
     </Teleport>
 
   </div>
+
+    <!-- Bulk Upload Modal -->
+    <Teleport to="body">
+      <div v-if="showBulkModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl p-6">
+          <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-4">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+              <ArrowUpTrayIcon class="w-5 h-5 text-[#447794]" />
+              Bulk Upload Books
+            </h3>
+            <button @click="closeBulkModal" class="text-slate-400 hover:text-slate-600">
+              <XMarkIcon class="w-5 h-5" />
+            </button>
+          </div>
+
+          <div v-if="!bulkResult">
+            <p class="text-sm text-slate-500 mb-4">
+              Upload a CSV file to add multiple books at once. Make sure your file follows the standard format.
+            </p>
+            <button @click="downloadCsvTemplate" type="button" class="flex items-center gap-2 text-sm font-semibold text-[#447794] hover:underline mb-6">
+              <DocumentArrowDownIcon class="w-4 h-4" />
+              Download CSV Template
+            </button>
+
+            <form @submit.prevent="submitBulkUpload" class="space-y-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Select CSV File</label>
+                <input type="file" accept=".csv" required @change="handleBulkFileChange" class="input p-2" />
+              </div>
+              
+              <div v-if="bulkError" class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm">
+                {{ bulkError }}
+              </div>
+
+              <div class="flex gap-3 pt-2">
+                <button type="button" @click="closeBulkModal" class="btn-ghost flex-1 justify-center">Cancel</button>
+                <button type="submit" :disabled="bulkLoading || !bulkFile" class="btn-primary flex-1 justify-center">
+                  {{ bulkLoading ? 'Uploading...' : 'Upload Data' }}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Results View -->
+          <div v-else>
+            <div class="text-center mb-6">
+              <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
+                :class="bulkResult.failed === 0 ? 'bg-emerald-100' : 'bg-amber-100'">
+                <CheckIcon v-if="bulkResult.failed === 0" class="w-6 h-6 text-emerald-600" />
+                <ArrowUpTrayIcon v-else class="w-6 h-6 text-amber-600" />
+              </div>
+              <h4 class="font-bold text-slate-800 text-lg">Upload Complete</h4>
+              <p class="text-sm text-slate-500 mt-1">Processed {{ bulkResult.success + bulkResult.failed }} records</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-6">
+              <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-100 text-center">
+                <p class="text-2xl font-bold text-emerald-600">{{ bulkResult.success }}</p>
+                <p class="text-xs font-semibold text-emerald-800 uppercase tracking-wider">Success</p>
+              </div>
+              <div class="p-4 rounded-xl bg-rose-50 border border-rose-100 text-center">
+                <p class="text-2xl font-bold text-rose-600">{{ bulkResult.failed }}</p>
+                <p class="text-xs font-semibold text-rose-800 uppercase tracking-wider">Failed</p>
+              </div>
+            </div>
+
+            <div v-if="bulkResult.errors.length > 0" class="mb-6">
+              <p class="text-sm font-semibold text-slate-700 mb-2">Error Details:</p>
+              <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-40 overflow-y-auto">
+                <ul class="list-disc list-inside text-xs text-rose-600 space-y-1">
+                  <li v-for="(err, i) in bulkResult.errors" :key="i">{{ err }}</li>
+                </ul>
+              </div>
+            </div>
+
+            <button @click="closeBulkModal" class="btn-primary w-full justify-center">Done</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 </template>

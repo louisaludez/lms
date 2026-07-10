@@ -2,13 +2,13 @@
 import { ref, onMounted, computed } from 'vue'
 import { format, parseISO } from 'date-fns'
 import { useLibraryStore, useAuthStore } from '@/stores/useLibraryStore'
-import NavBar from '@/components/NavBar.vue'
 import {
   BookOpenIcon, PlusIcon, XMarkIcon, ClockIcon,
   CheckCircleIcon, XCircleIcon, PaperAirplaneIcon,
   DocumentTextIcon, AcademicCapIcon
 } from '@heroicons/vue/24/outline'
 import { ExclamationCircleIcon } from '@heroicons/vue/24/solid'
+import Pagination from '@/components/Pagination.vue'
 
 const store = useLibraryStore()
 const auth = useAuthStore()
@@ -28,9 +28,20 @@ const acqLoading = ref(false)
 const acqError = ref('')
 const acqSuccess = ref(false)
 
+const currentLimit = ref(10)
+
 onMounted(() => {
-  store.fetchMyBookRequests()
+  fetchRequests(1)
 })
+
+function fetchRequests(page = 1) {
+  store.fetchMyBookRequests(page, currentLimit.value)
+}
+
+function onLimitChange(newLimit: number) {
+  currentLimit.value = newLimit
+  fetchRequests(1)
+}
 
 function formatDate(dateStr: string) {
   try { return format(parseISO(dateStr), 'MMM d, yyyy') } catch { return dateStr }
@@ -53,12 +64,7 @@ function statusIcon(status: string) {
   return CheckCircleIcon
 }
 
-const pendingRequests = computed(() =>
-  store.myBookRequests.filter(r => r.status === 'pending')
-)
-const processedRequests = computed(() =>
-  store.myBookRequests.filter(r => r.status !== 'pending')
-)
+// Removed local computed filters to favor server-side pagination
 
 async function submitAcquisition() {
   acqLoading.value = true
@@ -84,26 +90,13 @@ async function submitAcquisition() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50">
-    <NavBar />
-
-    <!-- Header -->
-    <div class="bg-gradient-to-r from-[#123249] to-[#447794] py-12 px-6">
-      <div class="max-w-4xl mx-auto">
-        <div class="flex items-center gap-3 mb-2">
-          <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-            <DocumentTextIcon class="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 class="text-2xl font-bold text-white">Book Requests</h1>
-            <p class="text-[#aed0e2] text-sm">Faculty-exclusive: Request to borrow or suggest new acquisitions</p>
-          </div>
-        </div>
-      </div>
+  <div class="max-w-4xl mx-auto w-full">
+    <div class="mb-6">
+      <h2 class="text-xl font-bold text-slate-800">Book Requests</h2>
+      <p class="text-slate-500 text-sm mt-1">Faculty-exclusive: Request to borrow or suggest new acquisitions</p>
     </div>
 
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-
+    <div>
       <!-- Tabs -->
       <div class="flex gap-1 p-1 bg-slate-200/60 rounded-2xl mb-6 w-fit">
         <button
@@ -118,9 +111,6 @@ async function submitAcquisition() {
           <span class="flex items-center gap-2">
             <ClockIcon class="w-4 h-4" />
             My Requests
-            <span v-if="pendingRequests.length > 0" class="ml-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">
-              {{ pendingRequests.length }}
-            </span>
           </span>
         </button>
         <button
@@ -160,67 +150,68 @@ async function submitAcquisition() {
           </p>
         </div>
 
-        <!-- Request list -->
-        <div v-else class="space-y-3">
-          <!-- Pending Section -->
-          <template v-if="pendingRequests.length > 0">
-            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Pending ({{ pendingRequests.length }})</p>
-            <div
-              v-for="req in pendingRequests"
-              :key="req.id"
-              class="card p-5 border-l-4 border-amber-400"
-            >
-              <div class="flex items-start justify-between gap-4">
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 mb-1">
-                    <span :class="['px-2.5 py-0.5 rounded-full text-xs font-bold uppercase', req.requestType === 'borrow' ? 'bg-[#447794]/10 text-[#447794]' : 'bg-purple-100 text-purple-700']">
+        <!-- Request list (Table) -->
+        <div v-else class="card overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-slate-50 border-b border-slate-100">
+                <tr>
+                  <th class="table-header px-4 py-3 text-left">Type</th>
+                  <th class="table-header px-4 py-3 text-left">Book / Title</th>
+                  <th class="table-header px-4 py-3 text-left">Notes / Reason</th>
+                  <th class="table-header px-4 py-3 text-left">Date</th>
+                  <th class="table-header px-4 py-3 text-left">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="req in store.myBookRequests"
+                  :key="req.id"
+                  class="table-row"
+                >
+                  <td class="table-cell px-4">
+                    <span :class="[
+                      'px-2 py-0.5 rounded-full text-xs font-bold uppercase',
+                      req.requestType === 'borrow' ? 'bg-[#447794]/10 text-[#447794]' : 'bg-purple-100 text-purple-700'
+                    ]">
                       {{ req.requestType }}
                     </span>
+                  </td>
+                  <td class="table-cell px-4 max-w-[250px]">
+                    <p class="font-medium text-slate-800 truncate">
+                      {{ req.requestType === 'borrow' ? req.book?.title : req.title }}
+                    </p>
+                    <p v-if="req.requestType === 'acquisition' && req.author" class="text-xs text-slate-500">by {{ req.author }}</p>
+                    <p v-if="req.requestType === 'borrow' && req.book?.authors?.length" class="text-xs text-slate-500">by {{ req.book.authors.join(', ') }}</p>
+                  </td>
+                  <td class="table-cell px-4 max-w-[250px]">
+                    <p v-if="req.reason" class="text-xs text-slate-500 italic truncate">"{{ req.reason }}"</p>
+                    <p v-if="req.librarianNotes" class="text-xs text-emerald-600 font-medium truncate mt-0.5">Note: {{ req.librarianNotes }}</p>
+                    <span v-if="!req.reason && !req.librarianNotes" class="text-xs text-slate-400">—</span>
+                  </td>
+                  <td class="table-cell px-4 text-sm text-slate-500 whitespace-nowrap">
+                    {{ formatDate(req.createdAt) }}
+                  </td>
+                  <td class="table-cell px-4">
                     <span :class="['px-2.5 py-0.5 rounded-full text-xs font-bold capitalize', statusBadgeClass(req.status)]">
                       {{ req.status }}
                     </span>
-                  </div>
-                  <p class="font-semibold text-slate-800 mt-1">
-                    {{ req.requestType === 'borrow' ? req.book?.title : req.title }}
-                  </p>
-                  <p v-if="req.requestType === 'acquisition' && req.author" class="text-sm text-slate-500">by {{ req.author }}</p>
-                  <p v-if="req.requestType === 'borrow' && req.book?.authors?.length" class="text-sm text-slate-500">by {{ req.book.authors.join(', ') }}</p>
-                  <p v-if="req.reason" class="text-sm text-slate-500 mt-1 italic">"{{ req.reason }}"</p>
-                </div>
-                <span class="text-xs text-slate-400 whitespace-nowrap">{{ formatDate(req.createdAt) }}</span>
-              </div>
-            </div>
-          </template>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-          <!-- Processed Section -->
-          <template v-if="processedRequests.length > 0">
-            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-6">Processed ({{ processedRequests.length }})</p>
-            <div
-              v-for="req in processedRequests"
-              :key="req.id"
-              class="card p-5"
-            >
-              <div class="flex items-start justify-between gap-4">
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 mb-1">
-                    <span :class="['px-2.5 py-0.5 rounded-full text-xs font-bold uppercase', req.requestType === 'borrow' ? 'bg-[#447794]/10 text-[#447794]' : 'bg-purple-100 text-purple-700']">
-                      {{ req.requestType }}
-                    </span>
-                    <span :class="['px-2.5 py-0.5 rounded-full text-xs font-bold capitalize', statusBadgeClass(req.status)]">
-                      {{ req.status }}
-                    </span>
-                  </div>
-                  <p class="font-semibold text-slate-800 mt-1">
-                    {{ req.requestType === 'borrow' ? req.book?.title : req.title }}
-                  </p>
-                  <p v-if="req.librarianNotes" class="text-sm text-slate-500 mt-1 bg-slate-50 px-3 py-2 rounded-lg">
-                    <strong>Librarian note:</strong> {{ req.librarianNotes }}
-                  </p>
-                </div>
-                <span class="text-xs text-slate-400 whitespace-nowrap">{{ formatDate(req.createdAt) }}</span>
-              </div>
-            </div>
-          </template>
+          <!-- Pagination -->
+          <Pagination
+            v-if="store.myBookRequestsTotal > 0"
+            :current-page="store.myBookRequestsPage"
+            :last-page="store.myBookRequestsLastPage"
+            :total-items="store.myBookRequestsTotal"
+            :limit="currentLimit"
+            @update:page="fetchRequests"
+            @update:limit="onLimitChange"
+          />
         </div>
       </div>
 

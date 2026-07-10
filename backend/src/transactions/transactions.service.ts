@@ -39,8 +39,13 @@ export class TransactionsService {
 
   // ─── CHECKOUT ────────────────────────────────────────────────────────────────
   async checkout(dto: CheckoutDto, librarianId: number): Promise<Transaction> {
-    const user = await this.userRepo.findOne({ where: { barcode: dto.userBarcode } });
-    if (!user) throw new NotFoundException(`User with barcode ${dto.userBarcode} not found`);
+    const user = await this.userRepo.findOne({
+      where: { barcode: dto.userBarcode },
+    });
+    if (!user)
+      throw new NotFoundException(
+        `User with barcode ${dto.userBarcode} not found`,
+      );
     if (!user.isActive)
       throw new ForbiddenException('User account is inactive');
     if (user.eligibilityStatus === EligibilityStatus.SUSPENDED)
@@ -50,10 +55,31 @@ export class TransactionsService {
     if (user.eligibilityStatus === EligibilityStatus.EXPELLED)
       throw new ForbiddenException('User is not eligible to borrow books');
 
-    // Check concurrent borrow limit
-    const activeBorrows = await this.txRepo.count({
-      where: { user: { id: user.id }, status: TransactionStatus.ACTIVE },
+    // Dynamic check for overdue books
+    const todayStr = new Date().toISOString().split('T')[0];
+    const userTransactions = await this.txRepo.find({
+      where: [
+        { user: { id: user.id }, status: TransactionStatus.ACTIVE },
+        { user: { id: user.id }, status: TransactionStatus.OVERDUE }
+      ],
     });
+
+    const hasOverdue = userTransactions.some(
+      (tx) =>
+        tx.status === TransactionStatus.OVERDUE ||
+        (tx.status === TransactionStatus.ACTIVE && tx.dueDate < todayStr),
+    );
+
+    if (hasOverdue) {
+      throw new ForbiddenException(
+        'User has overdue books. Please return them and settle any fines first.',
+      );
+    }
+
+    // Check concurrent borrow limit
+    const activeBorrows = userTransactions.filter(
+      (tx) => tx.status === TransactionStatus.ACTIVE
+    ).length;
     if (activeBorrows >= MAX_BORROWS)
       throw new BadRequestException(
         `User has reached the maximum of ${MAX_BORROWS} concurrent borrows`,
@@ -155,20 +181,42 @@ export class TransactionsService {
   }
 
   // ─── RENEWAL ─────────────────────────────────────────────────────────────────
-  async renew(dto: RenewalDto, userId: number): Promise<Transaction> {
+  async renew(dto: RenewalDto, requestingUser: { id: number; role: string }): Promise<Transaction> {
+    if (!dto.transactionId && !dto.bookCopyBarcode) {
+      throw new BadRequestException('Must provide either transactionId or bookCopyBarcode');
+    }
+
+    const whereClause: any = { status: TransactionStatus.ACTIVE };
+    if (dto.transactionId) {
+      whereClause.id = dto.transactionId;
+    } else {
+      whereClause.bookCopy = { barcode: dto.bookCopyBarcode };
+    }
+
     const tx = await this.txRepo.findOne({
-      where: { id: dto.transactionId, user: { id: userId } },
+      where: whereClause,
       relations: ['user', 'bookCopy', 'bookCopy.book'],
     });
-    if (!tx) throw new NotFoundException('Transaction not found');
-    if (tx.status !== TransactionStatus.ACTIVE)
-      throw new BadRequestException('Only active borrows can be renewed');
+
+    if (!tx) throw new NotFoundException('Active transaction not found');
+
+    if (requestingUser.role === 'student' && tx.user.id !== requestingUser.id) {
+      throw new ForbiddenException('You can only renew your own books');
+    }
+
     if (tx.renewalCount >= MAX_RENEWALS)
       throw new BadRequestException(
         `Maximum of ${MAX_RENEWALS} renewals reached`,
       );
 
-    const newDue = addDays(parseISO(tx.dueDate), this.borrowDays);
+    let newDue = addDays(parseISO(tx.dueDate), this.borrowDays);
+    if (dto.dueDate) {
+      const parsed = parseISO(dto.dueDate);
+      if (!isNaN(parsed.getTime())) {
+        newDue = parsed;
+      }
+    }
+
     tx.dueDate = newDue.toISOString().split('T')[0];
     tx.renewalCount += 1;
     tx.transactionType = TransactionType.RENEWAL;
@@ -178,15 +226,16 @@ export class TransactionsService {
 
   // ─── GET USER TRANSACTIONS ────────────────────────────────────────────────────
   async findByUser(userId: number): Promise<Transaction[]> {
-    return this.txRepo.find({
+    const txs = await this.txRepo.find({
       where: { user: { id: userId } },
       relations: ['bookCopy', 'bookCopy.book', 'bookCopy.book.category'],
       order: { createdAt: 'DESC' },
     });
+    return txs.map((tx) => this._applyDynamicOverdue(tx));
   }
 
   async findActiveByUser(userId: number): Promise<Transaction[]> {
-    return this.txRepo.find({
+    const txs = await this.txRepo.find({
       where: [
         { user: { id: userId }, status: TransactionStatus.ACTIVE },
         { user: { id: userId }, status: TransactionStatus.OVERDUE },
@@ -194,6 +243,7 @@ export class TransactionsService {
       relations: ['bookCopy', 'bookCopy.book', 'bookCopy.book.category'],
       order: { dueDate: 'ASC' },
     });
+    return txs.map((tx) => this._applyDynamicOverdue(tx));
   }
 
   // ─── FIND BY ID ───────────────────────────────────────────────────────────────
@@ -209,18 +259,21 @@ export class TransactionsService {
       ],
     });
     if (!tx) throw new NotFoundException(`Transaction ${id} not found`);
-    return tx;
+    return this._applyDynamicOverdue(tx);
   }
 
   // ─── GET ALL OVERDUES ────────────────────────────────────────────────────────
   async findAllOverdue(): Promise<Transaction[]> {
-    return this.txRepo.find({
+    const txs = await this.txRepo.find({
       where: [
         { status: TransactionStatus.ACTIVE },
         { status: TransactionStatus.OVERDUE },
       ],
       relations: ['user', 'bookCopy', 'bookCopy.book'],
     });
+    return txs
+      .map((tx) => this._applyDynamicOverdue(tx))
+      .filter((tx) => tx.status === TransactionStatus.OVERDUE);
   }
 
   // ─── LIFT SUSPENSION if no more overdue items ─────────────────────────────────
@@ -237,10 +290,11 @@ export class TransactionsService {
 
   // ─── GET ALL HISTORY ────────────────────────────────────────────────────────
   async findAllHistory(): Promise<Transaction[]> {
-    return this.txRepo.find({
+    const txs = await this.txRepo.find({
       relations: ['user', 'bookCopy', 'bookCopy.book', 'librarian'],
       order: { createdAt: 'DESC' },
     });
+    return txs.map((tx) => this._applyDynamicOverdue(tx));
   }
 
   // ─── DASHBOARD STATS ─────────────────────────────────────────────────────────
@@ -255,5 +309,20 @@ export class TransactionsService {
         .getCount(),
     ]);
     return { active, overdue, returnedToday };
+  }
+
+  private _applyDynamicOverdue(tx: Transaction): Transaction {
+    if (tx.status === TransactionStatus.ACTIVE) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (tx.dueDate < todayStr) {
+        const today = new Date();
+        const due = parseISO(tx.dueDate);
+        const overdueDays = Math.max(0, differenceInDays(today, due));
+        tx.status = TransactionStatus.OVERDUE;
+        tx.overdueDays = overdueDays;
+        tx.fineAmount = overdueDays * this.finePerDay;
+      }
+    }
+    return tx;
   }
 }

@@ -49,7 +49,8 @@ export class UsersController {
       storage: diskStorage({
         destination: './uploads/profiles',
         filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, uniqueSuffix + extname(file.originalname));
         },
       }),
@@ -88,6 +89,8 @@ export class UsersController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('approvalStatus') approvalStatus?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'ASC' | 'DESC',
   ) {
     return this.usersService.findAll(
       search,
@@ -95,6 +98,8 @@ export class UsersController {
       page ? Number(page) : 1,
       limit ? Number(limit) : 10,
       approvalStatus,
+      sortBy,
+      sortOrder,
     );
   }
 
@@ -114,13 +119,17 @@ export class UsersController {
       storage: diskStorage({
         destination: './uploads/profiles',
         filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, uniqueSuffix + extname(file.originalname));
         },
       }),
     }),
   )
-  create(@Body() dto: CreateUserDto, @UploadedFile() file?: Express.Multer.File) {
+  create(
+    @Body() dto: CreateUserDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
     if (file) {
       dto.profilePhotoUrl = `${process.env.BACKEND_URL || 'http://localhost:3000'}/uploads/profiles/${file.filename}`;
     }
@@ -135,7 +144,8 @@ export class UsersController {
       storage: diskStorage({
         destination: './uploads/profiles',
         filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, uniqueSuffix + extname(file.originalname));
         },
       }),
@@ -145,7 +155,7 @@ export class UsersController {
     @Request() req: AuthReq,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateUserDto,
-    @UploadedFile() file?: Express.Multer.File
+    @UploadedFile() file?: Express.Multer.File,
   ) {
     if (file) {
       dto.profilePhotoUrl = `${process.env.BACKEND_URL || 'http://localhost:3000'}/uploads/profiles/${file.filename}`;

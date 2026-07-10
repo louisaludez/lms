@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/api/axios'
 import { ArrowLeftIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/vue/24/outline'
@@ -8,6 +8,18 @@ const router = useRouter()
 const barcodeInput = ref<HTMLInputElement | null>(null)
 const scanValue = ref('')
 const scanning = ref(false)
+
+// Set your exact ID length here (e.g., 12 characters: LUM-XXXXXXXX)
+const REQUIRED_ID_LENGTH = 12
+
+watch(scanValue, (newVal) => {
+  if (!newVal || scanning.value) return
+
+  // Instantly submit when the required length is reached
+  if (newVal.length >= REQUIRED_ID_LENGTH) {
+    processScan()
+  }
+})
 
 const result = ref<{
   type: 'success' | 'error',
@@ -46,7 +58,7 @@ async function processScan() {
     
     result.value = {
       type: 'success',
-      message: data.entryType === 'entry' ? 'Welcome to the Library!' : 'Goodbye! Have a great day!',
+      message: data.entryType === 'entry' ? 'You have successfully logged in.' : 'You have successfully logged out.',
       userName: `${data.user.firstName} ${data.user.lastName}`,
       entryType: data.entryType
     }
@@ -60,10 +72,10 @@ async function processScan() {
     scanning.value = false
     nextTick(focusInput)
     
-    // Clear result after 3 seconds
+    // Clear result after 2.5 seconds
     resultTimeout = window.setTimeout(() => {
       result.value = null
-    }, 4000)
+    }, 2500)
   }
 }
 </script>
@@ -71,7 +83,7 @@ async function processScan() {
 <template>
   <div class="min-h-screen bg-[#061222] flex flex-col items-center justify-center relative overflow-hidden">
     <!-- Top-left back button -->
-    <button @click="router.push('/dashboard/attendance')" class="absolute top-8 left-8 text-slate-400 hover:text-white transition flex items-center gap-2">
+    <button @click="router.push('/dashboard/attendance')" tabindex="-1" class="absolute top-8 left-8 text-slate-400 hover:text-white transition flex items-center gap-2">
       <ArrowLeftIcon class="w-6 h-6" />
       <span class="font-medium">Exit Kiosk</span>
     </button>
@@ -101,34 +113,38 @@ async function processScan() {
             class="w-full bg-[#123249]/50 border-2 border-[#447794]/30 text-white placeholder-slate-500 rounded-2xl px-6 py-4 text-center text-xl font-mono focus:outline-none focus:border-[#447794] focus:ring-4 focus:ring-[#447794]/20 transition-all shadow-inner"
             autocomplete="off"
             autofocus
-            :disabled="scanning"
+            :readonly="scanning"
           />
           <button type="submit" class="hidden">Submit</button>
         </form>
       </div>
     </div>
 
-    <!-- Floating Modal Popup for Result -->
+    <!-- Floating Brief Toast for Result -->
     <transition name="modal-bounce">
-      <div v-if="result" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#061222]/80 backdrop-blur-sm">
-        <div class="bg-[#0b1f33] border border-white/10 rounded-3xl p-10 max-w-md w-full text-center shadow-2xl shadow-black/50 transform transition-all">
+      <div v-if="result" class="fixed top-10 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+        <div class="bg-[#0b1f33] border border-white/10 rounded-2xl p-5 flex items-center gap-5 shadow-2xl shadow-black/50 min-w-[380px]">
           
-          <div v-if="result.type === 'success'" class="space-y-4">
-            <div :class="['w-24 h-24 mx-auto rounded-full flex items-center justify-center shadow-xl', 
+          <template v-if="result.type === 'success'">
+            <div :class="['w-14 h-14 rounded-full flex items-center justify-center shadow-lg', 
                 result.entryType === 'entry' ? 'shadow-emerald-500/20 bg-emerald-500/10 text-emerald-400' : 'shadow-blue-500/20 bg-blue-500/10 text-blue-400']">
-              <CheckCircleIcon class="w-16 h-16" />
+              <CheckCircleIcon class="w-8 h-8" />
             </div>
-            <h2 class="text-3xl font-bold text-white mt-6 tracking-tight">{{ result.userName }}</h2>
-            <p :class="['font-medium text-xl mt-2', result.entryType === 'entry' ? 'text-emerald-400' : 'text-blue-400']">{{ result.message }}</p>
-          </div>
+            <div class="text-left flex-1">
+              <h2 class="text-lg font-bold text-white tracking-tight">{{ result.userName }}</h2>
+              <p :class="['font-medium text-sm mt-0.5', result.entryType === 'entry' ? 'text-emerald-400' : 'text-blue-400']">{{ result.message }}</p>
+            </div>
+          </template>
 
-          <div v-else class="space-y-4">
-            <div class="w-24 h-24 mx-auto rounded-full flex items-center justify-center shadow-xl shadow-rose-500/20 bg-rose-500/10 text-rose-500">
-              <XCircleIcon class="w-16 h-16" />
+          <template v-else>
+            <div class="w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-rose-500/20 bg-rose-500/10 text-rose-500">
+              <XCircleIcon class="w-8 h-8" />
             </div>
-            <h2 class="text-3xl font-bold text-white mt-6 tracking-tight">Scan Failed</h2>
-            <p class="text-rose-400 font-medium text-lg mt-2">{{ result.message }}</p>
-          </div>
+            <div class="text-left flex-1">
+              <h2 class="text-lg font-bold text-white tracking-tight">Scan Failed</h2>
+              <p class="text-rose-400 font-medium text-sm mt-0.5">{{ result.message }}</p>
+            </div>
+          </template>
 
         </div>
       </div>
