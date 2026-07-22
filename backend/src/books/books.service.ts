@@ -283,7 +283,8 @@ export class BooksService {
   async findAll(search?: string, categoryId?: number, page: number = 1, limit: number = 10, sortBy?: string, sortOrder: 'ASC' | 'DESC' = 'DESC'): Promise<PaginatedBooks> {
     const qb = this.bookRepo
       .createQueryBuilder('book')
-      .leftJoinAndSelect('book.category', 'category');
+      .leftJoinAndSelect('book.category', 'category')
+      .leftJoinAndSelect('book.copies', 'copies');
 
     if (sortBy === 'title') {
       qb.orderBy('book.title', sortOrder);
@@ -295,7 +296,7 @@ export class BooksService {
 
     if (search) {
       qb.andWhere(
-        '(book.title LIKE :s OR book.isbn LIKE :s OR book.callNumber LIKE :s)',
+        '(book.title LIKE :s OR book.otherTitle LIKE :s OR book.isbn LIKE :s OR book.callNumber LIKE :s OR EXISTS (SELECT 1 FROM book_authors ba JOIN authors a ON a.id = ba.author_id WHERE ba.book_id = book.id AND a.full_name LIKE :s) OR EXISTS (SELECT 1 FROM book_copies bc WHERE bc.book_id = book.id AND bc.barcode LIKE :s))',
         { s: `%${search}%` },
       );
     }

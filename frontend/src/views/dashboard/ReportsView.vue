@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import api from '@/api/axios'
-import { PrinterIcon, DocumentTextIcon, UserGroupIcon, BookOpenIcon, CheckCircleIcon, ExclamationCircleIcon, ClipboardDocumentListIcon, SparklesIcon, ArrowPathIcon, FunnelIcon } from '@heroicons/vue/24/outline'
+import { PrinterIcon, DocumentTextIcon, UserGroupIcon, BookOpenIcon, CheckCircleIcon, ExclamationCircleIcon, ClipboardDocumentListIcon, SparklesIcon, ArrowPathIcon, FunnelIcon, BuildingOfficeIcon } from '@heroicons/vue/24/outline'
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js'
+import { Bar } from 'vue-chartjs'
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 
 const currentYear = new Date().getFullYear().toString()
 
@@ -17,6 +21,7 @@ const departments = [
 
 const reportTypes = [
   'Library Entry and Exit',
+  'Department Library Entry',
   'Books Borrowed',
   'Books Returned',
   'Overdue Books',
@@ -47,6 +52,46 @@ const printType = ref<string>('')
 const printParams = ref<any>({})
 const isFetching = ref(false)
 
+const reportBarChartData = computed(() => {
+  if (!printData.value || !Array.isArray(printData.value)) return null
+  const labels = printData.value.map((d: any) => d.code || d.name)
+  const counts = printData.value.map((d: any) => Number(d.entryCount || 0))
+  return {
+    labels,
+    datasets: [{
+      label: 'Library Entries',
+      data: counts,
+      backgroundColor: '#447794',
+      borderRadius: 6,
+      maxBarThickness: 48,
+    }]
+  }
+})
+
+const reportBarChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+      padding: 12,
+      cornerRadius: 8
+    }
+  },
+  scales: {
+    x: {
+      grid: { display: false },
+      ticks: { font: { family: "'Inter', sans-serif", size: 12, weight: 'bold' as const }, color: '#64748b' }
+    },
+    y: {
+      beginAtZero: true,
+      ticks: { precision: 0, font: { family: "'Inter', sans-serif", size: 11 }, color: '#94a3b8' },
+      grid: { color: '#f1f5f9' }
+    }
+  }
+}
+
 async function viewReport(reportName: string, parameters: any = {}) {
   try {
     isFetching.value = true;
@@ -57,6 +102,8 @@ async function viewReport(reportName: string, parameters: any = {}) {
     let res;
     if (reportName === 'Library Entry and Exit') {
       res = await api.get('/reports/entry-exit', { params: parameters })
+    } else if (reportName === 'Department Library Entry') {
+      res = await api.get('/reports/department-entry')
     } else if (reportName === 'Books Borrowed') {
       res = await api.get('/reports/borrowed', { params: parameters })
     } else if (reportName === 'Books Returned') {
@@ -209,6 +256,31 @@ function triggerPrint() {
              <span v-if="printParams.department">Department: {{ printParams.department }}</span>
              <span v-if="printParams.year">Year: {{ printParams.year }}</span>
           </div>
+        </div>
+
+        <!-- Department Library Entry -->
+        <div v-if="printType === 'Department Library Entry'" class="space-y-8">
+          <div class="h-64 w-full max-w-3xl mx-auto bg-slate-50/50 p-4 rounded-2xl border border-slate-200">
+            <Bar v-if="reportBarChartData" :data="reportBarChartData" :options="reportBarChartOptions" />
+          </div>
+
+          <table class="w-full text-left border-collapse text-sm print:text-base print-table min-w-[600px]">
+            <thead>
+              <tr class="bg-slate-100 border-b-2 border-slate-300 text-slate-700">
+                <th class="py-3 px-4">Department Code</th>
+                <th class="py-3 px-4">Department Name</th>
+                <th class="py-3 px-4 text-right">Total Library Entries</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, idx) in printData" :key="idx" class="border-b border-slate-200 hover:bg-slate-50">
+                <td class="py-3 px-4 font-bold text-slate-800">{{ row.code || 'N/A' }}</td>
+                <td class="py-3 px-4 font-medium">{{ row.name }}</td>
+                <td class="py-3 px-4 text-right font-bold text-[#447794]">{{ row.entryCount }}</td>
+              </tr>
+              <tr v-if="!printData || !printData.length"><td colspan="3" class="py-8 text-center text-slate-500 italic border-b border-slate-200">No department attendance data found.</td></tr>
+            </tbody>
+          </table>
         </div>
 
         <!-- Entry Exit -->

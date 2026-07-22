@@ -15,8 +15,16 @@ export class CreateBorrowRequestDto {
 
 /** Faculty creates an acquisition request for a new book */
 export class CreateAcquisitionRequestDto {
+  @IsOptional()
+  @IsString()
+  itemType?: string;
+
   @IsString()
   title: string;
+
+  @IsOptional()
+  @IsString()
+  otherTitle?: string;
 
   @IsOptional()
   @IsString()
@@ -28,7 +36,41 @@ export class CreateAcquisitionRequestDto {
 
   @IsOptional()
   @IsString()
+  issn?: string;
+
+  @IsOptional()
+  @IsString()
+  callNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  edition?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  publishYear?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  categoryId?: number;
+
+  @IsOptional()
+  @IsString()
   publisher?: string;
+
+  @IsOptional()
+  @IsString()
+  language?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  locationShelf?: string;
 
   @IsString()
   reason: string;

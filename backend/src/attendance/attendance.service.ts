@@ -18,6 +18,24 @@ export class ScanAttendanceDto {
   purpose?: string;
 }
 
+export class GetLogsQueryDto {
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @IsOptional()
+  @IsString()
+  endDate?: string;
+
+  @IsOptional()
+  @IsEnum(EntryType)
+  entryType?: EntryType;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
+}
+
 @Injectable()
 export class AttendanceService {
   constructor(
@@ -64,34 +82,82 @@ export class AttendanceService {
     return this.logRepo.save(log);
   }
 
-  async getTodayLogs(): Promise<AttendanceLog[]> {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
+  private buildFilterQuery(dto: GetLogsQueryDto) {
+    const qb = this.logRepo
+      .createQueryBuilder('log')
+      .leftJoinAndSelect('log.user', 'user')
+      .leftJoinAndSelect('user.department', 'department');
 
-    return this.logRepo.find({
-      where: { scannedAt: Between(start, end) },
-      relations: ['user', 'user.department'],
-      order: { scannedAt: 'DESC' },
-    });
+    if (dto.startDate && dto.startDate.trim() !== '') {
+      const start = new Date(dto.startDate);
+      start.setHours(0, 0, 0, 0);
+      qb.andWhere('log.scannedAt >= :start', { start });
+    }
+
+    if (dto.endDate && dto.endDate.trim() !== '') {
+      const end = new Date(dto.endDate);
+      end.setHours(23, 59, 59, 999);
+      qb.andWhere('log.scannedAt <= :end', { end });
+    }
+
+    if (dto.entryType) {
+      qb.andWhere('log.entryType = :entryType', { entryType: dto.entryType });
+    }
+
+    if (dto.search && dto.search.trim() !== '') {
+      const s = `%${dto.search.trim()}%`;
+      qb.andWhere(
+        '(user.firstName LIKE :s OR user.lastName LIKE :s OR user.barcode LIKE :s OR user.email LIKE :s OR department.name LIKE :s OR department.code LIKE :s)',
+        { s },
+      );
+    }
+
+    return qb;
   }
 
-  async getTodayCount(): Promise<{ entries: number; exits: number }> {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
+  async getLogs(dto: GetLogsQueryDto = {}): Promise<AttendanceLog[]> {
+    const qb = this.buildFilterQuery(dto);
+    qb.orderBy('log.scannedAt', 'DESC');
+    return qb.getMany();
+  }
+
+  async getStats(
+    dto: GetLogsQueryDto = {},
+  ): Promise<{ entries: number; exits: number; total: number }> {
+    const qb = this.buildFilterQuery(dto);
+
+    const entriesQb = qb
+      .clone()
+      .andWhere('log.entryType = :type', { type: EntryType.ENTRY });
+    const exitsQb = qb
+      .clone()
+      .andWhere('log.entryType = :type', { type: EntryType.EXIT });
 
     const [entries, exits] = await Promise.all([
-      this.logRepo.count({
-        where: { scannedAt: Between(start, end), entryType: EntryType.ENTRY },
-      }),
-      this.logRepo.count({
-        where: { scannedAt: Between(start, end), entryType: EntryType.EXIT },
-      }),
+      entriesQb.getCount(),
+      exitsQb.getCount(),
     ]);
 
-    return { entries, exits };
+    return { entries, exits, total: entries + exits };
+  }
+
+  async getTodayLogs(queryDto: GetLogsQueryDto = {}): Promise<AttendanceLog[]> {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const dto = {
+      startDate: queryDto.startDate || todayStr,
+      endDate: queryDto.endDate || todayStr,
+      ...queryDto,
+    };
+    return this.getLogs(dto);
+  }
+
+  async getTodayCount(queryDto: GetLogsQueryDto = {}): Promise<{ entries: number; exits: number; total: number }> {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const dto = {
+      startDate: queryDto.startDate || todayStr,
+      endDate: queryDto.endDate || todayStr,
+      ...queryDto,
+    };
+    return this.getStats(dto);
   }
 }

@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useLibraryStore, useAuthStore } from '@/stores/useLibraryStore'
-import { MagnifyingGlassIcon, FunnelIcon, BookOpenIcon, XMarkIcon, UserCircleIcon } from '@heroicons/vue/24/outline'
-import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/vue/24/solid'
+import { useLibraryStore } from '@/stores/useLibraryStore'
+import { MagnifyingGlassIcon, FunnelIcon, BookOpenIcon, XMarkIcon, CheckIcon } from '@heroicons/vue/24/outline'
+import { CheckCircleIcon } from '@heroicons/vue/24/solid'
 import NavBar from '@/components/NavBar.vue'
 
 const router = useRouter()
 const store = useLibraryStore()
-const auth = useAuthStore()
 
 const searchInput = ref('')
 const showFilters = ref(false)
@@ -46,8 +45,6 @@ function handleItemTypeSelect(type: string | null) {
 const groupedBooks = computed(() => {
   const groups: Record<string, typeof store.books> = {}
   store.books.forEach(b => {
-    // b.itemType exists on the entity, but Book interface in store might need it added.
-    // It's returned by the backend by default since it's a column.
     const type = (b as any).itemType || 'BOOKS'
     if (!groups[type]) groups[type] = []
     groups[type].push(b)
@@ -68,27 +65,31 @@ function clearSearch() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50">
+  <div class="min-h-screen bg-[#F7F5F0] dark:bg-[#0F172A] transition-colors duration-200">
     <NavBar />
 
-    <!-- Hero Banner -->
-    <div class="bg-gradient-to-br from-[#123249] via-[#1a3f5c] to-[#447794] py-8 sm:py-14 px-4 sm:px-6">
-      <div class="max-w-4xl mx-auto text-center text-white">
-        <div class="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 mb-4">
-          <BookOpenIcon class="w-8 h-8 sm:w-10 sm:h-10 text-[#80b3ce]" />
-          <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">Lumina Library Catalog</h1>
+    <!-- Hero Search Section -->
+    <div class="py-10 sm:py-14 px-4 sm:px-6">
+      <div class="max-w-4xl mx-auto text-center">
+        <!-- Main Title & Subtitle -->
+        <div class="flex items-center justify-center gap-3 mb-2">
+          <BookOpenIcon class="w-8 h-8 sm:w-9 sm:h-9 text-[#6B131D] dark:text-rose-400" />
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-[#6B131D] dark:text-rose-400 tracking-tight">
+            Lumina Library Catalog
+          </h1>
         </div>
-        <p class="text-[#aed0e2] text-sm sm:text-base mb-6 sm:mb-8 max-w-lg mx-auto sm:max-w-none">
+        <p class="text-[#6B7280] dark:text-slate-400 text-sm sm:text-base mb-8 max-w-xl mx-auto">
           Search thousands of books, check availability, and manage your borrowings.
         </p>
 
-        <!-- Search Bar -->
-        <div class="relative max-w-3xl mx-auto flex flex-col sm:flex-row shadow-xl rounded-2xl bg-white focus-within:ring-2 focus-within:ring-[#447794]/60 transition-shadow">
-          <div class="relative w-full sm:w-auto">
+        <!-- Search Bar Surface (#FFFFFF / dark:bg-[#1E293B]) -->
+        <div class="relative max-w-3xl mx-auto flex flex-col sm:flex-row shadow-md rounded-2xl bg-[#FFFFFF] dark:bg-[#1E293B] border border-slate-200/80 dark:border-slate-700/70 overflow-hidden focus-within:ring-2 focus-within:ring-[#6B131D]/40 dark:focus-within:ring-rose-500/40 transition-all">
+          <!-- Dropdown container (#ECEBE8 / dark:bg-[#283548]) -->
+          <div class="relative w-full sm:w-auto bg-[#ECEBE8] dark:bg-[#283548]">
             <select
               v-model="store.searchBy"
               @change="store.searchBooks(1)"
-              class="w-full sm:w-auto h-full pl-5 pr-10 py-3 sm:py-4 rounded-t-2xl sm:rounded-none sm:rounded-l-2xl text-sm font-semibold text-slate-700 bg-slate-50 border-b sm:border-b-0 sm:border-r border-slate-200 focus:outline-none cursor-pointer appearance-none hover:bg-slate-100 transition-colors"
+              class="w-full sm:w-auto h-full pl-5 pr-10 py-3 sm:py-3.5 text-sm font-semibold text-[#1F2937] dark:text-slate-100 bg-transparent focus:outline-none cursor-pointer appearance-none border-b sm:border-b-0 sm:border-r border-slate-300/70 dark:border-slate-700"
             >
               <option value="all">All Fields</option>
               <option value="title">Title</option>
@@ -96,244 +97,273 @@ function clearSearch() {
               <option value="isbn">ISBN</option>
               <option value="callNumber">Call Number</option>
             </select>
-            <!-- Custom chevron for select -->
-            <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            <!-- Custom chevron icon -->
+            <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#6B7280] dark:text-slate-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
             </div>
           </div>
 
-          <div class="relative flex-1">
-            <MagnifyingGlassIcon class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 z-10" />
+          <!-- Input field -->
+          <div class="relative flex-1 bg-[#FFFFFF] dark:bg-[#1E293B]">
+            <MagnifyingGlassIcon class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#6B7280] dark:text-slate-400" />
             <input
               id="opac-search"
               v-model="searchInput"
               type="search"
-              placeholder="Enter search term..."
-              class="w-full h-full pl-12 pr-12 py-3 sm:py-4 rounded-b-2xl sm:rounded-none sm:rounded-r-2xl text-slate-800 text-sm sm:text-base font-medium focus:outline-none bg-transparent"
+              placeholder="Enter search terms..."
+              class="w-full h-full pl-12 pr-12 py-3 sm:py-3.5 text-[#1F2937] dark:text-slate-100 text-sm sm:text-base font-medium focus:outline-none bg-transparent placeholder-[#6B7280] dark:placeholder-slate-400"
             />
             <button
               v-if="searchInput"
               @click="clearSearch"
-              class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              class="absolute right-4 top-1/2 -translate-y-1/2 text-[#6B7280] dark:text-slate-400 hover:text-[#1F2937] dark:hover:text-slate-100 transition-colors"
             >
               <XMarkIcon class="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        <!-- Quick stats -->
-        <div class="flex flex-wrap justify-center gap-3 sm:gap-8 mt-6 sm:mt-8 text-xs sm:text-sm text-[#aed0e2]">
-          <span>📚 {{ store.totalBooks.toLocaleString() }} books found</span>
-          <span>✅ Available Now</span>
-          <span>🔖 Reserve Online</span>
+        <!-- 3 Quick Status Pills -->
+        <div class="flex flex-wrap justify-center items-center gap-2.5 sm:gap-4 mt-6 text-xs sm:text-sm font-semibold">
+          <!-- Steel Blue Pill (#3880C3) -->
+          <span class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#3880C3] text-white shadow-xs">
+            {{ store.totalBooks.toLocaleString() }} books found
+          </span>
+
+          <!-- Emerald Green Pill (#38A169) -->
+          <span class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#38A169] text-white shadow-xs">
+            <CheckIcon class="w-4 h-4 stroke-[3]" /> Available Now
+          </span>
+
+          <!-- Deep Burgundy Pill (#6B131D) -->
+          <span class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#6B131D] text-white shadow-xs">
+            <CheckIcon class="w-4 h-4 stroke-[3]" /> Reserve Online
+          </span>
         </div>
       </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col lg:flex-row gap-6">
+    <!-- Main Content Area -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 pb-12 flex flex-col lg:flex-row gap-6">
 
-      <!-- Sidebar Filters -->
+      <!-- Sidebar Filters Container (#ECEBE8 / dark:bg-[#1E293B]) -->
       <aside :class="['w-full lg:w-64 flex-shrink-0', showFilters ? 'block' : 'hidden lg:block']">
-        <div class="card p-4 sm:p-5 lg:sticky lg:top-6 mb-2 lg:mb-0">
-          <div class="flex items-center gap-2 mb-4">
-            <FunnelIcon class="w-4 h-4 text-[#447794]" />
-            <h2 class="font-semibold text-slate-700 text-sm">Filters</h2>
+        <div class="bg-[#ECEBE8] dark:bg-[#1E293B] rounded-2xl p-5 border border-slate-300/60 dark:border-slate-700/60 lg:sticky lg:top-20 transition-colors">
+          <div class="flex items-center gap-2 mb-5 text-[#1F2937] dark:text-slate-100">
+            <FunnelIcon class="w-4 h-4 text-[#6B7280] dark:text-slate-400" />
+            <h2 class="font-bold text-sm tracking-wide">Filters</h2>
           </div>
 
-          <!-- Availability -->
-          <div class="mb-5">
-            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Availability</p>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input
-                v-model="store.availableOnly"
-                @change="handleFilterChange"
-                type="checkbox"
-                class="w-4 h-4 accent-[#447794]"
-              />
-              <span class="text-sm text-slate-700">Available only</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer mt-2">
-              <input
-                v-model="store.excludeReference"
-                @change="handleFilterChange"
-                type="checkbox"
-                class="w-4 h-4 accent-[#447794]"
-              />
-              <span class="text-sm text-slate-700">Exclude reference</span>
-            </label>
+          <!-- Availability Checkboxes -->
+          <div class="mb-6">
+            <p class="text-[11px] font-bold text-[#6B7280] dark:text-slate-400 uppercase tracking-wider mb-2.5">AVAILABILITY</p>
+            <div class="space-y-2">
+              <label class="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  v-model="store.availableOnly"
+                  @change="handleFilterChange"
+                  type="checkbox"
+                  class="w-4 h-4 accent-[#6B131D] dark:accent-rose-500 rounded border-slate-300 dark:border-slate-600"
+                />
+                <span class="text-sm text-[#1F2937] dark:text-slate-200">Available only</span>
+              </label>
+              <label class="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  v-model="store.excludeReference"
+                  @change="handleFilterChange"
+                  type="checkbox"
+                  class="w-4 h-4 accent-[#6B131D] dark:accent-rose-500 rounded border-slate-300 dark:border-slate-600"
+                />
+                <span class="text-sm text-[#1F2937] dark:text-slate-200">Exclude reference</span>
+              </label>
+            </div>
           </div>
 
-          <!-- Publish Year -->
-          <div class="mb-5">
-            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Publish Year</p>
+          <!-- Publish Year Inputs -->
+          <div class="mb-6">
+            <p class="text-[11px] font-bold text-[#6B7280] dark:text-slate-400 uppercase tracking-wider mb-2.5">PUBLISH YEAR</p>
             <div class="flex gap-2">
               <input 
                 v-model="store.publishYearStart" 
                 @change="handleFilterChange" 
                 type="number" 
                 placeholder="From" 
-                class="input w-full text-sm"
+                class="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#283548] border border-slate-200 dark:border-slate-700 text-xs text-[#1F2937] dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#6B131D] dark:focus:ring-rose-500 placeholder-slate-400 dark:placeholder-slate-500"
               />
               <input 
                 v-model="store.publishYearEnd" 
                 @change="handleFilterChange" 
                 type="number" 
                 placeholder="To" 
-                class="input w-full text-sm"
+                class="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#283548] border border-slate-200 dark:border-slate-700 text-xs text-[#1F2937] dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#6B131D] dark:focus:ring-rose-500 placeholder-slate-400 dark:placeholder-slate-500"
               />
             </div>
           </div>
 
-          <!-- Item Types -->
-          <div class="mb-5">
-            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Item Type</p>
-            <button
-              @click="handleItemTypeSelect(null)"
-              :class="['w-full text-left px-3 py-2 rounded-lg text-sm transition-colors mb-1',
-                store.selectedItemType === null
-                  ? 'bg-[#447794] text-white font-medium'
-                  : 'text-slate-600 hover:bg-slate-100']"
-            >
-              All Types
-            </button>
-            <button
-              v-for="type in itemTypes"
-              :key="type"
-              @click="handleItemTypeSelect(type)"
-              :class="['w-full text-left px-3 py-2 rounded-lg text-sm transition-colors mb-1',
-                store.selectedItemType === type
-                  ? 'bg-[#447794] text-white font-medium'
-                  : 'text-slate-600 hover:bg-slate-100']"
-            >
-              {{ type }}
-            </button>
+          <!-- Item Type Selector -->
+          <div class="mb-6">
+            <p class="text-[11px] font-bold text-[#6B7280] dark:text-slate-400 uppercase tracking-wider mb-2.5">ITEM TYPE</p>
+            <div class="space-y-1">
+              <button
+                @click="handleItemTypeSelect(null)"
+                :class="['w-full text-left px-3 py-2 rounded-xl text-xs transition-colors font-medium cursor-pointer',
+                  store.selectedItemType === null
+                    ? 'bg-[#6B131D] text-white font-semibold shadow-xs'
+                    : 'text-[#1F2937] dark:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-800/60']"
+              >
+                All Types
+              </button>
+              <button
+                v-for="type in itemTypes"
+                :key="type"
+                @click="handleItemTypeSelect(type)"
+                :class="['w-full text-left px-3 py-2 rounded-xl text-xs transition-colors font-medium cursor-pointer',
+                  store.selectedItemType === type
+                    ? 'bg-[#6B131D] text-white font-semibold shadow-xs'
+                    : 'text-[#1F2937] dark:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-800/60']"
+              >
+                {{ type }}
+              </button>
+            </div>
           </div>
 
-          <!-- Categories -->
+          <!-- Category Selector -->
           <div>
-            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Genre / Category</p>
-            <button
-              @click="handleCategorySelect(null)"
-              :class="['w-full text-left px-3 py-2 rounded-lg text-sm transition-colors mb-1',
-                store.selectedCategory === null
-                  ? 'bg-[#447794] text-white font-medium'
-                  : 'text-slate-600 hover:bg-slate-100']"
-            >
-              All Categories
-            </button>
-            <button
-              v-for="cat in store.categories"
-              :key="cat.id"
-              @click="handleCategorySelect(cat.id)"
-              :class="['w-full text-left px-3 py-2 rounded-lg text-sm transition-colors mb-1',
-                store.selectedCategory === cat.id
-                  ? 'bg-[#447794] text-white font-medium'
-                  : 'text-slate-600 hover:bg-slate-100']"
-            >
-              {{ cat.name }}
-            </button>
+            <p class="text-[11px] font-bold text-[#6B7280] dark:text-slate-400 uppercase tracking-wider mb-2.5">GENRE / CATEGORY</p>
+            <div class="space-y-1 max-h-48 overflow-y-auto pr-1">
+              <button
+                @click="handleCategorySelect(null)"
+                :class="['w-full text-left px-3 py-2 rounded-xl text-xs transition-colors font-medium cursor-pointer',
+                  store.selectedCategory === null
+                    ? 'bg-[#6B131D] text-white font-semibold shadow-xs'
+                    : 'text-[#1F2937] dark:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-800/60']"
+              >
+                All Categories
+              </button>
+              <button
+                v-for="cat in store.categories"
+                :key="cat.id"
+                @click="handleCategorySelect(cat.id)"
+                :class="['w-full text-left px-3 py-2 rounded-xl text-xs transition-colors font-medium cursor-pointer',
+                  store.selectedCategory === cat.id
+                    ? 'bg-[#6B131D] text-white font-semibold shadow-xs'
+                    : 'text-[#1F2937] dark:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-800/60']"
+              >
+                {{ cat.name }}
+              </button>
+            </div>
           </div>
         </div>
       </aside>
 
-      <!-- Books Grid -->
+      <!-- Books Results Area -->
       <div class="flex-1 min-w-0">
 
-        <!-- Result bar -->
-        <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
-          <p class="text-sm text-slate-500">
-            Showing <span class="font-semibold text-slate-700">{{ store.books.length }}</span> of
-            <span class="font-semibold text-slate-700">{{ store.totalBooks }}</span> results
-            <span v-if="store.searchQuery"> for <em>"{{ store.searchQuery }}"</em></span>
+        <!-- Results Counter Bar -->
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <p class="text-xs sm:text-sm text-[#6B7280] dark:text-slate-400">
+            Showing <span class="font-bold text-[#1F2937] dark:text-slate-100">{{ store.books.length }}</span> of
+            <span class="font-bold text-[#1F2937] dark:text-slate-100">{{ store.totalBooks }}</span> results
+            <span v-if="store.searchQuery"> for <em class="text-[#1F2937] dark:text-slate-100">"{{ store.searchQuery }}"</em></span>
           </p>
-          <!-- Mobile filters toggle -->
+          <!-- Mobile Filters Toggle -->
           <button
             @click="showFilters = !showFilters"
-            :class="['lg:hidden btn-ghost text-xs border border-slate-200', showFilters ? 'bg-slate-100' : '']"
+            :class="['lg:hidden px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-[#1F2937] dark:text-slate-200 bg-white dark:bg-[#1E293B] flex items-center gap-1.5', showFilters ? 'bg-slate-200 dark:bg-slate-800' : '']"
           >
             <FunnelIcon class="w-4 h-4" />{{ showFilters ? 'Hide Filters' : 'Show Filters' }}
           </button>
         </div>
 
-        <!-- Loading skeleton -->
-        <div v-if="store.loading" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
-          <div v-for="i in 12" :key="i" class="card p-4">
-            <div class="skeleton h-44 w-full mb-3" />
-            <div class="skeleton h-4 w-3/4 mb-2" />
-            <div class="skeleton h-3 w-1/2 mb-3" />
-            <div class="skeleton h-8 w-full rounded-xl" />
+        <!-- Skeleton Loading -->
+        <div v-if="store.loading" class="bg-white dark:bg-[#1E293B] rounded-2xl p-6 space-y-4 border border-slate-200/80 dark:border-slate-700/60">
+          <div v-for="i in 5" :key="i" class="flex gap-4 items-center animate-pulse">
+            <div class="w-10 h-14 bg-slate-200 dark:bg-slate-700 rounded" />
+            <div class="flex-1 space-y-2">
+              <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/3" />
+              <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/4" />
+            </div>
           </div>
         </div>
 
-        <!-- Books grouped by Item Type -->
-        <div v-else-if="store.books.length > 0" class="space-y-8">
-          <div v-for="(groupBooks, type) in groupedBooks" :key="type" class="card overflow-hidden">
-            <div class="bg-slate-50 px-5 py-4 border-b border-slate-100 flex items-center gap-3">
-              <h3 class="font-bold text-slate-800">{{ type }}</h3>
-              <span class="px-2.5 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 text-xs font-semibold">{{ groupBooks.length }} items</span>
+        <!-- Books List grouped by Item Type (Surface: #FFFFFF / dark:bg-[#1E293B]) -->
+        <div v-else-if="store.books.length > 0" class="space-y-6">
+          <div v-for="(groupBooks, type) in groupedBooks" :key="type" class="bg-[#FFFFFF] dark:bg-[#1E293B] rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs overflow-hidden transition-colors">
+            <!-- Header inside Content Card Container -->
+            <div class="bg-white dark:bg-[#1E293B] px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+              <h3 class="font-bold text-[#1F2937] dark:text-slate-100 text-base uppercase tracking-wider">{{ type }}</h3>
+              <span class="px-2.5 py-0.5 rounded-full bg-[#ECEBE8] dark:bg-[#283548] text-[#6B7280] dark:text-slate-300 text-xs font-semibold">
+                {{ groupBooks.length }} {{ groupBooks.length === 1 ? 'item' : 'items' }}
+              </span>
             </div>
             
             <div class="overflow-x-auto">
-              <table class="w-full text-left">
-                <thead class="bg-white border-b border-slate-100">
+              <table class="w-full text-left border-collapse">
+                <thead class="bg-white dark:bg-[#1E293B] border-b border-slate-100 dark:border-slate-800">
                   <tr>
-                    <th class="table-header px-5 py-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Title / Details</th>
-                    <th class="table-header px-5 py-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Category</th>
-                    <th class="table-header px-5 py-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Call Number</th>
-                    <th class="table-header px-5 py-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Availability</th>
+                    <th class="py-3 px-5 text-[11px] font-bold text-[#6B7280] dark:text-slate-400 uppercase tracking-wider">TITLE / DETAILS</th>
+                    <th class="py-3 px-5 text-[11px] font-bold text-[#6B7280] dark:text-slate-400 uppercase tracking-wider">CATEGORY</th>
+                    <th class="py-3 px-5 text-[11px] font-bold text-[#6B7280] dark:text-slate-400 uppercase tracking-wider">CALL NUMBER</th>
+                    <th class="py-3 px-5 text-[11px] font-bold text-[#6B7280] dark:text-slate-400 uppercase tracking-wider">AVAILABILITY</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-50">
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                   <tr
                     v-for="book in groupBooks"
                     :key="book.id"
                     @click="router.push({ name: 'BookDetail', params: { id: book.id } })"
-                    class="hover:bg-slate-50/70 transition-colors cursor-pointer group"
+                    class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
                   >
-                    <!-- Title / Details -->
-                    <td class="px-5 py-4">
+                    <!-- TITLE / DETAILS -->
+                    <td class="py-4 px-5">
                       <div class="flex items-center gap-4">
-                        <div class="w-10 h-14 bg-gradient-to-b from-[#1a3f5c] to-[#061222] rounded shadow-sm flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <!-- Book Cover Placeholder (#ECEBE8 / dark:bg-[#283548]) -->
+                        <div class="w-10 h-13 bg-[#ECEBE8] dark:bg-[#283548] rounded border border-slate-200/70 dark:border-slate-700/60 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-2xs">
                           <img v-if="book.coverImageUrl" :src="book.coverImageUrl" class="w-full h-full object-cover" />
-                          <BookOpenIcon v-else class="w-5 h-5 text-white/30" />
+                          <BookOpenIcon v-else class="w-5 h-5 text-[#6B7280] dark:text-slate-400" />
                         </div>
-                        <div class="min-w-0 max-w-[300px] lg:max-w-[400px]">
-                          <p class="font-semibold text-slate-800 text-sm group-hover:text-[#447794] transition-colors line-clamp-1">{{ book.title }}</p>
-                          <p v-if="book.authors?.length" class="text-xs text-slate-500 mt-0.5 truncate">{{ book.authors.join(', ') }}</p>
-                          <p class="text-[10px] text-slate-400 mt-1">
-                            {{ book.publishYear ?? '' }} <span v-if="book.publishYear && book.publisher">·</span> {{ book.publisher }}
+                        <div class="min-w-0 max-w-[280px] sm:max-w-[380px]">
+                          <p class="font-bold text-[#1F2937] dark:text-slate-100 text-sm group-hover:text-[#6B131D] dark:group-hover:text-rose-400 transition-colors line-clamp-1">
+                            {{ book.title }}
+                          </p>
+                          <p v-if="book.authors?.length" class="text-xs text-[#6B7280] dark:text-slate-400 mt-0.5 truncate">
+                            {{ book.authors.join(', ') }}
+                          </p>
+                          <p class="text-[11px] text-[#6B7280] dark:text-slate-400 mt-0.5">
+                            {{ book.publishYear ?? '' }} <span v-if="book.publishYear && book.publisher"> - </span> {{ book.publisher }}
                           </p>
                         </div>
                       </div>
                     </td>
                     
-                    <!-- Category -->
-                    <td class="px-5 py-4 whitespace-nowrap">
-                      <span v-if="book.category" class="inline-block px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-semibold">
+                    <!-- CATEGORY -->
+                    <td class="py-4 px-5 whitespace-nowrap">
+                      <span v-if="book.category" class="inline-block px-2.5 py-1 rounded-full bg-[#ECEBE8] dark:bg-[#283548] text-[#1F2937] dark:text-slate-200 text-[10px] font-semibold">
                         {{ book.category.name }}
                       </span>
-                      <span v-else class="text-xs text-slate-400">—</span>
+                      <span v-else class="text-xs text-[#6B7280] dark:text-slate-400">—</span>
                     </td>
                     
-                    <!-- Call Number -->
-                    <td class="px-5 py-4 whitespace-nowrap">
-                      <p class="font-mono text-xs text-slate-700">{{ book.callNumber }}</p>
+                    <!-- CALL NUMBER -->
+                    <td class="py-4 px-5 whitespace-nowrap">
+                      <p class="font-mono text-xs text-[#6B7280] dark:text-slate-400 font-medium">{{ book.callNumber }}</p>
                     </td>
                     
-                    <!-- Availability -->
-                    <td class="px-5 py-4 whitespace-nowrap">
-                      <div class="flex items-center gap-2">
+                    <!-- AVAILABILITY (Status Accents: #DCFCE7 bg, #15803D text) -->
+                    <td class="py-4 px-5 whitespace-nowrap">
+                      <div class="flex items-center">
                         <span v-if="book.availableCopies > 0 && !book.isReferenceOnly"
-                              class="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
-                          <CheckCircleIcon class="w-3.5 h-3.5" /> {{ book.availableCopies }}/{{ book.totalCopies }} Available
+                              class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#DCFCE7] dark:bg-emerald-950/80 text-[#15803D] dark:text-emerald-400 text-xs font-bold border border-emerald-200/60 dark:border-emerald-800/40">
+                          <CheckCircleIcon class="w-4 h-4 text-[#15803D] dark:text-emerald-400" /> {{ book.availableCopies }}/{{ book.totalCopies }} Available
                         </span>
                         <span v-else-if="book.isReferenceOnly"
-                              class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-sky-100 text-sky-700">
+                              class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-400 text-xs font-bold border border-sky-200/60 dark:border-sky-800/40">
                           Reference Only
                         </span>
                         <span v-else
-                              class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-700">
+                              class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-400 text-xs font-bold border border-rose-200/60 dark:border-rose-800/40">
                           Unavailable
                         </span>
                       </div>
@@ -345,24 +375,24 @@ function clearSearch() {
           </div>
         </div>
 
-        <!-- Empty state -->
-        <div v-else class="flex flex-col items-center justify-center py-24 text-slate-400">
-          <BookOpenIcon class="w-16 h-16 mb-4 text-slate-300" />
-          <p class="text-lg font-medium text-slate-500">No books found</p>
-          <p class="text-sm mt-1">Try a different search term or clear your filters</p>
-          <button @click="clearSearch" class="btn-ghost mt-4">Clear Search</button>
+        <!-- Empty State -->
+        <div v-else class="bg-white dark:bg-[#1E293B] rounded-2xl p-12 text-center border border-slate-200/80 dark:border-slate-700/60">
+          <BookOpenIcon class="w-14 h-14 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+          <p class="text-base font-bold text-[#1F2937] dark:text-slate-100">No books found</p>
+          <p class="text-xs text-[#6B7280] dark:text-slate-400 mt-1">Try adjusting your search criteria or clearing active filters.</p>
+          <button @click="clearSearch" class="mt-4 btn-ghost text-xs">Clear Search</button>
         </div>
 
         <!-- Pagination -->
-        <div v-if="store.lastPage > 1" class="flex flex-wrap justify-center gap-2 mt-10">
+        <div v-if="store.lastPage > 1" class="flex flex-wrap justify-center gap-2 mt-8">
           <button
             v-for="page in store.lastPage"
             :key="page"
             @click="goToPage(page)"
-            :class="['w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-sm font-semibold transition-all',
+            :class="['w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer',
               page === store.currentPage
-                ? 'bg-[#447794] text-white shadow-md'
-                : 'bg-white border border-slate-200 text-slate-600 hover:border-[#447794]/40 hover:text-[#447794]']"
+                ? 'bg-[#6B131D] text-white shadow-sm'
+                : 'bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-700 text-[#6B7280] dark:text-slate-300 hover:border-[#6B131D]/50 hover:text-[#6B131D] dark:hover:text-white']"
           >
             {{ page }}
           </button>

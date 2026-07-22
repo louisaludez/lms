@@ -153,8 +153,37 @@ const borrowingStatusData = computed(() => {
   }
 })
 
+// Borrowing History Filters
+const historyFilter = ref<'all' | 'returned' | 'currently_borrowed'>('all')
+
+const historyCounts = computed(() => {
+  const all = store.myTransactions.length
+  const returned = store.myTransactions.filter(t => t.status === 'returned').length
+  const currentlyBorrowed = store.myTransactions.filter(t => t.status === 'active' || t.status === 'overdue').length
+  return { all, returned, currentlyBorrowed }
+})
+
+const filteredHistory = computed(() => {
+  if (historyFilter.value === 'returned') {
+    return store.myTransactions.filter(t => t.status === 'returned')
+  }
+  if (historyFilter.value === 'currently_borrowed') {
+    return store.myTransactions.filter(t => t.status === 'active' || t.status === 'overdue')
+  }
+  return store.myTransactions
+})
+
+function formatStatus(status: string) {
+  const map: Record<string, string> = {
+    active: 'Active',
+    overdue: 'Overdue',
+    returned: 'Returned',
+    lost: 'Lost',
+  }
+  return map[status] ?? status
+}
+
 const monthlyActivityData = computed(() => {
-  // Group by last 6 months
   const months = []
   const data = []
   for (let i = 5; i >= 0; i--) {
@@ -162,7 +191,6 @@ const monthlyActivityData = computed(() => {
     d.setMonth(d.getMonth() - i)
     months.push(format(d, 'MMM'))
     
-    // count checkouts in this month
     const count = store.myTransactions.filter(t => {
       const txDate = new Date(t.checkoutDate)
       return txDate.getMonth() === d.getMonth() && txDate.getFullYear() === d.getFullYear()
@@ -183,11 +211,11 @@ const monthlyActivityData = computed(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50">
+  <div class="min-h-screen bg-[#F7F5F0] dark:bg-[#0F172A] transition-colors duration-200">
     <NavBar />
 
-    <!-- Profile Header -->
-    <div class="bg-gradient-to-r from-[#123249] to-[#447794] py-8 sm:py-12 px-4 sm:px-6">
+    <!-- Profile Header Banner -->
+    <div class="bg-gradient-to-r from-[#6B131D] via-[#8B1A28] to-[#55151c] py-8 sm:py-12 px-4 sm:px-6 shadow-md">
       <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-center md:items-start gap-6">
         <div class="w-24 h-24 md:w-20 md:h-20 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0 ring-2 ring-white/30">
           <UserCircleIcon v-if="!user?.profilePhotoUrl" class="w-12 h-12 text-white/80" />
@@ -195,13 +223,13 @@ const monthlyActivityData = computed(() => {
         </div>
         <div class="text-white flex-1 min-w-0 text-center md:text-left flex flex-col items-center md:items-start">
           <h1 class="text-2xl font-bold">{{ user?.firstName }} {{ user?.lastName }}</h1>
-          <p class="text-[#aed0e2] text-sm mt-0.5">
+          <p class="text-white/80 text-sm mt-0.5">
             {{ user?.institutionalId }}
             <span v-if="user?.department" class="hidden md:inline"> • {{ user.department.name }}</span>
             <span v-if="user?.department" class="block md:hidden text-xs mt-1">{{ user.department.name }}</span>
             <span v-if="user?.gender"> • {{ user.gender }}</span>
           </p>
-          <button @click="isSettingsModalOpen = true" class="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-white/80 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors border border-white/20">
+          <button @click="isSettingsModalOpen = true" class="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-white/90 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors border border-white/20 cursor-pointer">
             <Cog6ToothIcon class="w-4 h-4" />
             Edit Profile
           </button>
@@ -223,12 +251,13 @@ const monthlyActivityData = computed(() => {
             <QrCodeIcon class="w-12 h-12 text-white/90" />
             <div>
               <p class="text-white font-bold text-lg">Digital ID</p>
-              <p class="text-[#aed0e2] text-sm mt-0.5">Ready for download</p>
+              <p class="text-white/80 text-sm mt-0.5">Ready for download</p>
             </div>
+            <!-- Fix: High contrast text in light and dark mode -->
             <button 
               @click="downloadId" 
               :disabled="isDownloadingId"
-              class="mt-2 flex items-center gap-2 text-sm font-bold text-[#123249] bg-white hover:bg-slate-50 px-6 py-3 rounded-xl transition-all shadow-lg w-full justify-center cursor-pointer disabled:opacity-75 disabled:cursor-wait"
+              class="mt-2 flex items-center gap-2 text-sm font-bold text-[#1F2937] dark:text-slate-900 bg-white hover:bg-slate-100 dark:bg-white dark:hover:bg-slate-100 px-6 py-3 rounded-xl transition-all shadow-lg w-full justify-center cursor-pointer disabled:opacity-75 disabled:cursor-wait"
             >
               <ArrowPathIcon v-if="isDownloadingId" class="w-5 h-5 animate-spin" />
               <ArrowDownTrayIcon v-else class="w-5 h-5" />
@@ -241,12 +270,9 @@ const monthlyActivityData = computed(() => {
             <div 
               ref="idCardRef"
               class="relative overflow-hidden rounded-xl shadow-2xl bg-white select-none"
-              style="width: 280px; aspect-ratio: 591 / 1004;"
+              style="width: 296px; height: 420px; aspect-ratio: 74 / 105;"
             >
-              <!-- Background Template -->
               <img src="@/assets/id.png" class="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none" alt="ID Template" crossorigin="anonymous" />
-              
-              <!-- Automated ID Header -->
               <div 
                 class="absolute z-10 w-full text-center px-4 flex flex-col justify-center"
                 style="top: 25%; height: 5%;"
@@ -255,8 +281,6 @@ const monthlyActivityData = computed(() => {
                   AUTOMATED ID
                 </h3>
               </div>
-
-              <!-- User Photo -->
               <div 
                 class="absolute z-10 overflow-hidden"
                 style="left: 36%; right: 36%; top: 31%; bottom: 49%; border-radius: 8px;"
@@ -266,8 +290,6 @@ const monthlyActivityData = computed(() => {
                   <UserCircleIcon class="w-12 h-12 text-slate-400" />
                 </div>
               </div>
-
-              <!-- Name -->
               <div 
                 class="absolute z-10 w-full text-center px-4 flex flex-col justify-center"
                 style="top: 52%; height: 5%;"
@@ -276,8 +298,6 @@ const monthlyActivityData = computed(() => {
                   {{ user.firstName }} {{ user.lastName }}
                 </h2>
               </div>
-
-              <!-- Role -->
               <div 
                 class="absolute z-10 w-full text-center px-4 flex flex-col justify-center"
                 style="top: 57%; height: 3%;"
@@ -286,16 +306,12 @@ const monthlyActivityData = computed(() => {
                   {{ user.role || 'STUDENT' }}
                 </p>
               </div>
-
-              <!-- Barcode Canvas -->
               <div 
                 class="absolute z-10 w-full flex justify-center items-center"
                 style="top: 61%; height: 10%;"
               >
                 <canvas ref="barcodeCanvas" class="w-[140px] h-[40px]"></canvas>
               </div>
-
-              <!-- Institutional ID -->
               <div 
                 class="absolute z-10 w-full text-center flex flex-col justify-center"
                 style="top: 71%; height: 4%;"
@@ -315,119 +331,79 @@ const monthlyActivityData = computed(() => {
       <!-- Suspension Alert -->
       <div
         v-if="auth.isSuspended || store.hasOverdue"
-        class="rounded-2xl bg-amber-50 border border-amber-200 p-5 flex gap-4"
+        class="rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 p-5 flex gap-4"
       >
         <ExclamationCircleIcon class="w-7 h-7 text-amber-500 flex-shrink-0 mt-0.5" />
         <div>
-          <p class="font-semibold text-amber-800">Your account is suspended</p>
-          <p class="text-sm text-rose-700 mt-1">
-            You have <strong>{{ store.overdueCount }}</strong> overdue item(s).
-            Please return the overdue books at the library counter to restore your borrowing privileges.
+          <h2 class="font-semibold text-amber-900 dark:text-amber-300">Account Alert</h2>
+          <p v-if="store.hasOverdue" class="text-sm text-amber-700 dark:text-amber-400 mt-0.5">
+            You have {{ store.myTransactions.filter(t => t.status === 'overdue').length }} overdue book(s). Please return them immediately.
+          </p>
+          <p v-else class="text-sm text-amber-700 dark:text-amber-400 mt-0.5">
+            Your account is suspended. Please visit the library counter for assistance.
           </p>
         </div>
       </div>
 
-      <!-- Charts Section -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="card p-6">
-          <h2 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
-            <UserCircleIcon class="w-5 h-5 text-[#447794]" />
-            Borrowing Status
-          </h2>
-          <div class="h-64 flex items-center justify-center relative">
-            <Doughnut
-              v-if="store.myTransactions.length > 0"
-              :data="borrowingStatusData"
-              :options="chartOptions"
-            />
-            <div v-else class="text-slate-400 text-sm flex flex-col items-center">
-              <ChartPieIcon class="w-10 h-10 mb-2 opacity-50" />
-              No borrowing data available
-            </div>
-            <!-- Center Text -->
-            <div v-if="store.myTransactions.length > 0" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span class="text-3xl font-bold text-slate-800">{{ store.myTransactions.length }}</span>
-              <span class="text-xs text-slate-500 font-medium">Total Books</span>
-            </div>
+      <!-- Borrowing Analytics Charts -->
+      <div v-if="store.myTransactions.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="card p-5">
+          <div class="flex items-center gap-2 mb-4">
+            <ChartPieIcon class="w-5 h-5 text-[#6B131D] dark:text-rose-400" />
+            <h2 class="font-bold text-slate-800 dark:text-slate-100 text-sm">Borrowing Status Breakdown</h2>
+          </div>
+          <div class="h-56 relative">
+            <Doughnut :data="borrowingStatusData" :options="chartOptions" />
           </div>
         </div>
 
-        <div class="card p-6">
-          <h2 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
-            <ChartBarIcon class="w-5 h-5 text-[#447794]" />
-            Borrowing Activity
-          </h2>
-          <div class="h-64 flex items-center justify-center">
-            <Bar
-              v-if="store.myTransactions.length > 0"
-              :data="monthlyActivityData"
-              :options="barChartOptions"
-            />
-            <div v-else class="text-slate-400 text-sm flex flex-col items-center">
-              <ChartBarIcon class="w-10 h-10 mb-2 opacity-50" />
-              No activity data available
-            </div>
+        <div class="card p-5">
+          <div class="flex items-center gap-2 mb-4">
+            <ChartBarIcon class="w-5 h-5 text-[#6B131D] dark:text-rose-400" />
+            <h2 class="font-bold text-slate-800 dark:text-slate-100 text-sm">Monthly Borrowing Activity</h2>
+          </div>
+          <div class="h-56 relative">
+            <Bar :data="monthlyActivityData" :options="barChartOptions" />
           </div>
         </div>
       </div>
 
-      <!-- Currently Borrowed -->
+      <!-- Currently Borrowed Books Section -->
       <div class="card">
-        <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
-          <BookOpenIcon class="w-5 h-5 text-[#447794]" />
-          <h2 class="font-semibold text-slate-800">Currently Borrowed</h2>
+        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <BookOpenIcon class="w-5 h-5 text-[#6B131D] dark:text-rose-400" />
+            <h2 class="font-bold text-slate-800 dark:text-slate-100">Currently Borrowed</h2>
+          </div>
+          <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+            {{ store.myActiveTransactions.length }} / 3 Books
+          </span>
         </div>
 
-        <div v-if="store.loadingTransactions" class="p-6 space-y-3">
-          <div v-for="i in 2" :key="i" class="skeleton h-20 rounded-xl" />
+        <div v-if="store.myActiveTransactions.length === 0" class="py-12 text-center text-slate-400 dark:text-slate-500 text-sm">
+          No books currently borrowed. <router-link to="/opac" class="text-[#6B131D] dark:text-rose-400 font-semibold hover:underline">Browse Catalog</router-link>
         </div>
 
-        <div v-else-if="store.myActiveTransactions.length === 0" class="py-12 text-center text-slate-400">
-          <CheckCircleIcon class="w-12 h-12 mx-auto mb-3 text-emerald-300" />
-          <p class="font-medium">No active borrows</p>
-          <p class="text-sm mt-1">
-            <router-link to="/opac" class="text-[#447794] hover:underline">Browse the catalog</router-link>
-            to find a book to borrow.
-          </p>
-        </div>
-
-        <div v-else class="divide-y divide-slate-50">
+        <div v-else class="divide-y divide-slate-100 dark:divide-slate-800">
           <div
             v-for="tx in store.myActiveTransactions"
             :key="tx.id"
-            class="px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 hover:bg-slate-50/50 transition-colors"
+            class="p-5 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
           >
-            <div class="flex items-start gap-4 flex-1 min-w-0 w-full sm:w-auto">
-              <!-- Book cover placeholder -->
-              <div class="w-12 h-16 rounded-lg bg-gradient-to-b from-[#2D5B75] to-[#123249] flex-shrink-0 flex items-center justify-center mt-0.5 sm:mt-0">
-                <BookOpenIcon class="w-6 h-6 text-white/60" />
+            <div class="flex items-start gap-4 min-w-0">
+              <div class="w-10 h-14 bg-[#ECEBE8] dark:bg-[#283548] rounded border border-slate-200 dark:border-slate-700 flex items-center justify-center flex-shrink-0">
+                <BookOpenIcon class="w-5 h-5 text-slate-400" />
               </div>
-
-              <div class="flex-1 min-w-0">
-                <p class="font-semibold text-slate-800 text-sm truncate">{{ tx.bookCopy.book.title }}</p>
-                <p class="text-xs text-slate-500 mt-0.5 truncate">{{ tx.bookCopy.book.authors?.join(', ') ?? 'Unknown Author' }}</p>
+              <div class="min-w-0">
+                <p class="font-bold text-slate-800 dark:text-slate-100 text-sm truncate">{{ tx.bookCopy?.book?.title ?? 'Book' }}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Barcode: <span class="font-mono text-slate-700 dark:text-slate-300">{{ tx.bookCopy?.barcode }}</span>
+                </p>
                 <div class="flex items-center gap-3 mt-2 flex-wrap">
-                  <span :class="statusClass(tx.status)">{{ tx.status }}</span>
-
-                  <!-- Due date indicator -->
-                  <span
-                    v-if="tx.status === 'active'"
-                    :class="[
-                      'text-xs font-medium flex items-center gap-1',
-                      daysUntilDue(tx.dueDate) <= 3 ? 'text-amber-600' : 'text-slate-500'
-                    ]"
-                  >
+                  <span class="text-xs text-slate-500 dark:text-slate-400">Checked out: {{ formatDate(tx.checkoutDate) }}</span>
+                  <span :class="['text-xs font-semibold flex items-center gap-1', tx.status === 'overdue' ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300']">
                     <ClockIcon class="w-3.5 h-3.5" />
                     Due {{ formatDate(tx.dueDate) }}
-                    <span v-if="daysUntilDue(tx.dueDate) <= 3 && daysUntilDue(tx.dueDate) >= 0">
-                      ({{ daysUntilDue(tx.dueDate) }}d left)
-                    </span>
-                  </span>
-
-                  <!-- Overdue indicator -->
-                  <span v-if="tx.status === 'overdue'" class="text-xs font-medium text-rose-600 flex items-center gap-1">
-                    <ExclamationTriangleIcon class="w-3.5 h-3.5 flex-shrink-0" />
-                    {{ tx.overdueDays }} day(s) overdue
                   </span>
                 </div>
               </div>
@@ -447,42 +423,99 @@ const monthlyActivityData = computed(() => {
         </div>
       </div>
 
-      <!-- Borrowing History -->
+      <!-- Borrowing History Section -->
       <div class="card">
-        <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
-          <ClockIcon class="w-5 h-5 text-[#447794]" />
-          <h2 class="font-semibold text-slate-800">Borrowing History</h2>
+        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <ClockIcon class="w-5 h-5 text-[#6B131D] dark:text-rose-400" />
+            <h2 class="font-bold text-slate-800 dark:text-slate-100">Borrowing History</h2>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              {{ historyCounts.all }}
+            </span>
+          </div>
+
+          <!-- Fix: Filter Tabs High Contrast in Light & Dark Mode -->
+          <div class="flex items-center gap-1 bg-slate-200/80 dark:bg-slate-800 p-1.5 rounded-xl w-full sm:w-auto">
+            <button
+              @click="historyFilter = 'all'"
+              :class="[
+                'px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex-1 sm:flex-none flex items-center justify-center gap-1.5 cursor-pointer',
+                historyFilter === 'all'
+                  ? 'bg-white dark:bg-[#6B131D] text-slate-800 dark:text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+              ]"
+            >
+              All
+              <span :class="['px-1.5 py-0.2 text-[10px] rounded-full font-bold', historyFilter === 'all' ? 'bg-slate-100 dark:bg-white/20 text-slate-700 dark:text-white' : 'bg-slate-300/60 dark:bg-slate-700 text-slate-600 dark:text-slate-300']">
+                {{ historyCounts.all }}
+              </span>
+            </button>
+
+            <button
+              @click="historyFilter = 'returned'"
+              :class="[
+                'px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex-1 sm:flex-none flex items-center justify-center gap-1.5 cursor-pointer',
+                historyFilter === 'returned'
+                  ? 'bg-white dark:bg-[#6B131D] text-slate-800 dark:text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+              ]"
+            >
+              Returned
+              <span :class="['px-1.5 py-0.2 text-[10px] rounded-full font-bold', historyFilter === 'returned' ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300' : 'bg-slate-300/60 dark:bg-slate-700 text-slate-600 dark:text-slate-300']">
+                {{ historyCounts.returned }}
+              </span>
+            </button>
+
+            <button
+              @click="historyFilter = 'currently_borrowed'"
+              :class="[
+                'px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex-1 sm:flex-none flex items-center justify-center gap-1.5 cursor-pointer',
+                historyFilter === 'currently_borrowed'
+                  ? 'bg-white dark:bg-[#6B131D] text-slate-800 dark:text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+              ]"
+            >
+              Currently Borrowed
+              <span :class="['px-1.5 py-0.2 text-[10px] rounded-full font-bold', historyFilter === 'currently_borrowed' ? 'bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-300' : 'bg-slate-300/60 dark:bg-slate-700 text-slate-600 dark:text-slate-300']">
+                {{ historyCounts.currentlyBorrowed }}
+              </span>
+            </button>
+          </div>
         </div>
 
-        <div v-if="store.myTransactions.length === 0" class="py-10 text-center text-slate-400 text-sm">
+        <div v-if="store.myTransactions.length === 0" class="py-12 text-center text-slate-400 dark:text-slate-500 text-sm">
           No borrowing history yet.
+        </div>
+
+        <div v-else-if="filteredHistory.length === 0" class="py-12 text-center text-slate-400 dark:text-slate-500 text-sm">
+          No {{ historyFilter === 'returned' ? 'returned' : 'currently borrowed' }} books found.
         </div>
 
         <div v-else class="overflow-x-auto">
           <table class="w-full min-w-[600px]">
-            <thead class="bg-slate-50 border-b border-slate-100">
+            <thead class="bg-slate-50 dark:bg-[#1E293B] border-b border-slate-100 dark:border-slate-800">
               <tr>
-                <th class="table-header px-4 py-3 text-left">Book</th>
-                <th class="table-header px-4 py-3 text-left">Checkout</th>
-                <th class="table-header px-4 py-3 text-left">Due</th>
-                <th class="table-header px-4 py-3 text-left">Returned</th>
-                <th class="table-header px-4 py-3 text-left">Status</th>
+                <th class="table-header text-left">Book Title</th>
+                <th class="table-header text-left">Checkout Date</th>
+                <th class="table-header text-left">Return Date</th>
+                <th class="table-header text-left">Status</th>
               </tr>
             </thead>
-            <tbody>
-              <tr
-                v-for="tx in store.myTransactions.filter(t => t.status === 'returned')"
-                :key="tx.id"
-                class="table-row"
-              >
-                <td class="table-cell px-4 font-medium max-w-[200px]">
-                  <p class="truncate">{{ tx.bookCopy.book.title }}</p>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              <tr v-for="tx in filteredHistory" :key="tx.id" class="table-row">
+                <td class="table-cell font-semibold text-slate-800 dark:text-slate-100">
+                  {{ tx.bookCopy?.book?.title ?? 'Unknown Book' }}
                 </td>
-                <td class="table-cell px-4">{{ formatDate(tx.checkoutDate) }}</td>
-                <td class="table-cell px-4">{{ formatDate(tx.dueDate) }}</td>
-                <td class="table-cell px-4">{{ tx.returnDate ? formatDate(tx.returnDate) : '—' }}</td>
-                <td class="table-cell px-4">
-                  <span :class="statusClass(tx.status)">{{ tx.status }}</span>
+                <td class="table-cell text-slate-600 dark:text-slate-400">
+                  {{ formatDate(tx.checkoutDate) }}
+                </td>
+                <td class="table-cell text-slate-600 dark:text-slate-400">
+                  {{ tx.returnDate ? formatDate(tx.returnDate) : '—' }}
+                </td>
+                <td class="table-cell">
+                  <span :class="statusClass(tx.status)">
+                    {{ formatStatus(tx.status) }}
+                  </span>
                 </td>
               </tr>
             </tbody>
@@ -492,6 +525,10 @@ const monthlyActivityData = computed(() => {
 
     </div>
 
-    <ProfileSettingsModal :isOpen="isSettingsModalOpen" @close="isSettingsModalOpen = false" />
+    <!-- Edit Profile Modal -->
+    <ProfileSettingsModal
+      :isOpen="isSettingsModalOpen"
+      @close="isSettingsModalOpen = false"
+    />
   </div>
 </template>

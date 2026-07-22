@@ -30,6 +30,22 @@ export class ReportsService {
     `);
   }
 
+  async getDepartmentEntry() {
+    return this.dataSource.query(`
+      SELECT 
+        d.id, 
+        d.name, 
+        d.code, 
+        COUNT(a.id) as entryCount
+      FROM departments d
+      LEFT JOIN users u ON d.id = u.department_id
+      LEFT JOIN attendance_logs a ON u.id = a.user_id AND a.entry_type = 'entry'
+      GROUP BY d.id, d.name, d.code
+      ORDER BY entryCount DESC, d.code ASC
+    `);
+  }
+
+
   async getVisitorStatistics() {
     return this.dataSource.query(`
       SELECT u.gender, COUNT(a.id) as visitorCount
@@ -133,14 +149,14 @@ export class ReportsService {
         u.last_name,
         b.main_title as title,
         t.due_date,
-        t.overdue_days,
-        t.fine_amount
+        GREATEST(IFNULL(t.overdue_days, 0), GREATEST(0, DATEDIFF(CURDATE(), t.due_date))) as overdue_days,
+        GREATEST(IFNULL(t.fine_amount, 0), GREATEST(0, DATEDIFF(CURDATE(), t.due_date) * 5)) as fine_amount
       FROM transactions t
       JOIN users u ON t.user_id = u.id
       JOIN book_copies bc ON t.book_copy_id = bc.id
       JOIN books b ON bc.book_id = b.id
-      WHERE t.status = 'overdue' OR t.overdue_days > 0
-      ORDER BY period DESC, t.overdue_days DESC
+      WHERE t.status = 'overdue' OR t.overdue_days > 0 OR (t.status = 'active' AND t.due_date < CURDATE())
+      ORDER BY period DESC, overdue_days DESC
       LIMIT 100
     `);
   }

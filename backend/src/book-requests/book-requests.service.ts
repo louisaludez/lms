@@ -13,6 +13,7 @@ import {
 } from './entities/book-request.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Book } from '../books/entities/book.entity';
+import { Category } from '../books/entities/category.entity';
 import {
   CreateBorrowRequestDto,
   CreateAcquisitionRequestDto,
@@ -28,6 +29,8 @@ export class BookRequestsService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(Book)
     private readonly bookRepo: Repository<Book>,
+    @InjectRepository(Category)
+    private readonly categoryRepo: Repository<Category>,
   ) {}
 
   /** Faculty requests to borrow an existing book */
@@ -83,14 +86,31 @@ export class BookRequestsService {
         'Only faculty members can create book requests',
       );
 
+    let category: Category | null = null;
+    if (dto.categoryId) {
+      category = await this.categoryRepo.findOne({
+        where: { id: dto.categoryId },
+      });
+    }
+
     const request = this.reqRepo.create();
     Object.assign(request, {
       user,
       requestType: BookRequestType.ACQUISITION,
+      itemType: dto.itemType || 'BOOKS',
       title: dto.title,
+      otherTitle: dto.otherTitle ?? null,
       author: dto.author ?? null,
       isbn: dto.isbn ?? null,
+      issn: dto.issn ?? null,
+      callNumber: dto.callNumber ?? null,
+      edition: dto.edition ?? null,
+      publishYear: dto.publishYear ?? null,
+      category: category ?? null,
       publisher: dto.publisher ?? null,
+      language: dto.language ?? 'English',
+      description: dto.description ?? null,
+      locationShelf: dto.locationShelf ?? null,
       reason: dto.reason,
       status: BookRequestStatus.PENDING,
     });
@@ -117,7 +137,7 @@ export class BookRequestsService {
 
     const [data, total] = await this.reqRepo.findAndCount({
       where: whereClause,
-      relations: ['book', 'book.category', 'librarian'],
+      relations: ['book', 'book.category', 'category', 'librarian'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -154,6 +174,7 @@ export class BookRequestsService {
         'user.department',
         'book',
         'book.category',
+        'category',
         'librarian',
       ],
       order: { createdAt: 'DESC' },

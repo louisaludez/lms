@@ -278,9 +278,20 @@ export class TransactionsService {
 
   // ─── LIFT SUSPENSION if no more overdue items ─────────────────────────────────
   async _checkAndLiftSuspension(userId: number): Promise<void> {
-    const overdueCount = await this.txRepo.count({
-      where: { user: { id: userId }, status: TransactionStatus.OVERDUE },
-    });
+    const todayStr = new Date().toISOString().split('T')[0];
+    const overdueCount = await this.txRepo
+      .createQueryBuilder('tx')
+      .where('tx.user_id = :userId', { userId })
+      .andWhere(
+        '(tx.status = :overdueStatus OR (tx.status = :activeStatus AND tx.due_date < :todayStr))',
+        {
+          overdueStatus: TransactionStatus.OVERDUE,
+          activeStatus: TransactionStatus.ACTIVE,
+          todayStr,
+        },
+      )
+      .getCount();
+
     if (overdueCount === 0) {
       await this.userRepo.update(userId, {
         eligibilityStatus: EligibilityStatus.ELIGIBLE,
@@ -299,24 +310,51 @@ export class TransactionsService {
 
   // ─── DASHBOARD STATS ─────────────────────────────────────────────────────────
   async getStats() {
-    const [active, overdue, returnedToday] = await Promise.all([
-      this.txRepo.count({ where: { status: TransactionStatus.ACTIVE } }),
-      this.txRepo.count({ where: { status: TransactionStatus.OVERDUE } }),
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const [activeOnTime, overdue, returnedToday] = await Promise.all([
+      this.txRepo
+        .createQueryBuilder('tx')
+        .where('tx.status = :activeStatus', { activeStatus: TransactionStatus.ACTIVE })
+        .andWhere('tx.due_date >= :todayStr', { todayStr })
+        .getCount(),
+      this.txRepo
+        .createQueryBuilder('tx')
+        .where(
+          '(tx.status = :overdueStatus OR (tx.status = :activeStatus AND tx.due_date < :todayStr))',
+          {
+            overdueStatus: TransactionStatus.OVERDUE,
+            activeStatus: TransactionStatus.ACTIVE,
+            todayStr,
+          },
+        )
+        .getCount(),
       this.txRepo
         .createQueryBuilder('tx')
         .where('DATE(tx.return_date) = CURDATE()')
         .andWhere('tx.status = :s', { s: TransactionStatus.RETURNED })
         .getCount(),
     ]);
-    return { active, overdue, returnedToday };
+    return { active: activeOnTime, overdue, returnedToday };
   }
 
   private _applyDynamicOverdue(tx: Transaction): Transaction {
-    if (tx.status === TransactionStatus.ACTIVE) {
+    if (tx.status === TransactionStatus.ACTIVE && tx.dueDate) {
+      let dueDateStr = '';
+      if (typeof tx.dueDate === 'string') {
+        dueDateStr = tx.dueDate.split('T')[0];
+      } else if (tx.dueDate && (tx.dueDate as any) instanceof Date) {
+        dueDateStr = (tx.dueDate as Date).toISOString().split('T')[0];
+      } else {
+        dueDateStr = String(tx.dueDate).split('T')[0];
+      }
+
       const todayStr = new Date().toISOString().split('T')[0];
-      if (tx.dueDate < todayStr) {
+      if (dueDateStr < todayStr) {
         const today = new Date();
-        const due = parseISO(tx.dueDate);
+        today.setHours(0, 0, 0, 0);
+        const due = parseISO(dueDateStr);
+        due.setHours(0, 0, 0, 0);
         const overdueDays = Math.max(0, differenceInDays(today, due));
         tx.status = TransactionStatus.OVERDUE;
         tx.overdueDays = overdueDays;

@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '@/api/axios'
 import { ArrowsRightLeftIcon, QrCodeIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+
+const route = useRoute()
 
 // ── Checkout State ────────────────────────────────────────────────────────────
 const checkoutUserBarcode = ref('')
@@ -55,7 +58,7 @@ function onUserSearchBlur() {
 }
 
 // ── Return State ──────────────────────────────────────────────────────────────
-const returnBarcode   = ref('')
+const returnBarcode   = ref(typeof route.query.returnBarcode === 'string' ? route.query.returnBarcode : '')
 const returnResult    = ref<any>(null)
 const returnError     = ref('')
 const returnLoading   = ref(false)
@@ -63,6 +66,12 @@ const returnLoading   = ref(false)
 // ── Renew State ───────────────────────────────────────────────────────────────
 const renewBarcode    = ref('')
 const renewDueDate    = ref('')
+
+onMounted(() => {
+  if (route.query.returnBarcode && typeof route.query.returnBarcode === 'string') {
+    returnBarcode.value = route.query.returnBarcode
+  }
+})
 const renewResult     = ref<any>(null)
 const renewError      = ref('')
 const renewLoading    = ref(false)

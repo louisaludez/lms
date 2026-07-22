@@ -12,6 +12,12 @@ import DropdownFilter from '@/components/DropdownFilter.vue'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Category { id: number; name: string }
+interface BookCopyRow {
+  id: number
+  barcode: string
+  condition: string
+  isActive: boolean
+}
 interface BookRow {
   id: number
   isbn: string
@@ -32,6 +38,7 @@ interface BookRow {
   coverImageUrl: string | null
   itemType: string
   issn: string | null
+  copies?: BookCopyRow[]
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -358,45 +365,37 @@ function availBadge(available: number, total: number) {
       </div>
     </div>
 
-    <!-- Filters -->
-    <div class="flex gap-3 mb-4">
-      <div class="relative flex-1 max-w-sm">
-        <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+    <!-- Filters Header Box -->
+    <div class="filter-card">
+      <div class="relative flex-1 w-full md:w-auto">
+        <MagnifyingGlassIcon class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <input
           v-model="searchQuery"
           @input="onSearch"
           type="search"
-          placeholder="Search title, ISBN, call number..."
-          class="input pl-9 text-sm"
+          placeholder="Search by title, author, ISBN, call number, or accession code..."
+          class="w-full pl-10 pr-4 py-2 bg-slate-50 md:bg-white border border-slate-200/80 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5c726a]/30 focus:border-[#5c726a]"
         />
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2.5 w-full md:w-auto justify-end flex-wrap">
         <DropdownFilter
           v-model="filterCat"
           :options="categoryOptions"
           @change="fetchBooks(1)"
           width="w-48"
-        >
-          <template #icon>
-            <FunnelIcon class="w-4 h-4 text-slate-400" />
-          </template>
-        </DropdownFilter>
+        />
 
         <DropdownFilter
           v-model="sortBy"
           :options="sortOptions"
           @change="handleSortChange"
           width="w-48"
-        >
-          <template #icon>
-            <ArrowsUpDownIcon class="w-4 h-4 text-slate-400" />
-          </template>
-        </DropdownFilter>
+        />
       </div>
     </div>
 
-    <!-- Table -->
-    <div class="card overflow-hidden">
+    <!-- Table Card -->
+    <div class="table-card">
       <div v-if="loading" class="p-4 space-y-3">
         <div v-for="i in 6" :key="i" class="skeleton h-12 rounded-xl" />
       </div>
@@ -408,72 +407,88 @@ function availBadge(available: number, total: number) {
 
       <div v-else class="overflow-x-auto">
         <table class="w-full">
-          <thead class="bg-slate-50 border-b border-slate-100">
+          <thead>
             <tr>
-              <th class="table-header px-4 py-3 text-left">Title / Author</th>
-              <th class="table-header px-4 py-3 text-left">Type & Category</th>
-              <th class="table-header px-4 py-3 text-left">ISBN / Call No.</th>
-              <th class="table-header px-4 py-3 text-left">Copies</th>
-              <th class="table-header px-4 py-3 text-left">Shelf</th>
-              <th class="table-header px-4 py-3 text-left">Flags</th>
-              <th class="table-header px-4 py-3 text-center">Actions</th>
+              <th class="table-header text-left">Title / Author</th>
+              <th class="table-header text-left">Category</th>
+              <th class="table-header text-left">ISBN / Call No. / Accession Code</th>
+              <th class="table-header text-left">Copies</th>
+              <th class="table-header text-left">Status</th>
+              <th class="table-header text-right pr-6">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr
               v-for="book in books"
               :key="book.id"
-              :class="['table-row', !book.isActive && 'opacity-50']"
+              :class="['table-row', !book.isActive && 'opacity-60']"
             >
-              <!-- Title -->
-              <td class="table-cell px-4 max-w-[240px]">
-                <p class="font-semibold text-slate-800 text-sm truncate">{{ book.title }}</p>
-                <p v-if="book.otherTitle" class="text-xs text-slate-500 truncate italic">{{ book.otherTitle }}</p>
+              <!-- Title / Author -->
+              <td class="table-cell max-w-[280px]">
+                <p class="font-bold text-slate-800 text-sm truncate">{{ book.title }}</p>
                 <p v-if="book.authors?.length" class="text-xs text-slate-400 truncate mt-0.5">{{ book.authors.join(', ') }}</p>
                 <p v-else class="text-xs text-slate-300 italic mt-0.5">No authors</p>
               </td>
-              <!-- Type & Category -->
-              <td class="table-cell px-4">
-                <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-[#447794]/10 text-[#447794] mb-1 uppercase tracking-wider">{{ book.itemType || 'BOOKS' }}</span>
-                <p class="text-sm text-slate-600">{{ book.category?.name ?? '—' }}</p>
+              <!-- Category -->
+              <td class="table-cell text-slate-600">
+                <span class="badge-pill-gray text-xs font-semibold">
+                  {{ book.category?.name ?? book.itemType ?? 'General' }}
+                </span>
               </td>
-              <!-- ISBN -->
-              <td class="table-cell px-4">
-                <p class="font-mono text-xs text-slate-700">{{ book.isbn }}</p>
+              <!-- ISBN / Call No. / Accession Code -->
+              <td class="table-cell">
+                <p class="font-mono text-xs text-slate-700 font-semibold">{{ book.isbn }}</p>
                 <p class="font-mono text-xs text-slate-400">{{ book.callNumber }}</p>
+                <div v-if="book.copies?.length" class="flex flex-wrap gap-1 mt-1 max-w-[240px]">
+                  <span 
+                    v-for="copy in book.copies" 
+                    :key="copy.id"
+                    class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 border border-slate-200/80 rounded text-[10px] font-mono text-slate-700 font-medium"
+                    :title="`Copy Barcode: ${copy.barcode} (${copy.condition})`"
+                  >
+                    <span class="w-1.5 h-1.5 rounded-full" :class="copy.isActive ? 'bg-emerald-500' : 'bg-slate-300'"></span>
+                    {{ copy.barcode }}
+                  </span>
+                </div>
               </td>
               <!-- Copies -->
-              <td class="table-cell px-4">
-                <span :class="['px-2.5 py-0.5 rounded-full text-xs font-bold', availBadge(book.availableCopies, book.totalCopies)]">
+              <td class="table-cell">
+                <span :class="['badge-pill-sky font-semibold', availBadge(book.availableCopies, book.totalCopies)]">
                   {{ book.availableCopies }} / {{ book.totalCopies }}
                 </span>
               </td>
-              <!-- Shelf -->
-              <td class="table-cell px-4 text-sm text-slate-500">{{ book.locationShelf ?? '—' }}</td>
-              <!-- Flags -->
-              <td class="table-cell px-4">
-                <div class="flex gap-1 flex-wrap">
-                  <span v-if="book.isReferenceOnly" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">REF</span>
-                  <span v-if="!book.isActive" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">INACTIVE</span>
-                  <span v-if="book.isActive && !book.isReferenceOnly" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">ACTIVE</span>
-                </div>
+              <!-- Status -->
+              <td class="table-cell">
+                <span v-if="book.isActive" class="badge-pill-green">
+                  <span class="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 flex items-center justify-center">
+                    <CheckIcon class="w-3 h-3 stroke-[3]" />
+                  </span>
+                  Active
+                </span>
+                <span v-else class="badge-pill-rose">
+                  <span class="w-4 h-4 rounded-full bg-rose-500/20 text-rose-600 flex items-center justify-center">
+                    <XMarkIcon class="w-3 h-3 stroke-[3]" />
+                  </span>
+                  Inactive
+                </span>
               </td>
               <!-- Actions -->
-              <td class="table-cell px-4">
-                <div class="flex items-center justify-center gap-2">
+              <td class="table-cell text-right pr-6">
+                <div class="flex items-center justify-end gap-3 text-xs font-semibold">
                   <button
                     @click="openEdit(book)"
-                    class="p-1.5 rounded-lg bg-[#447794]/10 text-[#447794] hover:bg-[#447794]/20 transition-colors"
+                    class="text-[#5c726a] hover:text-[#3b4d47] transition-colors"
                     title="Edit"
                   >
-                    <PencilSquareIcon class="w-4 h-4" />
+                    Edit
                   </button>
                   <button
                     @click="deleteTarget = book"
-                    class="p-1.5 rounded-lg bg-rose-100 text-rose-600 hover:bg-rose-200 transition-colors"
+                    class="text-amber-600 hover:text-amber-700 inline-flex items-center gap-1 transition-colors"
                     title="Deactivate"
                   >
-                    <TrashIcon class="w-4 h-4" />
+                    <span>Deactivate</span>
+                    <TrashIcon class="w-3.5 h-3.5 text-rose-500" />
                   </button>
                 </div>
               </td>

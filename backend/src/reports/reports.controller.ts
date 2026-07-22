@@ -20,6 +20,11 @@ export class ReportsController {
     return this.reportsService.getDepartmentBorrowing();
   }
 
+  @Get('department-entry')
+  getDepartmentEntry() {
+    return this.reportsService.getDepartmentEntry();
+  }
+
   @Get('visitor-statistics')
   getVisitorStatistics() {
     return this.reportsService.getVisitorStatistics();

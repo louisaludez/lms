@@ -4,6 +4,7 @@ import {
   ConflictException,
   InternalServerErrorException,
   ForbiddenException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -19,13 +20,44 @@ import { Like } from 'typeorm';
 import * as nodemailer from 'nodemailer';
 
 @Injectable()
-export class UsersService {
+export class UsersService implements OnModuleInit {
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(Department)
     private readonly deptRepo: Repository<Department>,
   ) {}
+
+  async onModuleInit() {
+    await this.seedDepartments();
+  }
+
+  async seedDepartments() {
+    const depts = [
+      { name: 'TVL', code: 'TVL' },
+      { name: 'GAS', code: 'GAS' },
+      { name: 'HUMSS', code: 'HUMSS' },
+      { name: 'STEM', code: 'STEM' },
+      { name: 'AB English', code: 'AB-ENG' },
+      { name: 'BS Midwifery', code: 'BS-MID' },
+      { name: 'BEEd', code: 'BEED' },
+      { name: 'BSED major in English', code: 'BSED-ENG' },
+      { name: 'BSED major in Mathematics', code: 'BSED-MATH' },
+    ];
+
+    for (const dept of depts) {
+      const existing = await this.deptRepo.findOne({
+        where: [{ name: dept.name }, { code: dept.code }],
+      });
+      if (!existing) {
+        await this.deptRepo.save(this.deptRepo.create(dept));
+      } else if (existing.name !== dept.name || existing.code !== dept.code) {
+        existing.name = dept.name;
+        existing.code = dept.code;
+        await this.deptRepo.save(existing);
+      }
+    }
+  }
 
   private get transporter(): nodemailer.Transporter {
     return nodemailer.createTransport({

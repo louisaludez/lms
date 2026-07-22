@@ -72,6 +72,14 @@ export class TransactionsController {
     return this.txService.getStats();
   }
 
+  /** GET /api/v1/transactions/overdue */
+  @Get('overdue')
+  @UseGuards(RolesGuard)
+  @Roles('librarian', 'chief_librarian', 'admin')
+  getOverdue() {
+    return this.txService.findAllOverdue();
+  }
+
   /** GET /api/v1/transactions/user/:userId */
   @Get('user/:userId')
   @UseGuards(RolesGuard)

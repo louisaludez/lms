@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '@/api/axios'
 import { DocumentTextIcon, MagnifyingGlassIcon, FunnelIcon, ArrowsUpDownIcon } from '@heroicons/vue/24/outline'
 import DropdownFilter from '@/components/DropdownFilter.vue'
 
+const route = useRoute()
 const transactions = ref<any[]>([])
 const loading = ref(true)
 const searchQuery = ref('')
 const filterType = ref('')
+const filterStatus = ref(typeof route.query.status === 'string' ? route.query.status : '')
 const sortBy = ref('date')
 const sortOrder = ref<'ASC'|'DESC'>('DESC')
 
@@ -16,6 +19,14 @@ const typeOptions = [
   { label: 'Checkout', value: 'checkout' },
   { label: 'Return', value: 'return' },
   { label: 'Renewal', value: 'renewal' },
+  { label: 'Lost', value: 'lost' }
+]
+
+const statusOptions = [
+  { label: 'All Statuses', value: '' },
+  { label: 'Active', value: 'active' },
+  { label: 'Overdue', value: 'overdue' },
+  { label: 'Returned', value: 'returned' },
   { label: 'Lost', value: 'lost' }
 ]
 
@@ -49,6 +60,10 @@ const filteredTransactions = computed(() => {
   
   if (filterType.value) {
     result = result.filter(tx => tx.transactionType === filterType.value)
+  }
+
+  if (filterStatus.value) {
+    result = result.filter(tx => tx.status === filterStatus.value)
   }
   
   if (searchQuery.value) {
@@ -95,88 +110,82 @@ const filteredTransactions = computed(() => {
       </div>
     </div>
 
-    <!-- Filters -->
-    <div class="flex flex-col sm:flex-row gap-4 mb-6">
-      <div class="relative flex-1">
-        <MagnifyingGlassIcon class="w-5 h-5 absolute left-3 top-2.5 text-slate-400" />
+    <!-- Filters Header Box -->
+    <div class="filter-card">
+      <div class="relative flex-1 w-full md:w-auto">
+        <MagnifyingGlassIcon class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <input 
           v-model="searchQuery" 
           type="text" 
           placeholder="Search by user, book title, or barcode..." 
-          class="input pl-10 w-full"
+          class="w-full pl-10 pr-4 py-2 bg-slate-50 md:bg-white border border-slate-200/80 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5c726a]/30 focus:border-[#5c726a]"
         />
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2.5 w-full md:w-auto justify-end flex-wrap">
         <DropdownFilter
           v-model="filterType"
           :options="typeOptions"
           width="w-40"
-        >
-          <template #icon>
-            <FunnelIcon class="w-5 h-5 text-slate-400" />
-          </template>
-        </DropdownFilter>
+        />
+
+        <DropdownFilter
+          v-model="filterStatus"
+          :options="statusOptions"
+          width="w-40"
+        />
         
         <DropdownFilter
           v-model="sortBy"
           :options="sortOptions"
           @change="handleSortChange"
           width="w-44"
-        >
-          <template #icon>
-            <ArrowsUpDownIcon class="w-5 h-5 text-slate-400" />
-          </template>
-        </DropdownFilter>
+        />
       </div>
     </div>
 
     <!-- Table -->
-    <div v-if="loading" class="text-center py-12 text-slate-500">Loading history...</div>
-    <div v-else class="card overflow-x-auto">
+    <div v-if="loading" class="table-card p-8 text-center text-slate-500">Loading transaction logs...</div>
+    <div v-else-if="filteredTransactions.length === 0" class="table-card py-16 text-center text-slate-400">
+      <DocumentTextIcon class="w-12 h-12 mx-auto mb-3 text-slate-300" />
+      <p class="font-medium text-slate-500">No transactions found</p>
+    </div>
+    <div v-else class="table-card overflow-x-auto">
       <table class="w-full text-left border-collapse min-w-[800px]">
         <thead>
-          <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
-            <th class="px-6 py-4 font-semibold">Date</th>
-            <th class="px-6 py-4 font-semibold">User</th>
-            <th class="px-6 py-4 font-semibold">Item</th>
-            <th class="px-6 py-4 font-semibold">Type</th>
-            <th class="px-6 py-4 font-semibold">Status</th>
-            <th class="px-6 py-4 font-semibold">Processed By</th>
+          <tr>
+            <th class="table-header text-left">Date</th>
+            <th class="table-header text-left">User</th>
+            <th class="table-header text-left">Item</th>
+            <th class="table-header text-left">Type</th>
+            <th class="table-header text-left">Status</th>
+            <th class="table-header text-left pr-6">Processed By</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
-          <tr v-for="tx in filteredTransactions" :key="tx.id" class="hover:bg-slate-50/50 transition-colors">
-            <td class="px-6 py-4 text-sm text-slate-600">
+        <tbody>
+          <tr v-for="tx in filteredTransactions" :key="tx.id" class="table-row">
+            <td class="table-cell text-xs font-mono text-slate-400">
               {{ new Date(tx.createdAt).toLocaleString() }}
             </td>
-            <td class="px-6 py-4">
-              <div class="font-medium text-slate-800">{{ tx.user.firstName }} {{ tx.user.lastName }}</div>
-              <div class="text-xs text-slate-500">{{ tx.user.institutionalId }}</div>
+            <td class="table-cell">
+              <div class="font-bold text-slate-800 text-sm">{{ tx.user.firstName }} {{ tx.user.lastName }}</div>
+              <div class="text-xs text-slate-400">{{ tx.user.institutionalId }}</div>
             </td>
-            <td class="px-6 py-4 max-w-[250px]">
-              <div class="font-medium text-slate-800 truncate">{{ tx.bookCopy.book.title }}</div>
-              <div class="text-xs text-slate-500 font-mono">Barcode: {{ tx.bookCopy.barcode }}</div>
+            <td class="table-cell max-w-[280px]">
+              <div class="font-bold text-slate-800 text-sm truncate">{{ tx.bookCopy.book.title }}</div>
+              <div class="text-xs text-slate-400 font-mono">Barcode: {{ tx.bookCopy.barcode }}</div>
             </td>
-            <td class="px-6 py-4">
-              <span class="px-2.5 py-1 rounded-full text-xs font-semibold capitalize"
-                :class="{
-                  'bg-blue-100 text-blue-700': tx.transactionType === 'checkout',
-                  'bg-emerald-100 text-emerald-700': tx.transactionType === 'return',
-                  'bg-purple-100 text-purple-700': tx.transactionType === 'renewal',
-                  'bg-rose-100 text-rose-700': tx.transactionType === 'lost'
-                }">
-                {{ tx.transactionType }}
-              </span>
+            <td class="table-cell">
+              <span class="badge-pill-sky capitalize" v-if="tx.transactionType === 'checkout'">Checkout</span>
+              <span class="badge-pill-green capitalize" v-else-if="tx.transactionType === 'return'">Return</span>
+              <span class="badge-pill-purple capitalize" v-else-if="tx.transactionType === 'renewal'">Renewal</span>
+              <span class="badge-pill-rose capitalize" v-else-if="tx.transactionType === 'lost'">Lost</span>
+              <span class="badge-pill-gray capitalize" v-else>{{ tx.transactionType }}</span>
             </td>
-            <td class="px-6 py-4">
-              <span class="text-xs font-semibold uppercase tracking-wider"
-                :class="{
-                  'text-blue-600': tx.status === 'active',
-                  'text-emerald-600': tx.status === 'returned',
-                  'text-rose-600': tx.status === 'overdue'
-                }">
-                {{ tx.status }}
-              </span>
+            <td class="table-cell">
+              <span class="badge-pill-sky capitalize" v-if="tx.status === 'active'">Active</span>
+              <span class="badge-pill-green capitalize" v-else-if="tx.status === 'returned'">Returned</span>
+              <span class="badge-pill-rose capitalize" v-else-if="tx.status === 'overdue'">Overdue</span>
+              <span class="badge-pill-gray capitalize" v-else>{{ tx.status }}</span>
             </td>
             <td class="px-6 py-4 text-sm text-slate-600">
               {{ tx.librarian?.firstName }} {{ tx.librarian?.lastName }}

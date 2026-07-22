@@ -406,29 +406,25 @@ function approvalBadge(status: string) {
       </button>
     </div>
 
-    <!-- Filters -->
-    <div class="flex gap-3 mb-4">
-      <div class="relative flex-1 max-w-sm">
-        <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+    <!-- Filters Header Box -->
+    <div class="filter-card">
+      <div class="relative flex-1 w-full md:w-auto">
+        <MagnifyingGlassIcon class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <input
           v-model="searchQuery"
           @input="onSearch"
           type="search"
-          placeholder="Search name, email, ID..."
-          class="input pl-9 text-sm"
+          placeholder="Search by name or email..."
+          class="w-full pl-10 pr-4 py-2 bg-slate-50 md:bg-white border border-slate-200/80 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5c726a]/30 focus:border-[#5c726a]"
         />
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2.5 w-full md:w-auto justify-end flex-wrap">
         <DropdownFilter
           v-model="filterRole"
           :options="roleOptions"
           @change="fetchUsers(1)"
           width="w-36"
-        >
-          <template #icon>
-            <FunnelIcon class="w-4 h-4 text-slate-400" />
-          </template>
-        </DropdownFilter>
+        />
 
         <DropdownFilter
           v-model="filterApprovalStatus"
@@ -451,7 +447,7 @@ function approvalBadge(status: string) {
     </div>
 
     <!-- Table -->
-    <div class="card overflow-hidden">
+    <div class="table-card">
       <!-- Loading skeleton -->
       <div v-if="loading" class="p-4 space-y-3">
         <div v-for="i in 5" :key="i" class="skeleton h-12 rounded-xl" />
@@ -467,16 +463,14 @@ function approvalBadge(status: string) {
       <!-- Data table -->
       <div v-else class="overflow-x-auto">
         <table class="w-full">
-          <thead class="bg-slate-50 border-b border-slate-100">
+          <thead>
             <tr>
-              <th class="table-header px-4 py-3 text-left">User</th>
-              <th class="table-header px-4 py-3 text-left">ID / Barcode</th>
-              <th class="table-header px-4 py-3 text-left">Role</th>
-              <th class="table-header px-4 py-3 text-left">Department</th>
-              <th class="table-header px-4 py-3 text-left">Eligibility</th>
-              <th class="table-header px-4 py-3 text-left">Approval</th>
-              <th class="table-header px-4 py-3 text-left">Active</th>
-              <th class="table-header px-4 py-3 text-center">Actions</th>
+              <th class="table-header text-left">Full Name</th>
+              <th class="table-header text-left">Email</th>
+              <th class="table-header text-left">Role</th>
+              <th class="table-header text-left">Status</th>
+              <th class="table-header text-left">Last Login</th>
+              <th class="table-header text-right pr-6">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -485,79 +479,86 @@ function approvalBadge(status: string) {
               :key="user.id"
               class="table-row"
             >
-              <!-- User -->
-              <td class="table-cell px-4">
-                <p class="font-semibold text-slate-800 text-sm">{{ user.firstName }} {{ user.lastName }}</p>
-                <p class="text-xs text-slate-400">{{ user.email }}</p>
+              <!-- Full Name -->
+              <td class="table-cell font-bold text-slate-800">
+                {{ user.firstName }} {{ user.lastName }}
               </td>
-              <!-- ID -->
-              <td class="table-cell px-4">
-                <p class="font-mono text-xs text-slate-700">{{ user.institutionalId }}</p>
-                <p class="font-mono text-xs text-slate-400">{{ user.barcode }}</p>
+              <!-- Email -->
+              <td class="table-cell text-slate-500">
+                {{ user.email }}
               </td>
               <!-- Role -->
-              <td class="table-cell px-4">
-                <span :class="['px-2.5 py-0.5 rounded-full text-xs font-bold capitalize', roleBadge(user.role)]">
+              <td class="table-cell">
+                <span v-if="user.role === 'admin'" class="badge-pill-green">
+                  Administrator
+                </span>
+                <span v-else-if="user.role === 'librarian'" class="badge-pill-green">
+                  Librarian
+                </span>
+                <span v-else-if="user.role === 'student'" class="badge-pill-sky">
+                  Student
+                </span>
+                <span v-else-if="user.role === 'faculty'" class="badge-pill-purple">
+                  Faculty
+                </span>
+                <span v-else class="badge-pill-gray capitalize">
                   {{ user.role }}
                 </span>
               </td>
-              <!-- Department -->
-              <td class="table-cell px-4 text-sm text-slate-600">
-                {{ user.department?.code ?? '—' }}
-              </td>
-              <!-- Eligibility -->
-              <td class="table-cell px-4">
-                <span :class="['px-2.5 py-0.5 rounded-full text-xs font-bold capitalize', eligBadge(user.eligibilityStatus)]">
-                  {{ user.eligibilityStatus }}
+              <!-- Status -->
+              <td class="table-cell">
+                <span v-if="user.isActive" class="badge-pill-green">
+                  <span class="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 flex items-center justify-center">
+                    <CheckIcon class="w-3 h-3 stroke-[3]" />
+                  </span>
+                  Active
+                </span>
+                <span v-else class="badge-pill-rose">
+                  <span class="w-4 h-4 rounded-full bg-rose-500/20 text-rose-600 flex items-center justify-center">
+                    <XMarkIcon class="w-3 h-3 stroke-[3]" />
+                  </span>
+                  Inactive
                 </span>
               </td>
-              <!-- Account approval -->
-              <td class="table-cell px-4">
-                <span :class="['px-2.5 py-0.5 rounded-full text-xs font-bold capitalize', approvalBadge(user.accountApprovalStatus)]">
-                  {{ user.accountApprovalStatus }}
-                </span>
-              </td>
-              <!-- Active -->
-              <td class="table-cell px-4">
-                <span :class="user.isActive ? 'text-emerald-500' : 'text-slate-300'">
-                  <CheckIcon v-if="user.isActive" class="w-4 h-4" />
-                  <XMarkIcon v-else class="w-4 h-4" />
-                </span>
+              <!-- Last Login -->
+              <td class="table-cell text-xs font-mono text-slate-400">
+                {{ user.createdAt ? new Date(user.createdAt).toISOString() : 'Never' }}
               </td>
               <!-- Actions -->
-              <td class="table-cell px-4">
-                <div class="flex items-center justify-center gap-2 flex-wrap">
+              <td class="table-cell text-right pr-6">
+                <div class="flex items-center justify-end gap-3 text-xs font-semibold">
                   <template v-if="user.accountApprovalStatus === 'pending'">
                     <button
                       type="button"
                       @click="viewingIdUser = user"
-                      class="p-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors"
+                      class="text-amber-600 hover:text-amber-700 transition-colors"
                       title="Review Registration"
                     >
-                      <EyeIcon class="w-4 h-4" />
+                      Review
                     </button>
                   </template>
                   <button
                     v-else-if="user.role === 'student' || user.role === 'faculty'"
                     @click="viewingIdUser = user"
-                    class="p-1.5 rounded-lg bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition-colors"
-                    title="View Digital ID / Profile"
+                    class="text-[#5c726a] hover:text-[#3b4d47] transition-colors"
+                    title="View ID"
                   >
-                    <QrCodeIcon class="w-4 h-4" />
+                    Digital ID
                   </button>
                   <button
                     @click="openEdit(user)"
-                    class="p-1.5 rounded-lg bg-[#447794]/10 text-[#447794] hover:bg-[#447794]/20 transition-colors"
+                    class="text-[#5c726a] hover:text-[#3b4d47] transition-colors"
                     title="Edit"
                   >
-                    <PencilSquareIcon class="w-4 h-4" />
+                    Edit
                   </button>
                   <button
                     @click="deleteTarget = user"
-                    class="p-1.5 rounded-lg bg-rose-100 text-rose-600 hover:bg-rose-200 transition-colors"
+                    class="text-amber-600 hover:text-amber-700 inline-flex items-center gap-1 transition-colors"
                     title="Deactivate"
                   >
-                    <TrashIcon class="w-4 h-4" />
+                    <span>Deactivate</span>
+                    <TrashIcon class="w-3.5 h-3.5 text-rose-500" />
                   </button>
                 </div>
               </td>
@@ -638,7 +639,7 @@ function approvalBadge(status: string) {
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Department *</label>
                 <select v-model="form.departmentId" required class="input">
                   <option value="" disabled>Select department...</option>
-                  <option v-for="dept in departments" :key="dept.id" :value="dept.id">{{ dept.code }} - {{ dept.name }}</option>
+                  <option v-for="dept in departments" :key="dept.id" :value="dept.id">{{ dept.name }}</option>
                 </select>
               </div>
               <div class="col-span-2">
@@ -842,7 +843,7 @@ function approvalBadge(status: string) {
             <div 
               ref="idCardRef"
               class="relative overflow-hidden rounded-xl shadow-lg bg-white select-none mb-6"
-              style="width: 250px; aspect-ratio: 591 / 1004;"
+              style="width: 259px; height: 367.5px; aspect-ratio: 74 / 105;"
             >
               <!-- Background Template -->
               <img src="@/assets/id.png" class="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none" alt="ID Template" crossorigin="anonymous" />

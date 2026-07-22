@@ -269,7 +269,7 @@ async function handleSignUp() {
                 >
                   <option value="" disabled>Select Department</option>
                   <option v-for="dept in departments" :key="dept.id" :value="dept.id">
-                    {{ dept.code }} - {{ dept.name }}
+                    {{ dept.name }}
                   </option>
                 </select>
               </div>

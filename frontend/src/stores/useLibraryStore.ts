@@ -58,10 +58,20 @@ export interface Transaction {
 export interface BookRequestItem {
   id: number
   book: Book | null
+  itemType?: string
   title: string | null
+  otherTitle?: string | null
   author: string | null
   isbn: string | null
+  issn?: string | null
+  callNumber?: string | null
+  edition?: string | null
+  publishYear?: number | null
+  category?: { id: number; name: string } | null
   publisher: string | null
+  language?: string | null
+  description?: string | null
+  locationShelf?: string | null
   requestType: 'borrow' | 'acquisition'
   reason: string | null
   status: 'pending' | 'approved' | 'rejected' | 'fulfilled'
@@ -69,7 +79,7 @@ export interface BookRequestItem {
   librarianNotes: string | null
   processedAt: string | null
   createdAt: string
-  user?: { id: number; firstName: string; lastName: string; institutionalId: string; department?: { name: string } }
+  user?: { id: number; email?: string; firstName: string; lastName: string; institutionalId: string; department?: { id: number; name: string; code?: string } }
 }
 
 export interface PaginatedBooks {
@@ -345,7 +355,23 @@ export const useLibraryStore = defineStore('library', () => {
     return data
   }
 
-  async function requestAcquisition(payload: { title: string; author?: string; isbn?: string; publisher?: string; reason: string }) {
+  async function requestAcquisition(payload: {
+    itemType?: string
+    title: string
+    otherTitle?: string
+    author?: string
+    isbn?: string
+    issn?: string
+    callNumber?: string
+    edition?: string
+    publishYear?: number
+    categoryId?: number
+    publisher?: string
+    language?: string
+    description?: string
+    locationShelf?: string
+    reason: string
+  }) {
     const { data } = await api.post('/book-requests/acquisition', payload)
     await fetchMyBookRequests()
     return data
