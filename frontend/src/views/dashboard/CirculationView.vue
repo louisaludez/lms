@@ -76,6 +76,62 @@ const renewResult     = ref<any>(null)
 const renewError      = ref('')
 const renewLoading    = ref(false)
 
+// ── Book Copy Autocomplete Helper ─────────────────────────────────────────────
+function createBookCopySearch(modelRef: any) {
+  const searchResults = ref<any[]>([])
+  const showDropdown = ref(false)
+  const searchTimeout = ref<any>(null)
+
+  function onSearchInput() {
+    if (searchTimeout.value) clearTimeout(searchTimeout.value)
+    if (!modelRef.value || modelRef.value.length < 2) {
+      searchResults.value = []
+      showDropdown.value = false
+      return
+    }
+
+    searchTimeout.value = setTimeout(async () => {
+      try {
+        const { data } = await api.get(`/books/copies/search?search=${encodeURIComponent(modelRef.value)}&limit=5`)
+        searchResults.value = data || []
+        showDropdown.value = searchResults.value.length > 0
+      } catch (e) {
+        console.error('Failed to search book copies', e)
+      }
+    }, 300)
+  }
+
+  function selectCopy(copy: any) {
+    modelRef.value = copy.barcode
+    showDropdown.value = false
+  }
+
+  function onSearchFocus() {
+    if (searchResults.value.length > 0 && modelRef.value.length >= 2) {
+      showDropdown.value = true
+    }
+  }
+
+  function onSearchBlur() {
+    setTimeout(() => {
+      showDropdown.value = false
+    }, 150)
+  }
+
+  return {
+    searchResults,
+    showDropdown,
+    onSearchInput,
+    selectCopy,
+    onSearchFocus,
+    onSearchBlur,
+  }
+}
+
+const checkoutBookSearch = createBookCopySearch(checkoutBarcode)
+const returnBookSearch = createBookCopySearch(returnBarcode)
+const renewBookSearch = createBookCopySearch(renewBarcode)
+
 async function handleCheckout() {
   checkoutLoading.value = true
   checkoutResult.value = null
@@ -176,17 +232,32 @@ async function handleRenew() {
             </li>
           </ul>
         </div>
-        <div>
+        <div class="relative">
           <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Book Barcode</label>
           <input
             id="checkout-barcode"
             v-model="checkoutBarcode"
+            @input="checkoutBookSearch.onSearchInput"
+            @focus="checkoutBookSearch.onSearchFocus"
+            @blur="checkoutBookSearch.onSearchBlur"
             type="text"
             required
-            placeholder="Scan or type book barcode"
+            placeholder="Scan barcode or type title..."
             class="input font-mono"
             autocomplete="off"
           />
+          <!-- Book Dropdown -->
+          <ul v-if="checkoutBookSearch.showDropdown.value" class="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+            <li 
+              v-for="copy in checkoutBookSearch.searchResults.value" 
+              :key="copy.id"
+              @mousedown.prevent="checkoutBookSearch.selectCopy(copy)"
+              class="px-4 py-2 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0"
+            >
+              <div class="font-semibold text-sm text-slate-800">{{ copy.book?.title }}</div>
+              <div class="text-xs text-slate-500 font-mono">{{ copy.barcode }}<span v-if="copy.book?.callNumber"> • Call No: {{ copy.book.callNumber }}</span></div>
+            </li>
+          </ul>
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Manual Due Date (Optional)</label>
@@ -225,17 +296,32 @@ async function handleRenew() {
       </div>
 
       <form @submit.prevent="handleReturn" class="space-y-4">
-        <div>
+        <div class="relative">
           <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Book Barcode</label>
           <input
             id="return-barcode"
             v-model="returnBarcode"
+            @input="returnBookSearch.onSearchInput"
+            @focus="returnBookSearch.onSearchFocus"
+            @blur="returnBookSearch.onSearchBlur"
             type="text"
             required
-            placeholder="Scan or type book barcode"
+            placeholder="Scan barcode or type title..."
             class="input font-mono"
             autocomplete="off"
           />
+          <!-- Book Dropdown -->
+          <ul v-if="returnBookSearch.showDropdown.value" class="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+            <li 
+              v-for="copy in returnBookSearch.searchResults.value" 
+              :key="copy.id"
+              @mousedown.prevent="returnBookSearch.selectCopy(copy)"
+              class="px-4 py-2 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0"
+            >
+              <div class="font-semibold text-sm text-slate-800">{{ copy.book?.title }}</div>
+              <div class="text-xs text-slate-500 font-mono">{{ copy.barcode }}<span v-if="copy.book?.callNumber"> • Call No: {{ copy.book.callNumber }}</span></div>
+            </li>
+          </ul>
         </div>
         <button type="submit" :disabled="returnLoading" class="btn-primary w-full justify-center bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200">
           {{ returnLoading ? 'Processing...' : 'Return Book' }}
@@ -264,17 +350,32 @@ async function handleRenew() {
       </div>
 
       <form @submit.prevent="handleRenew" class="space-y-4">
-        <div>
+        <div class="relative">
           <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Book Barcode</label>
           <input
             id="renew-barcode"
             v-model="renewBarcode"
+            @input="renewBookSearch.onSearchInput"
+            @focus="renewBookSearch.onSearchFocus"
+            @blur="renewBookSearch.onSearchBlur"
             type="text"
             required
-            placeholder="Scan or type book barcode"
+            placeholder="Scan barcode or type title..."
             class="input font-mono"
             autocomplete="off"
           />
+          <!-- Book Dropdown -->
+          <ul v-if="renewBookSearch.showDropdown.value" class="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+            <li 
+              v-for="copy in renewBookSearch.searchResults.value" 
+              :key="copy.id"
+              @mousedown.prevent="renewBookSearch.selectCopy(copy)"
+              class="px-4 py-2 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0"
+            >
+              <div class="font-semibold text-sm text-slate-800">{{ copy.book?.title }}</div>
+              <div class="text-xs text-slate-500 font-mono">{{ copy.barcode }}<span v-if="copy.book?.callNumber"> • Call No: {{ copy.book.callNumber }}</span></div>
+            </li>
+          </ul>
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Manual Due Date (Optional)</label>

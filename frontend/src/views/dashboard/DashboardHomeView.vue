@@ -163,7 +163,7 @@ const barChartOptions = {
 }
 
 function goToOverdueTransactions() {
-  router.push({ path: '/dashboard/transactions', query: { status: 'overdue' } })
+  router.push({ path: '/dashboard/history', query: { status: 'overdue' } })
 }
 
 function processReturnForCopy(barcode: string) {

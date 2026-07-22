@@ -255,6 +255,24 @@ export class BooksService {
     return copy;
   }
 
+  // ─── SEARCH BOOK COPIES FOR AUTOCOMPLETE ──────────────────────────────────────
+  async searchCopies(search?: string, limit = 5): Promise<BookCopy[]> {
+    if (!search || search.trim().length === 0) return [];
+    const qb = this.copyRepo
+      .createQueryBuilder('copy')
+      .innerJoinAndSelect('copy.book', 'book')
+      .where('copy.isActive = :isActive', { isActive: true });
+
+    const query = `%${search.trim()}%`;
+    qb.andWhere(
+      '(copy.barcode LIKE :query OR book.title LIKE :query OR book.isbn LIKE :query OR book.callNumber LIKE :query)',
+      { query },
+    );
+
+    qb.take(limit);
+    return qb.getMany();
+  }
+
   async decrementAvailable(bookId: number): Promise<void> {
     await this.bookRepo.decrement({ id: bookId }, 'availableCopies', 1);
   }

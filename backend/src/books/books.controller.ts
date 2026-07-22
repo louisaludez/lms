@@ -67,6 +67,17 @@ export class BooksController {
     );
   }
 
+  /** GET /api/v1/books/copies/search — search book copies for circulation autocomplete */
+  @Get('copies/search')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('librarian', 'chief_librarian', 'admin')
+  searchCopies(
+    @Query('search') search?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.booksService.searchCopies(search, limit ? Number(limit) : 5);
+  }
+
   /** GET /api/v1/books/:id — public */
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
