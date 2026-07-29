@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import api from '@/api/axios'
 import { PrinterIcon, DocumentTextIcon, UserGroupIcon, BookOpenIcon, CheckCircleIcon, ExclamationCircleIcon, ClipboardDocumentListIcon, SparklesIcon, ArrowPathIcon, FunnelIcon, BuildingOfficeIcon } from '@heroicons/vue/24/outline'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js'
@@ -12,12 +12,41 @@ const currentYear = new Date().getFullYear().toString()
 // Common options
 const commonFrequencies = ['Monthly', 'Annually']
 const entryFrequencies = ['Daily', 'Weekly', 'Monthly', 'Annually']
-const departments = [
+
+const defaultDepartments = [
+  'All Departments',
+  'TVL',
+  'GAS',
+  'HUMSS',
+  'STEM',
+  'AB English',
+  'BS Midwifery',
+  'BEEd',
+  'BSED major in English',
+  'BSED major in Mathematics',
   'Bachelor of Arts (AB): English Language',
   'Bachelor of Elementary Education (BEEd): Generalist',
   'Bachelor of Secondary Education (BSEd): Majors in English and Mathematics',
-  'Bachelor of Science (BS): Midwifery'
+  'Bachelor of Science (BS): Midwifery',
+  'Elementary',
+  'Highschool',
+  'Senior High School',
 ]
+
+const departments = ref<string[]>([...defaultDepartments])
+
+onMounted(async () => {
+  try {
+    const { data } = await api.get<{ id: number; name: string; code: string }[]>('/users/departments')
+    if (data && data.length > 0) {
+      const fetchedNames = data.map(d => d.name)
+      const combined = Array.from(new Set(['All Departments', ...fetchedNames, ...defaultDepartments.slice(1)]))
+      departments.value = combined
+    }
+  } catch (e) {
+    console.error('Failed to load dynamic departments for reports:', e)
+  }
+})
 
 const reportTypes = [
   'Library Entry and Exit',
@@ -34,7 +63,7 @@ const selectedReportType = ref('Library Entry and Exit')
 
 const reportParams = ref({
   frequency: 'Monthly',
-  department: 'Bachelor of Arts (AB): English Language',
+  department: 'All Departments',
   year: currentYear
 })
 

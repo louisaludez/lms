@@ -5,6 +5,9 @@ import {
   IsNumber,
   IsInt,
   Min,
+  IsArray,
+  ArrayNotEmpty,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -154,3 +157,47 @@ export class UpdateBookDto {
   @IsOptional() @IsString() itemType?: string;
   @IsOptional() @IsString() authors?: string;
 }
+
+export class BulkUpdateBookDto {
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsInt({ each: true })
+  ids: number[];
+
+  @IsOptional() @IsString() title?: string;
+  @IsOptional() @IsString() edition?: string;
+  @IsOptional() @IsString() publisher?: string;
+  @IsOptional() @IsNumber() publishYear?: number;
+  @IsOptional() @IsInt() categoryId?: number;
+  @IsOptional() @IsString() language?: string;
+  @IsOptional() @IsString() locationShelf?: string;
+  @IsOptional() @IsBoolean() isReferenceOnly?: boolean;
+  @IsOptional() @IsBoolean() isActive?: boolean;
+  @IsOptional() @IsString() itemType?: string;
+}
+
+export class UpdateBookItemDto {
+  @IsInt()
+  id: number;
+
+  @IsOptional() @IsString() title?: string;
+  @IsOptional() @IsString() edition?: string;
+  @IsOptional() @IsString() publisher?: string;
+  @IsOptional() @IsNumber() publishYear?: number;
+  @IsOptional() @IsInt() categoryId?: number;
+  @IsOptional() @IsString() language?: string;
+  @IsOptional() @IsString() locationShelf?: string;
+  @IsOptional() @IsBoolean() isReferenceOnly?: boolean;
+  @IsOptional() @IsBoolean() isActive?: boolean;
+  @IsOptional() @IsString() itemType?: string;
+}
+
+export class BatchUpdateBooksDto {
+  @IsArray()
+  @ArrayNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateBookItemDto)
+  items: UpdateBookItemDto[];
+}
+
+

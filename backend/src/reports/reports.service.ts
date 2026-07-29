@@ -80,6 +80,14 @@ export class ReportsService {
       dateGroupSql = `YEAR(a.scanned_at)`;
     }
 
+    const whereClauses: string[] = ['YEAR(a.scanned_at) = ?'];
+    const queryParams: any[] = [year];
+
+    if (department && department !== 'All' && department !== 'All Departments') {
+      whereClauses.push('(d.name = ? OR d.code = ? OR d.name LIKE ?)');
+      queryParams.push(department, department, `%${department}%`);
+    }
+
     return this.dataSource.query(
       `
       SELECT 
@@ -89,11 +97,11 @@ export class ReportsService {
       FROM attendance_logs a
       JOIN users u ON a.user_id = u.id
       JOIN departments d ON u.department_id = d.id
-      WHERE YEAR(a.scanned_at) = ? AND d.name = ?
+      WHERE ${whereClauses.join(' AND ')}
       GROUP BY period
       ORDER BY period ASC
     `,
-      [year, department],
+      queryParams,
     );
   }
 

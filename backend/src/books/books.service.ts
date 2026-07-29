@@ -8,7 +8,7 @@ import { Repository, SelectQueryBuilder, DataSource } from 'typeorm';
 import { Book } from './entities/book.entity';
 import { BookCopy } from './entities/book-copy.entity';
 import { Category } from './entities/category.entity';
-import { SearchBooksDto, CreateBookDto, UpdateBookDto } from './dto/book.dto';
+import { SearchBooksDto, CreateBookDto, UpdateBookDto, BulkUpdateBookDto, BatchUpdateBooksDto } from './dto/book.dto';
 import { Readable } from 'stream';
 import csv = require('csv-parser');
 
@@ -381,6 +381,76 @@ export class BooksService {
     book.isActive = false;
     await this.bookRepo.save(book as any);
   }
+
+  // ── BULK UPDATE BOOKS ───────────────────────────────────────────────
+  async bulkUpdate(dto: BulkUpdateBookDto): Promise<{ updatedCount: number }> {
+    if (!dto.ids || dto.ids.length === 0) {
+      throw new BadRequestException('No book IDs provided for bulk update');
+    }
+
+    let categoryObj: Category | undefined = undefined;
+    if (dto.categoryId !== undefined) {
+      const cat = await this.categoryRepo.findOne({ where: { id: dto.categoryId } });
+      if (!cat) throw new NotFoundException(`Category ${dto.categoryId} not found`);
+      categoryObj = cat;
+    }
+
+    let count = 0;
+    for (const id of dto.ids) {
+      const book = await this.bookRepo.findOne({ where: { id } });
+      if (!book) continue;
+
+      if (categoryObj !== undefined)        book.category       = categoryObj;
+      if (dto.edition !== undefined)       book.edition        = dto.edition;
+      if (dto.publisher !== undefined)     book.publisher      = dto.publisher;
+      if (dto.publishYear !== undefined)   book.publishYear    = dto.publishYear;
+      if (dto.language !== undefined)      book.language       = dto.language;
+      if (dto.locationShelf !== undefined) book.locationShelf  = dto.locationShelf;
+      if (dto.isReferenceOnly !== undefined) book.isReferenceOnly = dto.isReferenceOnly;
+      if (dto.isActive !== undefined)      book.isActive       = dto.isActive;
+      if (dto.itemType !== undefined)      book.itemType       = dto.itemType;
+
+      await this.bookRepo.save(book as any);
+      count++;
+    }
+
+    return { updatedCount: count };
+  }
+
+  // ── BATCH UPDATE BOOKS (INDIVIDUAL ROW EDITS) ──────────────────────
+  async batchUpdate(dto: BatchUpdateBooksDto): Promise<{ updatedCount: number }> {
+    if (!dto.items || dto.items.length === 0) {
+      throw new BadRequestException('No items provided for batch update');
+    }
+
+    let count = 0;
+    for (const item of dto.items) {
+      const book = await this.bookRepo.findOne({ where: { id: item.id } });
+      if (!book) continue;
+
+      if (item.categoryId !== undefined) {
+        const cat = await this.categoryRepo.findOne({ where: { id: item.categoryId } });
+        if (cat) book.category = cat;
+      }
+
+      if (item.title !== undefined)           book.title          = item.title;
+      if (item.edition !== undefined)         book.edition        = item.edition;
+      if (item.publisher !== undefined)       book.publisher      = item.publisher;
+      if (item.publishYear !== undefined)     book.publishYear    = item.publishYear;
+      if (item.language !== undefined)        book.language       = item.language;
+      if (item.locationShelf !== undefined)   book.locationShelf  = item.locationShelf;
+      if (item.isReferenceOnly !== undefined) book.isReferenceOnly = item.isReferenceOnly;
+      if (item.isActive !== undefined)        book.isActive       = item.isActive;
+      if (item.itemType !== undefined)        book.itemType       = item.itemType;
+
+      await this.bookRepo.save(book as any);
+      count++;
+    }
+
+    return { updatedCount: count };
+  }
+
+
 
   // ── BULK UPLOAD ────────────────────────────────────────────────────
   async bulkUpload(file: Express.Multer.File): Promise<{ success: number; failed: number; errors: string[] }> {

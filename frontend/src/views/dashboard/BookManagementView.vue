@@ -70,12 +70,47 @@ const saving     = ref(false)
 const modalError = ref('')
 const editingId  = ref<number | null>(null)
 
-// ── Bulk Upload State ────────────────────────────────────────────────────────
+// ── Bulk Upload & Edit State ──────────────────────────────────────────────────
 const showBulkModal = ref(false)
 const bulkFile = ref<File | null>(null)
 const bulkLoading = ref(false)
 const bulkError = ref('')
 const bulkResult = ref<{ success: number; failed: number; errors: string[] } | null>(null)
+
+const selectedBookIds = ref<number[]>([])
+const showBulkEditModal = ref(false)
+const bulkEditSaving = ref(false)
+const bulkEditError = ref('')
+
+const isAllSelected = computed(() => {
+  return books.value.length > 0 && books.value.every(b => selectedBookIds.value.includes(b.id))
+})
+
+const isSomeSelected = computed(() => {
+  return selectedBookIds.value.length > 0
+})
+
+const bulkEditForm = ref({
+  updateCategory: false,
+  categoryId: '',
+  updateLocation: false,
+  locationShelf: '',
+  updateLanguage: false,
+  language: 'English',
+  updateItemType: false,
+  itemType: 'BOOKS',
+  updatePublisher: false,
+  publisher: '',
+  updatePublishYear: false,
+  publishYear: new Date().getFullYear(),
+  updateEdition: false,
+  edition: '',
+  updateIsReferenceOnly: false,
+  isReferenceOnly: false,
+  updateIsActive: false,
+  isActive: true,
+})
+
 
 const itemTypes = ['Journals', 'Thesis', 'CD', 'BOOKS', 'DVD', 'Cartographic Materials', 'Electronics']
 
@@ -333,6 +368,185 @@ function closeBulkModal() {
   bulkResult.value = null
 }
 
+// ── Bulk Selection & Edit Functions ──────────────────────────────────────────
+function toggleSelectAll(e: Event) {
+  const checked = (e.target as HTMLInputElement).checked
+  if (checked) {
+    const pageIds = books.value.map(b => b.id)
+    const set = new Set([...selectedBookIds.value, ...pageIds])
+    selectedBookIds.value = Array.from(set)
+  } else {
+    const pageIds = new Set(books.value.map(b => b.id))
+    selectedBookIds.value = selectedBookIds.value.filter(id => !pageIds.has(id))
+  }
+}
+
+function toggleSelectBook(id: number) {
+  const idx = selectedBookIds.value.indexOf(id)
+  if (idx > -1) {
+    selectedBookIds.value.splice(idx, 1)
+  } else {
+    selectedBookIds.value.push(id)
+  }
+}
+
+function clearSelection() {
+  selectedBookIds.value = []
+}
+
+// ── Batch Table Edit State & Methods ──────────────────────────────────────────
+interface BulkItemEditRow {
+  id: number
+  title: string
+  isbn: string
+  callNumber: string
+  categoryId: string
+  locationShelf: string
+  itemType: string
+  language: string
+  publisher: string
+  publishYear: number | null
+  edition: string
+  isReferenceOnly: boolean
+  isActive: boolean
+}
+
+const bulkEditItems = ref<BulkItemEditRow[]>([])
+
+const batchFill = ref({
+  categoryId: '',
+  locationShelf: '',
+  itemType: '',
+  language: '',
+  publisher: '',
+  publishYear: null as number | null,
+  edition: '',
+})
+
+function openBulkEditModal() {
+  bulkEditError.value = ''
+  const selected = books.value.filter(b => selectedBookIds.value.includes(b.id))
+  bulkEditItems.value = selected.map(b => ({
+    id: b.id,
+    title: b.title,
+    isbn: b.isbn,
+    callNumber: b.callNumber,
+    categoryId: b.category?.id?.toString() ?? '',
+    locationShelf: b.locationShelf ?? '',
+    itemType: b.itemType || 'BOOKS',
+    language: b.language || 'English',
+    publisher: b.publisher ?? '',
+    publishYear: b.publishYear ?? new Date().getFullYear(),
+    edition: b.edition ?? '',
+    isReferenceOnly: !!b.isReferenceOnly,
+    isActive: !!b.isActive,
+  }))
+  showBulkEditModal.value = true
+}
+
+function removeBulkEditRow(id: number) {
+  bulkEditItems.value = bulkEditItems.value.filter(item => item.id !== id)
+  selectedBookIds.value = selectedBookIds.value.filter(selectedId => selectedId !== id)
+  if (bulkEditItems.value.length === 0) {
+    showBulkEditModal.value = false
+  }
+}
+
+function fillAllCategory() {
+  if (!batchFill.value.categoryId) return
+  bulkEditItems.value.forEach(item => { item.categoryId = batchFill.value.categoryId })
+}
+
+function fillAllLocation() {
+  if (!batchFill.value.locationShelf) return
+  bulkEditItems.value.forEach(item => { item.locationShelf = batchFill.value.locationShelf })
+}
+
+function fillAllItemType() {
+  if (!batchFill.value.itemType) return
+  bulkEditItems.value.forEach(item => { item.itemType = batchFill.value.itemType })
+}
+
+function fillAllLanguage() {
+  if (!batchFill.value.language) return
+  bulkEditItems.value.forEach(item => { item.language = batchFill.value.language })
+}
+
+function fillAllPublisher() {
+  if (!batchFill.value.publisher) return
+  bulkEditItems.value.forEach(item => { item.publisher = batchFill.value.publisher })
+}
+
+function fillAllYear() {
+  if (batchFill.value.publishYear === null) return
+  bulkEditItems.value.forEach(item => { item.publishYear = batchFill.value.publishYear })
+}
+
+function fillAllEdition() {
+  if (!batchFill.value.edition) return
+  bulkEditItems.value.forEach(item => { item.edition = batchFill.value.edition })
+}
+
+function fillAllRefOnly(val: boolean) {
+  bulkEditItems.value.forEach(item => { item.isReferenceOnly = val })
+}
+
+function fillAllActive(val: boolean) {
+  bulkEditItems.value.forEach(item => { item.isActive = val })
+}
+
+async function submitBulkEdit() {
+  if (bulkEditItems.value.length === 0) return
+
+  bulkEditSaving.value = true
+  bulkEditError.value = ''
+
+  try {
+    const payload = {
+      items: bulkEditItems.value.map(item => ({
+        id: item.id,
+        categoryId: item.categoryId ? Number(item.categoryId) : undefined,
+        locationShelf: item.locationShelf || undefined,
+        itemType: item.itemType || undefined,
+        language: item.language || undefined,
+        publisher: item.publisher || undefined,
+        publishYear: item.publishYear ? Number(item.publishYear) : undefined,
+        edition: item.edition || undefined,
+        isReferenceOnly: !!item.isReferenceOnly,
+        isActive: !!item.isActive,
+      }))
+    }
+
+    await api.patch('/books/batch-update', payload)
+    showBulkEditModal.value = false
+    clearSelection()
+    await fetchBooks(currentPage.value)
+  } catch (e: any) {
+    bulkEditError.value = e.response?.data?.message ?? 'Batch update failed'
+  } finally {
+    bulkEditSaving.value = false
+  }
+}
+
+
+async function quickBulkToggleActive(activeState: boolean) {
+  if (selectedBookIds.value.length === 0) return
+  loading.value = true
+  try {
+    await api.patch('/books/bulk-update', {
+      ids: selectedBookIds.value,
+      isActive: activeState,
+    })
+    clearSelection()
+    await fetchBooks(currentPage.value)
+  } catch (e: any) {
+    alert(e.response?.data?.message ?? 'Bulk action failed')
+  } finally {
+    loading.value = false
+  }
+}
+
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function availBadge(available: number, total: number) {
   if (available === 0) return 'bg-rose-100 text-rose-700'
@@ -394,6 +608,51 @@ function availBadge(available: number, total: number) {
       </div>
     </div>
 
+    <!-- Contextual Bulk Actions Bar -->
+    <div
+      v-if="selectedBookIds.length > 0"
+      class="mb-5 p-3.5 bg-slate-900 text-white rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xl border border-slate-800 transition-all"
+    >
+      <div class="flex items-center gap-3 px-1">
+        <span class="w-7 h-7 rounded-xl bg-[#447794] text-xs font-extrabold flex items-center justify-center text-white shadow-inner">
+          {{ selectedBookIds.length }}
+        </span>
+        <div>
+          <p class="text-xs font-bold text-slate-200">
+            {{ selectedBookIds.length }} item{{ selectedBookIds.length > 1 ? 's' : '' }} selected
+          </p>
+          <p class="text-[10px] text-slate-400">Perform actions across selected catalog items</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2.5 flex-wrap">
+        <button
+          @click="openBulkEditModal"
+          class="px-3.5 py-2 rounded-xl bg-[#447794] hover:bg-[#37637b] text-xs font-bold text-white flex items-center gap-1.5 transition-all shadow-sm"
+        >
+          <PencilSquareIcon class="w-4 h-4" /> Bulk Edit
+        </button>
+        <button
+          @click="quickBulkToggleActive(true)"
+          class="px-3.5 py-2 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 text-xs font-bold text-white flex items-center gap-1.5 transition-all shadow-sm"
+        >
+          <CheckIcon class="w-4 h-4" /> Activate
+        </button>
+        <button
+          @click="quickBulkToggleActive(false)"
+          class="px-3.5 py-2 rounded-xl bg-rose-600/90 hover:bg-rose-600 text-xs font-bold text-white flex items-center gap-1.5 transition-all shadow-sm"
+        >
+          <XMarkIcon class="w-4 h-4" /> Deactivate
+        </button>
+        <div class="h-4 w-px bg-slate-700 hidden sm:block mx-1"></div>
+        <button
+          @click="clearSelection"
+          class="px-3 py-2 rounded-xl hover:bg-slate-800 text-xs font-semibold text-slate-300 transition-colors"
+        >
+          Deselect All
+        </button>
+      </div>
+    </div>
+
     <!-- Table Card -->
     <div class="table-card">
       <div v-if="loading" class="p-4 space-y-3">
@@ -409,6 +668,16 @@ function availBadge(available: number, total: number) {
         <table class="w-full">
           <thead>
             <tr>
+              <th class="table-header w-10 text-center pl-4">
+                <input
+                  type="checkbox"
+                  :checked="isAllSelected"
+                  :indeterminate.prop="isSomeSelected && !isAllSelected"
+                  @change="toggleSelectAll"
+                  class="rounded border-slate-300 text-[#447794] focus:ring-[#447794] w-4 h-4 cursor-pointer"
+                  title="Select / Deselect all items on this page"
+                />
+              </th>
               <th class="table-header text-left">Title / Author</th>
               <th class="table-header text-left">Category</th>
               <th class="table-header text-left">ISBN / Call No. / Accession Code</th>
@@ -421,8 +690,17 @@ function availBadge(available: number, total: number) {
             <tr
               v-for="book in books"
               :key="book.id"
-              :class="['table-row', !book.isActive && 'opacity-60']"
+              :class="['table-row transition-colors', !book.isActive && 'opacity-60', selectedBookIds.includes(book.id) && 'bg-[#447794]/10']"
             >
+              <td class="table-cell w-10 text-center pl-4">
+                <input
+                  type="checkbox"
+                  :value="book.id"
+                  :checked="selectedBookIds.includes(book.id)"
+                  @change="toggleSelectBook(book.id)"
+                  class="rounded border-slate-300 text-[#447794] focus:ring-[#447794] w-4 h-4 cursor-pointer"
+                />
+              </td>
               <!-- Title / Author -->
               <td class="table-cell max-w-[280px]">
                 <p class="font-bold text-slate-800 text-sm truncate">{{ book.title }}</p>
@@ -754,4 +1032,168 @@ function availBadge(available: number, total: number) {
         </div>
       </div>
     </Teleport>
+
+    <!-- Batch Table Edit Modal (Spreadsheet-like Grid) -->
+    <Teleport to="body">
+      <div v-if="showBulkEditModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl w-full max-w-7xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+          
+          <!-- Modal Header -->
+          <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-[#447794]/10 flex items-center justify-center">
+                <PencilSquareIcon class="w-5 h-5 text-[#447794]" />
+              </div>
+              <div>
+                <h3 class="font-bold text-slate-800 text-base">Batch Table Editor</h3>
+                <p class="text-xs text-slate-500">Edit fields individually per row or use header tools to fill columns across all {{ bulkEditItems.length }} item(s).</p>
+              </div>
+            </div>
+            <button @click="showBulkEditModal = false" class="text-slate-400 hover:text-slate-600 transition-colors">
+              <XMarkIcon class="w-5 h-5" />
+            </button>
+          </div>
+
+          <!-- Quick Fill Header Toolbar -->
+          <div class="px-6 py-3 bg-slate-50 border-b border-slate-200/80 text-xs shrink-0">
+            <div class="flex items-center gap-2 mb-2 font-bold text-slate-700 uppercase tracking-wider text-[11px]">
+              <SparklesIcon class="w-4 h-4 text-[#447794]" /> Quick Apply to All Rows:
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+              <!-- Category Fill -->
+              <div class="flex items-center gap-1.5 bg-white p-1.5 rounded-lg border border-slate-200">
+                <select v-model="batchFill.categoryId" class="text-xs py-1 px-2 border-0 bg-transparent flex-1 focus:outline-none text-slate-700">
+                  <option value="">Fill Category...</option>
+                  <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                </select>
+                <button type="button" @click="fillAllCategory" class="px-2 py-1 bg-[#447794] text-white font-semibold rounded hover:bg-[#37627a] transition-colors text-[11px]">Apply</button>
+              </div>
+
+              <!-- Location Fill -->
+              <div class="flex items-center gap-1.5 bg-white p-1.5 rounded-lg border border-slate-200">
+                <input v-model="batchFill.locationShelf" type="text" placeholder="Fill Location..." class="text-xs py-1 px-2 border-0 bg-transparent flex-1 focus:outline-none text-slate-700" />
+                <button type="button" @click="fillAllLocation" class="px-2 py-1 bg-[#447794] text-white font-semibold rounded hover:bg-[#37627a] transition-colors text-[11px]">Apply</button>
+              </div>
+
+              <!-- Item Type Fill -->
+              <div class="flex items-center gap-1.5 bg-white p-1.5 rounded-lg border border-slate-200">
+                <select v-model="batchFill.itemType" class="text-xs py-1 px-2 border-0 bg-transparent flex-1 focus:outline-none text-slate-700">
+                  <option value="">Fill Item Type...</option>
+                  <option v-for="type in itemTypes" :key="type" :value="type">{{ type }}</option>
+                </select>
+                <button type="button" @click="fillAllItemType" class="px-2 py-1 bg-[#447794] text-white font-semibold rounded hover:bg-[#37627a] transition-colors text-[11px]">Apply</button>
+              </div>
+
+              <!-- Quick Active/Ref Toggles -->
+              <div class="flex items-center gap-2 bg-white p-1.5 rounded-lg border border-slate-200 justify-around">
+                <button type="button" @click="fillAllActive(true)" class="text-[11px] font-semibold text-emerald-700 hover:underline">All Active</button>
+                <span class="text-slate-300">|</span>
+                <button type="button" @click="fillAllRefOnly(true)" class="text-[11px] font-semibold text-sky-700 hover:underline">All Ref Only</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Scrollable Spreadsheet Grid -->
+          <div class="p-6 overflow-y-auto flex-1">
+            <div v-if="bulkEditItems.length === 0" class="py-12 text-center text-slate-400">
+              <p>No items selected for batch edit.</p>
+            </div>
+            <div v-else class="overflow-x-auto border border-slate-200 rounded-xl">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead class="bg-slate-100 text-slate-700 uppercase font-semibold text-[11px] border-b border-slate-200 sticky top-0 z-10">
+                  <tr>
+                    <th class="p-3 w-56">Item / Call No.</th>
+                    <th class="p-3 w-40">Category</th>
+                    <th class="p-3 w-36">Location / Shelf</th>
+                    <th class="p-3 w-32">Item Type</th>
+                    <th class="p-3 w-28">Language</th>
+                    <th class="p-3 w-36">Publisher & Year</th>
+                    <th class="p-3 w-24 text-center">Ref Only</th>
+                    <th class="p-3 w-24 text-center">Active</th>
+                    <th class="p-3 w-12 text-center">Remove</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 bg-white">
+                  <tr v-for="item in bulkEditItems" :key="item.id" class="hover:bg-slate-50/80 transition-colors">
+                    <!-- Title & ISBN -->
+                    <td class="p-2.5 align-top">
+                      <p class="font-bold text-slate-800 line-clamp-1" :title="item.title">{{ item.title }}</p>
+                      <p class="font-mono text-[10px] text-slate-400 mt-0.5">{{ item.isbn }} | {{ item.callNumber }}</p>
+                    </td>
+
+                    <!-- Category -->
+                    <td class="p-2 align-top">
+                      <select v-model="item.categoryId" class="w-full text-xs p-1.5 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-[#447794]">
+                        <option value="">(None)</option>
+                        <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                      </select>
+                    </td>
+
+                    <!-- Location / Shelf -->
+                    <td class="p-2 align-top">
+                      <input v-model="item.locationShelf" type="text" placeholder="Shelf..." class="w-full text-xs p-1.5 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-[#447794]" />
+                    </td>
+
+                    <!-- Item Type -->
+                    <td class="p-2 align-top">
+                      <select v-model="item.itemType" class="w-full text-xs p-1.5 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-[#447794]">
+                        <option v-for="type in itemTypes" :key="type" :value="type">{{ type }}</option>
+                      </select>
+                    </td>
+
+                    <!-- Language -->
+                    <td class="p-2 align-top">
+                      <input v-model="item.language" type="text" class="w-full text-xs p-1.5 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-[#447794]" />
+                    </td>
+
+                    <!-- Publisher & Year -->
+                    <td class="p-2 align-top space-y-1">
+                      <input v-model="item.publisher" type="text" placeholder="Publisher" class="w-full text-xs p-1.5 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-[#447794]" />
+                      <input v-model="item.publishYear" type="number" placeholder="Year" class="w-full text-xs p-1.5 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-[#447794]" />
+                    </td>
+
+                    <!-- Reference Only -->
+                    <td class="p-2.5 align-top text-center">
+                      <input v-model="item.isReferenceOnly" type="checkbox" class="w-4 h-4 accent-[#447794] rounded cursor-pointer mt-1" />
+                    </td>
+
+                    <!-- Active -->
+                    <td class="p-2.5 align-top text-center">
+                      <input v-model="item.isActive" type="checkbox" class="w-4 h-4 accent-[#447794] rounded cursor-pointer mt-1" />
+                    </td>
+
+                    <!-- Remove row -->
+                    <td class="p-2.5 align-top text-center">
+                      <button @click="removeBulkEditRow(item.id)" title="Remove from batch edit" type="button" class="text-rose-400 hover:text-rose-600 transition-colors p-1">
+                        <TrashIcon class="w-4 h-4 mx-auto" />
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div v-if="bulkEditError" class="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+              {{ bulkEditError }}
+            </div>
+          </div>
+
+          <!-- Modal Footer -->
+          <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-white shrink-0">
+            <p class="text-xs text-slate-500">
+              Ready to submit updates for <strong class="text-slate-700">{{ bulkEditItems.length }}</strong> item(s).
+            </p>
+            <div class="flex gap-3">
+              <button type="button" @click="showBulkEditModal = false" class="btn-ghost px-5 justify-center">Cancel</button>
+              <button type="button" @click="submitBulkEdit" :disabled="bulkEditSaving || bulkEditItems.length === 0" class="btn-primary px-6 justify-center">
+                {{ bulkEditSaving ? 'Saving...' : `Save Changes (${bulkEditItems.length})` }}
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </Teleport>
+
 </template>
+

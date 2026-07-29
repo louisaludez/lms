@@ -43,6 +43,13 @@ export class UsersService implements OnModuleInit {
       { name: 'BEEd', code: 'BEED' },
       { name: 'BSED major in English', code: 'BSED-ENG' },
       { name: 'BSED major in Mathematics', code: 'BSED-MATH' },
+      { name: 'Bachelor of Arts (AB): English Language', code: 'AB-EL' },
+      { name: 'Bachelor of Elementary Education (BEEd): Generalist', code: 'BEEd-Gen' },
+      { name: 'Bachelor of Secondary Education (BSEd): Majors in English and Mathematics', code: 'BSEd-EM' },
+      { name: 'Bachelor of Science (BS): Midwifery', code: 'BS-Midwifery' },
+      { name: 'Elementary', code: 'ELEM' },
+      { name: 'Highschool', code: 'JHS' },
+      { name: 'Senior High School', code: 'SHS' },
     ];
 
     for (const dept of depts) {

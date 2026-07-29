@@ -17,7 +17,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { BooksService } from './books.service';
-import { SearchBooksDto, CreateBookDto, UpdateBookDto } from './dto/book.dto';
+import { SearchBooksDto, CreateBookDto, UpdateBookDto, BulkUpdateBookDto, BatchUpdateBooksDto } from './dto/book.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -102,6 +102,22 @@ export class BooksController {
       throw new BadRequestException('No file uploaded');
     }
     return this.booksService.bulkUpload(file);
+  }
+
+  /** PATCH /api/v1/books/bulk-update — bulk update books */
+  @Patch('bulk-update')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('librarian', 'chief_librarian', 'admin')
+  bulkUpdate(@Body() dto: BulkUpdateBookDto) {
+    return this.booksService.bulkUpdate(dto);
+  }
+
+  /** PATCH /api/v1/books/batch-update — batch update individual items */
+  @Patch('batch-update')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('librarian', 'chief_librarian', 'admin')
+  batchUpdate(@Body() dto: BatchUpdateBooksDto) {
+    return this.booksService.batchUpdate(dto);
   }
 
   /** PATCH /api/v1/books/:id — update */
