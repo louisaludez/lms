@@ -270,56 +270,68 @@ const monthlyActivityData = computed(() => {
             <div 
               ref="idCardRef"
               class="relative overflow-hidden rounded-xl shadow-2xl bg-white select-none"
-              style="width: 296px; height: 420px; aspect-ratio: 74 / 105;"
+              style="width: 346px; height: 599px;"
             >
               <img src="@/assets/id.png" class="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none" alt="ID Template" crossorigin="anonymous" />
+
+              <!-- "AUTOMATED ID" Title -->
               <div 
-                class="absolute z-10 w-full text-center px-4 flex flex-col justify-center"
-                style="top: 25%; height: 5%;"
+                class="absolute z-10 w-full text-center flex justify-center"
+                style="top: 100px;"
               >
-                <h3 class="text-[12px] font-black text-rose-600 uppercase tracking-widest drop-shadow-sm">
+                <h3 class="text-[14px] font-black text-[#1a233a] uppercase tracking-widest drop-shadow-sm">
                   AUTOMATED ID
                 </h3>
               </div>
+
+              <!-- Photo with Red Border -->
               <div 
-                class="absolute z-10 overflow-hidden"
-                style="left: 36%; right: 36%; top: 31%; bottom: 49%; border-radius: 8px;"
+                class="absolute z-10 overflow-hidden border-[3px] border-[#b91c1c] flex items-center justify-center bg-white"
+                style="width: 140px; height: 160px; left: 50%; top: 145px; transform: translateX(-50%); border-radius: 12px;"
               >
                 <img v-if="user.profilePhotoUrl" :src="user.profilePhotoUrl" class="w-full h-full object-cover" crossorigin="anonymous" />
-                <div v-else class="w-full h-full bg-slate-200 flex items-center justify-center">
-                  <UserCircleIcon class="w-12 h-12 text-slate-400" />
-                </div>
+                <UserCircleIcon v-else class="w-16 h-16 text-slate-400 bg-white" />
               </div>
+
+              <!-- Name -->
               <div 
-                class="absolute z-10 w-full text-center px-4 flex flex-col justify-center"
-                style="top: 52%; height: 5%;"
+                class="absolute z-10 w-full text-center flex justify-center"
+                style="top: 310px;"
               >
-                <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide truncate">
+                <h2 class="text-[17px] font-black text-[#2e3440] uppercase tracking-wide truncate drop-shadow-sm" style="min-width: 180px;">
                   {{ user.firstName }} {{ user.lastName }}
                 </h2>
               </div>
+
+              <!-- Role -->
               <div 
-                class="absolute z-10 w-full text-center px-4 flex flex-col justify-center"
-                style="top: 57%; height: 3%;"
+                class="absolute z-10 w-full text-center flex justify-center"
+                style="top: 345px;"
               >
-                <p class="text-[10px] font-bold text-[#8c1c1c] uppercase tracking-widest truncate">
+                <p class="text-[13px] font-bold text-[#b91c1c] uppercase tracking-[0.1em]" style="min-width: 120px;">
                   {{ user.role || 'STUDENT' }}
                 </p>
               </div>
+
+              <!-- Barcode -->
               <div 
-                class="absolute z-10 w-full flex justify-center items-center"
-                style="top: 61%; height: 10%;"
+                class="absolute z-10 flex justify-center items-center rounded-md px-2 py-1"
+                style="width: 220px; height: 95px; left: 50%; top: 370px; transform: translateX(-50%);"
               >
-                <canvas ref="barcodeCanvas" class="w-[140px] h-[40px]"></canvas>
+                <canvas ref="barcodeCanvas" class="w-[200px] h-[85px]"></canvas>
               </div>
+
+              <!-- ID Number -->
               <div 
-                class="absolute z-10 w-full text-center flex flex-col justify-center"
-                style="top: 71%; height: 4%;"
+                class="absolute z-10 w-full text-center flex justify-center"
+                style="top: 475px;"
               >
-                <p class="text-[11px] font-semibold text-slate-800 uppercase tracking-wider">
+                <p class="text-[14px] font-bold text-[#3b4252] tracking-wider" style="min-width: 160px;">
                   {{ user.barcode }}
                 </p>
               </div>
+
+
             </div>
           </div>
         </div>
