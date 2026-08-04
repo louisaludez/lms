@@ -15,7 +15,17 @@ const password = ref('')
 const confirmPassword = ref('')
 const gender = ref('Male')
 const departmentId = ref('')
+const selectedCategory = ref('')
 const departments = ref<{id: number; name: string; code: string}[]>([])
+
+function getDepartmentCategory(name: string) {
+  const lower = name.toLowerCase()
+  if (lower.includes('bachelor') || lower.includes('ab ') || lower.includes('bs ') || lower.includes('bsed') || lower.includes('beed') || lower.includes('college')) return 'College'
+  if (lower.includes('senior') || lower.includes('tvl') || lower.includes('gas') || lower.includes('humss') || lower.includes('stem') || lower.includes('shs')) return 'Senior High'
+  if (lower.includes('highschool') || lower.includes('junior') || lower.includes('jhs')) return 'High School'
+  if (lower.includes('elementary') || lower.includes('grade')) return 'Elementary'
+  return 'Other'
+}
 const showPassword = ref(false)
 const clientMessage = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
@@ -47,7 +57,16 @@ function handleFileChange(event: Event) {
 }
 
 import api from '@/api/axios'
-import { onMounted } from 'vue'
+import { onMounted, computed, watch } from 'vue'
+
+const filteredDepartments = computed(() => {
+  if (!selectedCategory.value) return []
+  return departments.value.filter(d => getDepartmentCategory(d.name) === selectedCategory.value)
+})
+
+watch(selectedCategory, () => {
+  departmentId.value = ''
+})
 
 onMounted(async () => {
   try {
@@ -245,7 +264,7 @@ async function handleSignUp() {
               />
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label for="signup-gender" class="block text-xs font-semibold text-[#80b3ce] mb-1.5 uppercase tracking-wider">Gender</label>
                 <select
@@ -260,15 +279,32 @@ async function handleSignUp() {
                 </select>
               </div>
               <div>
-                <label for="signup-department" class="block text-xs font-semibold text-[#80b3ce] mb-1.5 uppercase tracking-wider">Department</label>
+                <label for="signup-category" class="block text-xs font-semibold text-[#80b3ce] mb-1.5 uppercase tracking-wider">Level</label>
+                <select
+                  id="signup-category"
+                  v-model="selectedCategory"
+                  required
+                  class="input bg-[#123249] border-[#447794]/30 text-white placeholder:text-slate-500 focus:ring-[#447794]/40 focus:border-[#447794]"
+                >
+                  <option value="" disabled>Select Level</option>
+                  <option value="College">College</option>
+                  <option value="Senior High">Senior High</option>
+                  <option value="High School">High School</option>
+                  <option value="Elementary">Elementary</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label for="signup-department" class="block text-xs font-semibold text-[#80b3ce] mb-1.5 uppercase tracking-wider">Course/Strand</label>
                 <select
                   id="signup-department"
                   v-model="departmentId"
                   required
-                  class="input bg-[#123249] border-[#447794]/30 text-white placeholder:text-slate-500 focus:ring-[#447794]/40 focus:border-[#447794]"
+                  :disabled="!selectedCategory"
+                  class="input bg-[#123249] border-[#447794]/30 text-white placeholder:text-slate-500 focus:ring-[#447794]/40 focus:border-[#447794] disabled:opacity-50"
                 >
-                  <option value="" disabled>Select Department</option>
-                  <option v-for="dept in departments" :key="dept.id" :value="dept.id">
+                  <option value="" disabled>Select Course</option>
+                  <option v-for="dept in filteredDepartments" :key="dept.id" :value="dept.id">
                     {{ dept.name }}
                   </option>
                 </select>

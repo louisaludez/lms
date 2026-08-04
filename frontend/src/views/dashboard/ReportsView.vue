@@ -9,6 +9,24 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 
 const currentYear = new Date().getFullYear().toString()
 
+function getDefaultDateValue(frequency: string) {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  if (frequency === 'Daily') return `${y}-${m}-${day}`
+  if (frequency === 'Weekly') {
+    const dCopy = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+    const dayNum = dCopy.getUTCDay() || 7
+    dCopy.setUTCDate(dCopy.getUTCDate() + 4 - dayNum)
+    const yearStart = new Date(Date.UTC(dCopy.getUTCFullYear(), 0, 1))
+    const weekNo = Math.ceil((((dCopy.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
+    return `${dCopy.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`
+  }
+  if (frequency === 'Monthly') return `${y}-${m}`
+  return y.toString()
+}
+
 // Common options
 const commonFrequencies = ['Monthly', 'Annually']
 const entryFrequencies = ['Daily', 'Weekly', 'Monthly', 'Annually']
@@ -63,8 +81,31 @@ const selectedReportType = ref('Library Entry and Exit')
 
 const reportParams = ref({
   frequency: 'Monthly',
+  category: 'All Categories',
   department: 'All Departments',
-  year: currentYear
+  startDate: getDefaultDateValue('Monthly'),
+  endDate: getDefaultDateValue('Monthly')
+})
+
+const categories = ['All Categories', 'College', 'Senior High', 'High School', 'Elementary', 'Other']
+
+function getDepartmentCategory(name: string) {
+  if (name === 'All Departments') return 'All Categories'
+  const lower = name.toLowerCase()
+  if (lower.includes('bachelor') || lower.includes('ab ') || lower.includes('bs ') || lower.includes('bsed') || lower.includes('beed') || lower.includes('college')) return 'College'
+  if (lower.includes('senior') || lower.includes('tvl') || lower.includes('gas') || lower.includes('humss') || lower.includes('stem') || lower.includes('shs')) return 'Senior High'
+  if (lower.includes('highschool') || lower.includes('junior') || lower.includes('jhs')) return 'High School'
+  if (lower.includes('elementary') || lower.includes('grade')) return 'Elementary'
+  return 'Other'
+}
+
+const filteredDepartments = computed(() => {
+  if (reportParams.value.category === 'All Categories') return departments.value
+  return departments.value.filter(d => getDepartmentCategory(d) === reportParams.value.category || d === 'All Departments')
+})
+
+watch(() => reportParams.value.category, () => {
+  reportParams.value.department = 'All Departments'
 })
 
 watch(selectedReportType, (newType) => {
@@ -73,6 +114,11 @@ watch(selectedReportType, (newType) => {
       reportParams.value.frequency = 'Monthly'
     }
   }
+})
+
+watch(() => reportParams.value.frequency, (newFreq) => {
+  reportParams.value.startDate = getDefaultDateValue(newFreq)
+  reportParams.value.endDate = getDefaultDateValue(newFreq)
 })
 
 // Print State
@@ -218,14 +264,30 @@ function triggerPrint() {
             </select>
           </div>
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-2">Department</label>
-            <select v-model="reportParams.department" class="w-full rounded-xl border-slate-300 shadow-sm focus:border-[#447794] focus:ring-[#447794] bg-slate-50 outline-none py-3 px-4 transition-colors">
-              <option v-for="d in departments" :key="d" :value="d">{{ d }}</option>
+            <label class="block text-sm font-semibold text-slate-700 mb-2">Category</label>
+            <select v-model="reportParams.category" class="w-full rounded-xl border-slate-300 shadow-sm focus:border-[#447794] focus:ring-[#447794] bg-slate-50 outline-none py-3 px-4 transition-colors">
+              <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-2">Year</label>
-            <input type="number" v-model="reportParams.year" class="w-full rounded-xl border-slate-300 shadow-sm focus:border-[#447794] focus:ring-[#447794] bg-slate-50 outline-none py-3 px-4 transition-colors" />
+            <label class="block text-sm font-semibold text-slate-700 mb-2">Course / Strand</label>
+            <select v-model="reportParams.department" class="w-full rounded-xl border-slate-300 shadow-sm focus:border-[#447794] focus:ring-[#447794] bg-slate-50 outline-none py-3 px-4 transition-colors">
+              <option v-for="d in filteredDepartments" :key="d" :value="d">{{ d }}</option>
+            </select>
+          </div>
+          <div class="flex gap-4">
+            <div class="flex-1">
+              <label class="block text-sm font-semibold text-slate-700 mb-2">
+                Start {{ reportParams.frequency === 'Daily' ? 'Date' : reportParams.frequency === 'Weekly' ? 'Week' : reportParams.frequency === 'Monthly' ? 'Month' : 'Year' }}
+              </label>
+              <input :type="reportParams.frequency === 'Daily' ? 'date' : reportParams.frequency === 'Weekly' ? 'week' : reportParams.frequency === 'Monthly' ? 'month' : 'number'" v-model="reportParams.startDate" class="w-full rounded-xl border-slate-300 shadow-sm focus:border-[#447794] focus:ring-[#447794] bg-slate-50 outline-none py-3 px-4 transition-colors" />
+            </div>
+            <div class="flex-1">
+              <label class="block text-sm font-semibold text-slate-700 mb-2">
+                End {{ reportParams.frequency === 'Daily' ? 'Date' : reportParams.frequency === 'Weekly' ? 'Week' : reportParams.frequency === 'Monthly' ? 'Month' : 'Year' }}
+              </label>
+              <input :type="reportParams.frequency === 'Daily' ? 'date' : reportParams.frequency === 'Weekly' ? 'week' : reportParams.frequency === 'Monthly' ? 'month' : 'number'" v-model="reportParams.endDate" :min="reportParams.startDate" class="w-full rounded-xl border-slate-300 shadow-sm focus:border-[#447794] focus:ring-[#447794] bg-slate-50 outline-none py-3 px-4 transition-colors" />
+            </div>
           </div>
         </template>
 
@@ -283,7 +345,7 @@ function triggerPrint() {
           <div class="mt-4 flex justify-center gap-6 text-sm print:text-base font-semibold text-slate-700">
              <span v-if="printParams.frequency">Frequency: {{ printParams.frequency }}</span>
              <span v-if="printParams.department">Department: {{ printParams.department }}</span>
-             <span v-if="printParams.year">Year: {{ printParams.year }}</span>
+             <span v-if="printParams.startDate && printParams.endDate">Period: {{ printParams.startDate }} to {{ printParams.endDate }}</span>
           </div>
         </div>
 

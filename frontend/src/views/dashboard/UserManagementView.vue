@@ -128,9 +128,31 @@ const blankForm = () => ({
 })
 const form = ref(blankForm())
 
-// Delete confirm
 const deleteTarget = ref<UserRow | null>(null)
 const deleting     = ref(false)
+
+const modalCategory = ref('All Categories')
+const categories = ['All Categories', 'College', 'Senior High', 'High School', 'Elementary', 'Other']
+
+function getDepartmentCategory(name: string) {
+  const lower = name.toLowerCase()
+  if (lower.includes('bachelor') || lower.includes('ab ') || lower.includes('bs ') || lower.includes('bsed') || lower.includes('beed') || lower.includes('college')) return 'College'
+  if (lower.includes('senior') || lower.includes('tvl') || lower.includes('gas') || lower.includes('humss') || lower.includes('stem') || lower.includes('shs')) return 'Senior High'
+  if (lower.includes('highschool') || lower.includes('junior') || lower.includes('jhs')) return 'High School'
+  if (lower.includes('elementary') || lower.includes('grade')) return 'Elementary'
+  return 'Other'
+}
+
+const filteredDepartments = computed(() => {
+  if (modalCategory.value === 'All Categories') return departments.value
+  return departments.value.filter(d => getDepartmentCategory(d.name) === modalCategory.value)
+})
+
+watch(modalCategory, (newCat, oldCat) => {
+  if (oldCat !== undefined && newCat !== oldCat && modalMode.value === 'create') {
+    form.value.departmentId = ''
+  }
+})
 
 // Reject confirm
 const rejectTarget    = ref<UserRow | null>(null)
@@ -201,6 +223,7 @@ function openCreate() {
   form.value    = blankForm()
   editingId.value = null
   modalError.value = ''
+  modalCategory.value = 'All Categories'
   modalMode.value = 'create'
 }
 
@@ -222,6 +245,7 @@ function openEdit(user: UserRow) {
   }
   editingId.value  = user.id
   modalError.value = ''
+  modalCategory.value = user.department ? getDepartmentCategory(user.department.name) : 'All Categories'
   modalMode.value  = 'edit'
 }
 
@@ -636,10 +660,16 @@ function approvalBadge(status: string) {
                 </select>
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Department *</label>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Category</label>
+                <select v-model="modalCategory" class="input">
+                  <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Course / Strand *</label>
                 <select v-model="form.departmentId" required class="input">
                   <option value="" disabled>Select department...</option>
-                  <option v-for="dept in departments" :key="dept.id" :value="dept.id">{{ dept.name }}</option>
+                  <option v-for="dept in filteredDepartments" :key="dept.id" :value="dept.id">{{ dept.name }}</option>
                 </select>
               </div>
               <div class="col-span-2">

@@ -4,6 +4,9 @@ import { useRouter } from 'vue-router'
 import api from '@/api/axios'
 import { ArrowLeftIcon, CheckCircleIcon, XCircleIcon, QrCodeIcon } from '@heroicons/vue/24/outline'
 
+const props = defineProps<{ isModal?: boolean }>()
+const emit = defineEmits(['close'])
+
 const router = useRouter()
 const barcodeInput = ref<HTMLInputElement | null>(null)
 const scanValue = ref('')
@@ -77,15 +80,23 @@ async function processScan() {
     }, 2500)
   }
 }
+
+function exitKiosk() {
+  if (props.isModal) {
+    emit('close')
+  } else {
+    router.push('/dashboard/attendance')
+  }
+}
 </script>
 
 <template>
   <div class="min-h-screen bg-gradient-to-br from-[#FAF7F2] via-[#F3EFE6] to-[#E9E1D3] text-[#2C221E] flex flex-col items-center justify-center relative overflow-hidden font-sans">
     <!-- Top-left Exit Kiosk button -->
     <button 
-      @click="router.push('/dashboard/attendance')" 
+      @click="exitKiosk" 
       tabindex="-1" 
-      class="absolute top-8 left-8 px-4 py-2.5 rounded-xl bg-white/70 hover:bg-white border border-[#E0D4C3] text-[#4A3E37] hover:text-[#6B131D] transition-all duration-200 backdrop-blur-md flex items-center gap-2.5 text-sm font-semibold shadow-sm hover:shadow-md hover:border-[#6B131D]/30 group cursor-pointer"
+      class="absolute top-8 left-8 px-4 py-2.5 rounded-xl bg-white/70 hover:bg-white border border-[#E0D4C3] text-[#4A3E37] hover:text-[#6B131D] transition-all duration-200 backdrop-blur-md flex items-center gap-2.5 text-sm font-semibold shadow-sm hover:shadow-md hover:border-[#6B131D]/30 group cursor-pointer z-50"
     >
       <ArrowLeftIcon class="w-5 h-5 text-[#8C7A6B] group-hover:text-[#6B131D] transition-colors" />
       <span>Exit Kiosk</span>

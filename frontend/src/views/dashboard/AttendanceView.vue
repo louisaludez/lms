@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { format, subDays, startOfMonth } from 'date-fns'
 import api from '@/api/axios'
 import { useRouter } from 'vue-router'
+import KioskAttendanceView from '@/views/KioskAttendanceView.vue'
 import {
   ClipboardDocumentListIcon,
   UserCircleIcon,
@@ -18,6 +19,7 @@ import {
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
+const showKioskModal = ref(false)
 
 const logs = ref<any[]>([])
 const stats = ref({ entries: 0, exits: 0, total: 0 })
@@ -170,7 +172,7 @@ const dateRangeLabel = computed(() => {
         </button>
 
         <button
-          @click="router.push('/kiosk/attendance')"
+          @click="showKioskModal = true"
           class="btn-primary px-5 py-2.5 text-sm font-semibold flex items-center gap-2 shadow-lg shadow-[#447794]/25 hover:shadow-xl transition-all"
         >
           <span>Launch Full-Screen Kiosk</span>
@@ -502,5 +504,12 @@ const dateRangeLabel = computed(() => {
         </table>
       </div>
     </div>
+
+    <!-- Kiosk Modal -->
+    <Teleport to="body">
+      <div v-if="showKioskModal" class="fixed inset-0 z-[9999] bg-black">
+        <KioskAttendanceView :isModal="true" @close="showKioskModal = false; fetchAttendanceData()" />
+      </div>
+    </Teleport>
   </div>
 </template>

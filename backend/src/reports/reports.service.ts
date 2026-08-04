@@ -67,25 +67,48 @@ export class ReportsService {
   async getEntryExitReport(
     frequency: string,
     department: string,
-    year: string,
+    startDate: string,
+    endDate: string,
   ) {
     let dateGroupSql = '';
+    const whereClauses: string[] = [];
+    const queryParams: any[] = [];
+
     if (frequency === 'Daily') {
       dateGroupSql = `DATE_FORMAT(a.scanned_at, '%Y-%m-%d')`;
+      if (startDate && endDate) {
+        whereClauses.push(`DATE(a.scanned_at) >= ? AND DATE(a.scanned_at) <= ?`);
+        queryParams.push(startDate, endDate);
+      }
     } else if (frequency === 'Weekly') {
-      dateGroupSql = `CONCAT(YEAR(a.scanned_at), '-W', WEEK(a.scanned_at))`;
+      dateGroupSql = `CONCAT(YEAR(a.scanned_at), '-W', LPAD(WEEK(a.scanned_at, 3), 2, '0'))`;
+      const [startYearStr, startWeekStr] = (startDate || '').split('-W');
+      const [endYearStr, endWeekStr] = (endDate || '').split('-W');
+      if (startYearStr && startWeekStr && endYearStr && endWeekStr) {
+        whereClauses.push(`CONCAT(YEAR(a.scanned_at), LPAD(WEEK(a.scanned_at, 3), 2, '0')) >= ? AND CONCAT(YEAR(a.scanned_at), LPAD(WEEK(a.scanned_at, 3), 2, '0')) <= ?`);
+        queryParams.push(`${startYearStr}${startWeekStr}`, `${endYearStr}${endWeekStr}`);
+      }
     } else if (frequency === 'Monthly') {
       dateGroupSql = `DATE_FORMAT(a.scanned_at, '%Y-%m')`;
+      if (startDate && endDate) {
+        whereClauses.push(`DATE_FORMAT(a.scanned_at, '%Y-%m') >= ? AND DATE_FORMAT(a.scanned_at, '%Y-%m') <= ?`);
+        queryParams.push(startDate, endDate);
+      }
     } else {
       dateGroupSql = `YEAR(a.scanned_at)`;
+      if (startDate && endDate) {
+        whereClauses.push(`YEAR(a.scanned_at) >= ? AND YEAR(a.scanned_at) <= ?`);
+        queryParams.push(startDate, endDate);
+      }
     }
-
-    const whereClauses: string[] = ['YEAR(a.scanned_at) = ?'];
-    const queryParams: any[] = [year];
 
     if (department && department !== 'All' && department !== 'All Departments') {
       whereClauses.push('(d.name = ? OR d.code = ? OR d.name LIKE ?)');
       queryParams.push(department, department, `%${department}%`);
+    }
+
+    if (whereClauses.length === 0) {
+      whereClauses.push('1=1');
     }
 
     return this.dataSource.query(
