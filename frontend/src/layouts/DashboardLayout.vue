@@ -51,7 +51,7 @@ const navItems = computed(() => {
 </script>
 
 <template>
-  <div class="flex h-screen bg-slate-100 dark:bg-[#0F172A] overflow-hidden relative print:h-auto print:overflow-visible print:bg-white transition-colors duration-200">
+  <div class="flex h-screen bg-[#F7F5F0] dark:bg-[#0F172A] overflow-hidden relative print:h-auto print:overflow-visible print:bg-white transition-colors duration-200">
     
     <!-- Mobile Sidebar Overlay -->
     <div 
