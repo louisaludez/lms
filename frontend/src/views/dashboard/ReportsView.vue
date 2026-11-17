@@ -340,8 +340,8 @@ function triggerPrint() {
       <div class="print-section text-slate-800 w-full overflow-x-auto">
         
         <!-- Official Institutional Letterhead Header Banner -->
-        <div class="mb-6 flex justify-center w-full">
-          <img :src="ndcHeader" alt="North Davao Colleges, Inc. Header" class="w-full max-w-4xl h-auto object-contain rounded-lg print:rounded-none" />
+        <div class="report-letterhead-container mb-6 flex justify-center w-full">
+          <img :src="ndcHeader" alt="North Davao Colleges, Inc. Header" class="report-letterhead w-full max-w-4xl h-auto object-contain rounded-lg print:rounded-none" />
         </div>
 
         <div class="text-center mb-8 border-b-2 border-slate-800 pb-6 print:border-b-4">
@@ -527,15 +527,61 @@ function triggerPrint() {
 </template>
 
 <style scoped>
+@page {
+  margin: 0;
+}
+
 @media print {
   .hide-on-print {
     display: none !important;
   }
   .reports-container {
+    box-sizing: border-box !important;
+    width: 100% !important;
     max-width: 100% !important;
     background: white !important;
     padding: 0 !important;
     margin: 0 !important;
+  }
+  #report-preview-section {
+    padding: 8mm !important;
+  }
+  .report-letterhead-container {
+    width: calc(100% + 16mm) !important;
+    margin-left: -8mm !important;
+    margin-right: -8mm !important;
+  }
+  .print-section {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+  .report-letterhead {
+    width: 100% !important;
+    max-width: none !important;
+  }
+  .print-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    font-size: 8pt !important;
+  }
+  .print-table th,
+  .print-table td {
+    padding: 4pt 5pt !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+  .print-table thead {
+    display: table-header-group;
+  }
+  .print-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-section .text-center > .flex {
+    flex-wrap: wrap;
   }
   body {
     -webkit-print-color-adjust: exact !important;

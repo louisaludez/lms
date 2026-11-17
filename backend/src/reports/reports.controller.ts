@@ -39,10 +39,11 @@ export class ReportsController {
   getEntryExitReport(
     @Query('frequency') frequency: string,
     @Query('department') department: string,
+    @Query('category') category: string,
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
   ) {
-    return this.reportsService.getEntryExitReport(frequency, department, startDate, endDate);
+    return this.reportsService.getEntryExitReport(frequency, department, category, startDate, endDate);
   }
 
   @Get('borrowed')

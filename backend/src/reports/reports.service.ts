@@ -1,5 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+
+const departmentCategoryPatterns: Record<string, string[]> = {
+  College: ['bachelor', 'ab ', 'bs ', 'bsed', 'beed', 'college'],
+  'Senior High': ['senior', 'tvl', 'gas', 'humss', 'stem', 'shs'],
+  'High School': ['highschool', 'junior', 'jhs'],
+  Elementary: ['elementary', 'grade'],
+};
 
 @Injectable()
 export class ReportsService {
@@ -67,6 +74,7 @@ export class ReportsService {
   async getEntryExitReport(
     frequency: string,
     department: string,
+    category: string,
     startDate: string,
     endDate: string,
   ) {
@@ -81,12 +89,12 @@ export class ReportsService {
         queryParams.push(startDate, endDate);
       }
     } else if (frequency === 'Weekly') {
-      dateGroupSql = `CONCAT(YEAR(a.scanned_at), '-W', LPAD(WEEK(a.scanned_at, 3), 2, '0'))`;
-      const [startYearStr, startWeekStr] = (startDate || '').split('-W');
-      const [endYearStr, endWeekStr] = (endDate || '').split('-W');
-      if (startYearStr && startWeekStr && endYearStr && endWeekStr) {
-        whereClauses.push(`CONCAT(YEAR(a.scanned_at), LPAD(WEEK(a.scanned_at, 3), 2, '0')) >= ? AND CONCAT(YEAR(a.scanned_at), LPAD(WEEK(a.scanned_at, 3), 2, '0')) <= ?`);
-        queryParams.push(`${startYearStr}${startWeekStr}`, `${endYearStr}${endWeekStr}`);
+      dateGroupSql = `CONCAT(LEFT(YEARWEEK(a.scanned_at, 3), 4), '-W', RIGHT(YEARWEEK(a.scanned_at, 3), 2))`;
+      const startWeek = (startDate || '').match(/^(\d{4})-W(\d{2})$/);
+      const endWeek = (endDate || '').match(/^(\d{4})-W(\d{2})$/);
+      if (startWeek && endWeek) {
+        whereClauses.push(`YEARWEEK(a.scanned_at, 3) >= ? AND YEARWEEK(a.scanned_at, 3) <= ?`);
+        queryParams.push(Number(`${startWeek[1]}${startWeek[2]}`), Number(`${endWeek[1]}${endWeek[2]}`));
       }
     } else if (frequency === 'Monthly') {
       dateGroupSql = `DATE_FORMAT(a.scanned_at, '%Y-%m')`;
@@ -107,6 +115,23 @@ export class ReportsService {
       queryParams.push(department, department, `%${department}%`);
     }
 
+    if (category && category !== 'All Categories') {
+      if (category === 'Other') {
+        const allPatterns = Object.values(departmentCategoryPatterns).flat();
+        whereClauses.push(
+          `d.name IS NOT NULL AND ${allPatterns.map(() => 'LOWER(d.name) NOT LIKE ?').join(' AND ')}`,
+        );
+        queryParams.push(...allPatterns.map((pattern) => `%${pattern}%`));
+      } else {
+        const patterns = departmentCategoryPatterns[category];
+        if (!patterns) {
+          throw new BadRequestException(`Unsupported department category: ${category}`);
+        }
+        whereClauses.push(`(${patterns.map(() => 'LOWER(d.name) LIKE ?').join(' OR ')})`);
+        queryParams.push(...patterns.map((pattern) => `%${pattern}%`));
+      }
+    }
+
     if (whereClauses.length === 0) {
       whereClauses.push('1=1');
     }
@@ -119,7 +144,7 @@ export class ReportsService {
         COUNT(CASE WHEN a.entry_type = 'exit' THEN 1 END) as exits
       FROM attendance_logs a
       JOIN users u ON a.user_id = u.id
-      JOIN departments d ON u.department_id = d.id
+      LEFT JOIN departments d ON u.department_id = d.id
       WHERE ${whereClauses.join(' AND ')}
       GROUP BY period
       ORDER BY period ASC
