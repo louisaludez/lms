@@ -49,6 +49,21 @@ npm run dev
 # App available at: http://localhost:5173
 ```
 
+## Deployment (Vercel + Render)
+
+### Render API
+1. Create a Render Web Service from this repository. The included `render.yaml` configures the service to use `backend/`.
+2. Create a hosted MySQL 8 database with a provider of your choice, import the schema and required migrations, then set the `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, and `DB_NAME` environment variables in Render.
+3. Set `JWT_SECRET` to a long, random secret, `FRONTEND_URL` to the production Vercel URL, and `BACKEND_URL` to the Render service URL (no trailing slash).
+4. Deploy and confirm the API is reachable at `https://<render-service>.onrender.com/api/v1`.
+
+### Vercel frontend
+1. Import the same repository into Vercel and set the project Root Directory to `frontend`.
+2. Set `VITE_BACKEND_URL` to the Render service origin, for example `https://<render-service>.onrender.com` (no `/api/v1` suffix).
+3. Use `npm run build` as the build command and `dist` as the output directory, then deploy.
+
+The Vercel rewrite supports Vue Router history routes. Render's local filesystem is ephemeral unless persistent storage is configured; use a persistent disk or object storage for profile uploads. The scheduled report jobs also require the Render service to stay running.
+
 ---
 
 ## API Endpoints

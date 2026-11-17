@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import api from '@/api/axios'
+import api, { assetUrl } from '@/api/axios'
 import {
   UserPlusIcon, MagnifyingGlassIcon, PencilSquareIcon,
   TrashIcon, XMarkIcon, CheckIcon, FunnelIcon,
@@ -805,7 +805,7 @@ function approvalBadge(status: string) {
             <div class="space-y-6 flex-1">
               <div class="flex items-center gap-5">
                 <div class="w-24 h-24 rounded-full bg-slate-200 overflow-hidden ring-4 ring-white shadow-md flex-shrink-0">
-                  <img v-if="viewingIdUser.profilePhotoUrl" :src="viewingIdUser.profilePhotoUrl" class="w-full h-full object-cover" />
+                  <img v-if="viewingIdUser.profilePhotoUrl" :src="assetUrl(viewingIdUser.profilePhotoUrl)" class="w-full h-full object-cover" />
                   <UserCircleIcon v-else class="w-full h-full text-slate-400 bg-white" />
                 </div>
                 <div>
@@ -890,7 +890,7 @@ function approvalBadge(status: string) {
 
               <!-- Photo with Red Border -->
               <div class="absolute z-10 overflow-hidden border-[3px] border-[#b91c1c] flex items-center justify-center bg-white" style="width: 140px; height: 160px; left: 50%; top: 145px; transform: translateX(-50%); border-radius: 12px;">
-                <img v-if="viewingIdUser.profilePhotoUrl" :src="viewingIdUser.profilePhotoUrl" class="w-full h-full object-cover" crossorigin="anonymous" />
+                <img v-if="viewingIdUser.profilePhotoUrl" :src="assetUrl(viewingIdUser.profilePhotoUrl)" class="w-full h-full object-cover" crossorigin="anonymous" />
                 <UserCircleIcon v-else class="w-16 h-16 text-slate-400 bg-white" />
               </div>
 

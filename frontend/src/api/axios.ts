@@ -1,9 +1,17 @@
 import axios from 'axios'
 
+const backendUrl = import.meta.env.VITE_BACKEND_URL?.replace(/\/+$/, '')
+
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: backendUrl ? `${backendUrl}/api/v1` : '/api/v1',
   headers: { 'Content-Type': 'application/json' },
 })
+
+export function assetUrl(url: string | null | undefined): string {
+  if (!url) return ''
+  if (/^[a-z][a-z\d+.-]*:/i.test(url) || !backendUrl) return url
+  return new URL(url, `${backendUrl}/`).toString()
+}
 
 // Attach JWT to every request
 api.interceptors.request.use((config) => {

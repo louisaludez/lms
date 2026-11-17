@@ -3,6 +3,7 @@ import { onMounted, computed, ref, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 import { format, parseISO, isPast, differenceInDays } from 'date-fns'
 import { useLibraryStore, useAuthStore } from '@/stores/useLibraryStore'
+import { assetUrl } from '@/api/axios'
 import NavBar from '@/components/NavBar.vue'
 import {
   UserCircleIcon, BookOpenIcon, ExclamationTriangleIcon,
@@ -223,7 +224,7 @@ const monthlyActivityData = computed(() => {
         
         <div class="w-24 h-24 md:w-20 md:h-20 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 border border-slate-200 dark:border-slate-700">
           <UserCircleIcon v-if="!user?.profilePhotoUrl" class="w-12 h-12 text-slate-400" />
-          <img v-else :src="user.profilePhotoUrl" class="w-full h-full object-cover rounded-2xl" :alt="user?.firstName" />
+          <img v-else :src="assetUrl(user.profilePhotoUrl)" class="w-full h-full object-cover rounded-2xl" :alt="user?.firstName" />
         </div>
         
         <div class="flex-1 min-w-0 text-center md:text-left flex flex-col items-center md:items-start">
@@ -292,7 +293,7 @@ const monthlyActivityData = computed(() => {
                 class="absolute z-10 overflow-hidden border-[3px] border-[#b91c1c] flex items-center justify-center bg-white"
                 style="width: 140px; height: 160px; left: 50%; top: 145px; transform: translateX(-50%); border-radius: 12px;"
               >
-                <img v-if="user.profilePhotoUrl" :src="user.profilePhotoUrl" class="w-full h-full object-cover" crossorigin="anonymous" />
+                <img v-if="user.profilePhotoUrl" :src="assetUrl(user.profilePhotoUrl)" class="w-full h-full object-cover" crossorigin="anonymous" />
                 <UserCircleIcon v-else class="w-16 h-16 text-slate-400 bg-white" />
               </div>
 

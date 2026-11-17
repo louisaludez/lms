@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/useLibraryStore'
+import { assetUrl } from '@/api/axios'
 import { XMarkIcon, UserCircleIcon, KeyIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{
@@ -181,7 +182,7 @@ async function handlePasswordChange() {
             <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Profile Photo</label>
             <div class="flex items-center gap-4">
               <div class="w-16 h-16 rounded-full overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200">
-                <img v-if="photoPreview" :src="photoPreview" class="w-full h-full object-cover" />
+                <img v-if="photoPreview" :src="assetUrl(photoPreview)" class="w-full h-full object-cover" />
                 <UserCircleIcon v-else class="w-full h-full text-slate-300 p-2" />
               </div>
               <div class="flex-1">
