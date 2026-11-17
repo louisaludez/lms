@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/useLibraryStore'
 import api from '@/api/axios'
-import { ArrowLeftIcon, CheckCircleIcon, XCircleIcon, QrCodeIcon } from '@heroicons/vue/24/outline'
+import { ArrowLeftIcon, ArrowRightOnRectangleIcon, CheckCircleIcon, XCircleIcon, QrCodeIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{ isModal?: boolean }>()
 const emit = defineEmits(['close'])
 
 const router = useRouter()
+const auth = useAuthStore()
+const isKioskRole = computed(() => auth.user?.role === 'kiosk')
 const barcodeInput = ref<HTMLInputElement | null>(null)
 const scanValue = ref('')
 const scanning = ref(false)
@@ -84,6 +87,9 @@ async function processScan() {
 function exitKiosk() {
   if (props.isModal) {
     emit('close')
+  } else if (isKioskRole.value) {
+    auth.logout()
+    router.push('/login')
   } else {
     router.push('/dashboard/attendance')
   }
@@ -98,9 +104,16 @@ function exitKiosk() {
       tabindex="-1" 
       class="absolute top-8 left-8 px-4 py-2.5 rounded-xl bg-white/70 hover:bg-white border border-[#E0D4C3] text-[#4A3E37] hover:text-[#6B131D] transition-all duration-200 backdrop-blur-md flex items-center gap-2.5 text-sm font-semibold shadow-sm hover:shadow-md hover:border-[#6B131D]/30 group cursor-pointer z-50"
     >
-      <ArrowLeftIcon class="w-5 h-5 text-[#8C7A6B] group-hover:text-[#6B131D] transition-colors" />
-      <span>Exit Kiosk</span>
+      <ArrowRightOnRectangleIcon v-if="isKioskRole" class="w-5 h-5 text-[#8C7A6B] group-hover:text-[#6B131D] transition-colors" />
+      <ArrowLeftIcon v-else class="w-5 h-5 text-[#8C7A6B] group-hover:text-[#6B131D] transition-colors" />
+      <span>{{ isKioskRole ? 'Exit Station' : 'Exit Kiosk' }}</span>
     </button>
+
+    <!-- Top-right Terminal Mode indicator (if logged in as kiosk) -->
+    <div v-if="isKioskRole" class="absolute top-8 right-8 px-3.5 py-2 rounded-xl bg-white/70 border border-[#E0D4C3] text-xs font-semibold text-[#4A3E37] backdrop-blur-md flex items-center gap-2 shadow-xs z-50">
+      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      <span class="tracking-wide uppercase text-[11px] text-slate-500">Terminal Mode</span>
+    </div>
 
     <!-- Ambient background glows -->
     <div class="absolute -top-40 -left-40 w-[600px] h-[600px] bg-[#E5D7C3]/60 rounded-full blur-[140px] pointer-events-none"></div>

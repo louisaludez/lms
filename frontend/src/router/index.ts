@@ -102,7 +102,7 @@ const router = createRouter({
       path: '/kiosk/attendance',
       name: 'KioskAttendance',
       component: () => import('@/views/KioskAttendanceView.vue'),
-      meta: { requiresAuth: true, roles: ['librarian', 'chief_librarian', 'admin'] },
+      meta: { requiresAuth: true, roles: ['librarian', 'chief_librarian', 'admin', 'kiosk'] },
     },
     { path: '/:pathMatch(.*)*', redirect: '/opac' },
   ],
@@ -114,6 +114,14 @@ router.beforeEach(async (to) => {
   // Initialize user if token exists
   if (auth.token && !auth.user) {
     await auth.fetchMe()
+  }
+
+  // Dedicated Kiosk terminal: lock exclusively to attendance kiosk screen
+  if (auth.isAuthenticated && auth.user?.role === 'kiosk') {
+    if (to.name !== 'KioskAttendance') {
+      return { name: 'KioskAttendance' }
+    }
+    return
   }
 
   if (to.meta.requiresGuest && auth.isAuthenticated) {

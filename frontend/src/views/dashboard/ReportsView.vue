@@ -4,6 +4,7 @@ import api from '@/api/axios'
 import { PrinterIcon, DocumentTextIcon, UserGroupIcon, BookOpenIcon, CheckCircleIcon, ExclamationCircleIcon, ClipboardDocumentListIcon, SparklesIcon, ArrowPathIcon, FunnelIcon, BuildingOfficeIcon } from '@heroicons/vue/24/outline'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js'
 import { Bar } from 'vue-chartjs'
+import ndcHeader from '@/assets/ndc_header.jpg'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 
@@ -338,11 +339,16 @@ function triggerPrint() {
       <!-- Actual Print/Preview Content -->
       <div class="print-section text-slate-800 w-full overflow-x-auto">
         
+        <!-- Official Institutional Letterhead Header Banner -->
+        <div class="mb-6 flex justify-center w-full">
+          <img :src="ndcHeader" alt="North Davao Colleges, Inc. Header" class="w-full max-w-4xl h-auto object-contain rounded-lg print:rounded-none" />
+        </div>
+
         <div class="text-center mb-8 border-b-2 border-slate-800 pb-6 print:border-b-4">
-          <h1 class="text-3xl print:text-4xl font-bold text-slate-900 mb-2">Lumina Library - {{ printType }}</h1>
-          <p class="text-slate-600 font-medium text-sm print:text-base">Generated on {{ new Date().toLocaleDateString() }} at {{ new Date().toLocaleTimeString() }}</p>
+          <h1 class="text-2xl print:text-3xl font-bold text-slate-900 mb-1">Library Report — {{ printType }}</h1>
+          <p class="text-slate-600 font-medium text-xs print:text-sm">Generated on {{ new Date().toLocaleDateString() }} at {{ new Date().toLocaleTimeString() }}</p>
           
-          <div class="mt-4 flex justify-center gap-6 text-sm print:text-base font-semibold text-slate-700">
+          <div class="mt-3 flex justify-center gap-6 text-xs print:text-sm font-semibold text-slate-700">
              <span v-if="printParams.frequency">Frequency: {{ printParams.frequency }}</span>
              <span v-if="printParams.department">Department: {{ printParams.department }}</span>
              <span v-if="printParams.startDate && printParams.endDate">Period: {{ printParams.startDate }} to {{ printParams.endDate }}</span>

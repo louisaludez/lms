@@ -211,7 +211,7 @@ const monthlyActivityData = computed(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#F7F5F0] dark:bg-[#0F172A] transition-colors duration-200">
+  <div class="min-h-screen md:pl-64 print:pl-0 bg-[#F7F5F0] dark:bg-[#0F172A] transition-colors duration-200">
     <NavBar />
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">

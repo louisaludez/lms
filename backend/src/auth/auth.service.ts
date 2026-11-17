@@ -99,6 +99,7 @@ export class AuthService {
       profilePhotoUrl: user.profilePhotoUrl,
       barcode: user.barcode,
       gender: user.gender,
+      mustChangePassword: Boolean(user.mustChangePassword),
     };
   }
 
@@ -122,6 +123,7 @@ export class AuthService {
         profilePhotoUrl: user.profilePhotoUrl,
         barcode: user.barcode,
         gender: user.gender,
+        mustChangePassword: Boolean(user.mustChangePassword),
       },
     };
   }

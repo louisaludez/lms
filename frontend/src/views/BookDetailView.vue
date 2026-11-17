@@ -60,7 +60,7 @@ async function handleFacultyRequest() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50">
+  <div class="min-h-screen md:pl-64 print:pl-0 bg-slate-50">
     <NavBar />
 
     <div class="max-w-4xl mx-auto px-4 sm:px-6 py-8">

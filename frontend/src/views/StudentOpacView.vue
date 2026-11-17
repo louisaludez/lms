@@ -65,7 +65,7 @@ function clearSearch() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#F7F5F0] dark:bg-[#0F172A] transition-colors duration-200">
+  <div class="min-h-screen md:pl-64 print:pl-0 bg-[#F7F5F0] dark:bg-[#0F172A] transition-colors duration-200">
     <NavBar />
 
     <!-- Hero Search Section -->

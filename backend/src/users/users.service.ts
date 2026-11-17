@@ -114,6 +114,7 @@ export class UsersService implements OnModuleInit {
       yearLevel: dto.yearLevel,
       section: dto.section,
       accountApprovalStatus: AccountApprovalStatus.APPROVED,
+      mustChangePassword: dto.role === UserRole.STUDENT,
     };
 
     const user = this.userRepo.create(partial as any);
@@ -397,6 +398,7 @@ export class UsersService implements OnModuleInit {
     }
 
     user.passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    user.mustChangePassword = false;
     await this.userRepo.save(user);
   }
 

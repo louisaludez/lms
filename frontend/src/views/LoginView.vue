@@ -15,6 +15,10 @@ const showPassword = ref(false)
 async function handleLogin() {
   try {
     await auth.login(email.value, password.value)
+    if (auth.user?.role === 'kiosk') {
+      router.push('/kiosk/attendance')
+      return
+    }
     const redirect = (router.currentRoute.value.query.redirect as string) || '/opac'
     router.push(redirect)
   } catch { /* error shown via auth.error */ }

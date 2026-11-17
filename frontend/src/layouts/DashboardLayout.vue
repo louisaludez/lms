@@ -105,6 +105,24 @@ const navItems = computed(() => {
         </RouterLink>
       </nav>
 
+      <!-- Sidebar actions -->
+      <div class="px-3 py-3 space-y-1 border-t border-slate-200 dark:border-slate-700/60">
+        <RouterLink to="/opac" class="nav-link" @click="closeMobileSidebar">
+          <BookOpenIcon class="w-5 h-5 flex-shrink-0" />
+          View OPAC
+        </RouterLink>
+        <button
+          @click="toggleTheme"
+          class="nav-link w-full cursor-pointer"
+          :title="isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
+          aria-label="Toggle Theme"
+        >
+          <SunIcon v-if="isDark" class="w-5 h-5 flex-shrink-0 text-amber-400" />
+          <MoonIcon v-else class="w-5 h-5 flex-shrink-0" />
+          {{ isDark ? 'Light Mode' : 'Dark Mode' }}
+        </button>
+      </div>
+
       <!-- Logout -->
       <button @click="logout" class="flex items-center gap-3 px-5 py-4 text-slate-500 dark:text-slate-400 hover:text-[#6B131D] dark:hover:text-rose-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all text-sm border-t border-slate-200 dark:border-slate-700/60 mt-auto cursor-pointer">
         <ArrowRightOnRectangleIcon class="w-5 h-5" />
@@ -114,36 +132,14 @@ const navItems = computed(() => {
 
     <!-- Main content area -->
     <div class="flex-1 overflow-y-auto flex flex-col min-w-0 print:overflow-visible">
-      <!-- Top bar -->
-      <header class="h-16 bg-white dark:bg-[#1E293B] border-b border-slate-200 dark:border-slate-700/60 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30 flex-shrink-0 print:hidden transition-colors">
-        <div class="flex items-center gap-3">
-          <!-- Hamburger menu button -->
-          <button @click="isMobileSidebarOpen = true" class="md:hidden text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 -ml-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800">
-            <Bars3Icon class="w-6 h-6" />
-          </button>
-          <h1 class="text-lg font-semibold text-slate-800 dark:text-slate-100 capitalize truncate max-w-[150px] sm:max-w-none">
-            {{ route.name?.toString().replace(/([A-Z])/g, ' $1').trim() }}
-          </h1>
-        </div>
-        
-        <div class="flex items-center gap-2 sm:gap-3">
-          <!-- Theme Toggle Button -->
-          <button
-            @click="toggleTheme"
-            class="p-2 rounded-full text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all cursor-pointer"
-            :title="isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
-            aria-label="Toggle Theme"
-          >
-            <SunIcon v-if="isDark" class="w-5 h-5 text-amber-400 transition-transform duration-300 hover:rotate-45" />
-            <MoonIcon v-else class="w-5 h-5 transition-transform duration-300 hover:-rotate-12" />
-          </button>
-
-          <RouterLink to="/opac" class="btn-ghost text-sm flex-shrink-0">
-            <BookOpenIcon class="w-4 h-4" />
-            <span class="hidden sm:inline">View OPAC</span>
-            <span class="sm:hidden">OPAC</span>
-          </RouterLink>
-        </div>
+      <!-- Mobile control for opening the sidebar -->
+      <header class="h-16 bg-white dark:bg-[#1E293B] border-b border-slate-200 dark:border-slate-700/60 flex items-center px-4 sticky top-0 z-30 flex-shrink-0 md:hidden print:hidden transition-colors">
+        <button @click="isMobileSidebarOpen = true" class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 -ml-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Open sidebar">
+          <Bars3Icon class="w-6 h-6" />
+        </button>
+        <h1 class="ml-3 text-lg font-semibold text-slate-800 dark:text-slate-100 capitalize truncate">
+          {{ route.name?.toString().replace(/([A-Z])/g, ' $1').trim() }}
+        </h1>
       </header>
 
       <main class="p-4 sm:p-6 flex-1 print:p-0 print:overflow-visible">

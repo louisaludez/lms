@@ -8,13 +8,14 @@ export interface User {
   email: string
   firstName: string
   lastName: string
-  role: 'student' | 'faculty' | 'librarian' | 'admin'
+  role: 'student' | 'faculty' | 'librarian' | 'chief_librarian' | 'admin' | 'kiosk'
   institutionalId: string
   eligibilityStatus: 'eligible' | 'suspended' | 'expelled'
   profilePhotoUrl: string | null
   barcode: string
   gender?: 'Male' | 'Female' | 'Other'
   department?: { id: number; name: string; code: string }
+  mustChangePassword?: boolean
 }
 
 export interface Book {
@@ -125,7 +126,9 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!token.value && !!user.value)
   const isStudent = computed(() => user.value?.role === 'student')
   const isFaculty = computed(() => user.value?.role === 'faculty')
-  const isLibrarian = computed(() => ['librarian', 'admin'].includes(user.value?.role ?? ''))
+  const isLibrarian = computed(() => ['librarian', 'chief_librarian', 'admin'].includes(user.value?.role ?? ''))
+  const isKiosk = computed(() => user.value?.role === 'kiosk')
+  const mustChangePassword = computed(() => !!user.value?.mustChangePassword)
   const isSuspended = computed(() => user.value?.eligibilityStatus === 'suspended')
 
   async function login(email: string, password: string) {
@@ -224,6 +227,9 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
     try {
       await api.patch('/users/me/password', payload)
+      if (user.value) {
+        user.value.mustChangePassword = false
+      }
     } catch (e: unknown) {
       error.value = formatApiMessage(e, 'Failed to change password')
       throw e
@@ -232,7 +238,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, token, loading, error, isAuthenticated, isStudent, isFaculty, isLibrarian, isSuspended, login, register, logout, fetchMe, updateProfile, changePassword }
+  return { user, token, loading, error, isAuthenticated, isStudent, isFaculty, isLibrarian, isKiosk, mustChangePassword, isSuspended, login, register, logout, fetchMe, updateProfile, changePassword }
 })
 
 // ─── LIBRARY STORE ────────────────────────────────────────────────────────────

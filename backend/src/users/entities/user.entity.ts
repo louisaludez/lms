@@ -21,6 +21,7 @@ export enum UserRole {
   LIBRARIAN = 'librarian',
   CHIEF_LIBRARIAN = 'chief_librarian',
   ADMIN = 'admin',
+  KIOSK = 'kiosk',
 }
 
 export enum Gender {
@@ -118,6 +119,9 @@ export class User {
   })
   @Index()
   accountApprovalStatus: AccountApprovalStatus;
+
+  @Column({ name: 'must_change_password', type: 'tinyint', width: 1, default: 0 })
+  mustChangePassword: boolean;
 
   @Column({ name: 'last_login_at', nullable: true })
   lastLoginAt: Date;

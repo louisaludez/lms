@@ -55,7 +55,8 @@ const roleOptions = [
   { label: 'Student', value: 'student' },
   { label: 'Faculty', value: 'faculty' },
   { label: 'Librarian', value: 'librarian' },
-  { label: 'Admin', value: 'admin' }
+  { label: 'Admin', value: 'admin' },
+  { label: 'Kiosk', value: 'kiosk' }
 ]
 
 const approvalOptions = [
@@ -525,6 +526,9 @@ function approvalBadge(status: string) {
                 <span v-else-if="user.role === 'faculty'" class="badge-pill-purple">
                   Faculty
                 </span>
+                <span v-else-if="user.role === 'kiosk'" class="badge-pill-amber">
+                  Kiosk Terminal
+                </span>
                 <span v-else class="badge-pill-gray capitalize">
                   {{ user.role }}
                 </span>
@@ -649,6 +653,7 @@ function approvalBadge(status: string) {
                   <option value="faculty">Faculty</option>
                   <option value="librarian">Librarian</option>
                   <option value="admin">Admin</option>
+                  <option value="kiosk">Kiosk</option>
                 </select>
               </div>
               <div>
