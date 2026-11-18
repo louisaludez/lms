@@ -10,14 +10,13 @@ async function bootstrap() {
   const config = app.get(ConfigService);
 
   app.setGlobalPrefix('api/v1');
-  app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
-
   app.enableCors({
     origin: config.get<string>('FRONTEND_URL', 'http://localhost:5173'),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
+  app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
 
   app.useGlobalPipes(
     new ValidationPipe({

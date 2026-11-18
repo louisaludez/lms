@@ -56,6 +56,7 @@ async function downloadId() {
     const dataUrl = await toPng(idCardRef.value, {
       pixelRatio: 3, // High resolution download
       cacheBust: true,
+      skipFonts: true,
     })
     const link = document.createElement('a')
     link.download = `lumina-id-${(user.value as any)?.barcode}.png`
@@ -63,7 +64,10 @@ async function downloadId() {
     link.click()
   } catch (err: any) {
     console.error("Failed to generate ID:", err)
-    alert("Failed to download ID. Error: " + (err.message || err))
+    const message = err instanceof Error
+      ? err.message
+      : 'The ID image could not be loaded. Please try again.'
+    alert(`Failed to download ID. ${message}`)
   } finally {
     isDownloadingId.value = false
   }

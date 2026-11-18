@@ -30,7 +30,6 @@ interface UserRow {
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const users        = ref<UserRow[]>([])
-const departments  = ref<Department[]>([])
 const loading      = ref(false)
 const searchQuery  = ref('')
 const filterRole           = ref('librarian')
@@ -64,7 +63,7 @@ const blankForm = () => ({
   firstName: '', lastName: '', middleName: '',
   email: '', password: 'Admin@1234',
   institutionalId: '', role: 'librarian', gender: 'Male',
-  departmentId: '', eligibilityStatus: 'eligible',
+  eligibilityStatus: 'eligible',
   accountApprovalStatus: 'approved', isActive: true,
 })
 const form = ref(blankForm())
@@ -76,7 +75,6 @@ const deleting     = ref(false)
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 onMounted(() => {
   fetchUsers()
-  fetchDepartments()
 })
 
 const currentPage = ref(1)
@@ -105,11 +103,6 @@ async function fetchUsers(page = 1) {
   } finally {
     loading.value = false
   }
-}
-
-async function fetchDepartments() {
-  const { data } = await api.get<Department[]>('/users/departments')
-  departments.value = data
 }
 
 let searchTimer: ReturnType<typeof setTimeout>
@@ -150,7 +143,6 @@ function openEdit(user: UserRow) {
     institutionalId: user.institutionalId,
     role:            user.role,
     gender:          user.gender ?? 'Male',
-    departmentId:    user.department?.id?.toString() ?? '',
     eligibilityStatus: user.eligibilityStatus,
     accountApprovalStatus: user.accountApprovalStatus,
     isActive:        user.isActive,
@@ -175,7 +167,6 @@ async function saveUser() {
       await api.post('/users', {
         ...createPayload,
         barcode: createPayload.institutionalId,
-        departmentId: createPayload.departmentId ? Number(createPayload.departmentId) : undefined,
       })
     } else {
       const payload: Record<string, any> = {
@@ -185,7 +176,6 @@ async function saveUser() {
         email:            form.value.email,
         role:             form.value.role,
         gender:           form.value.gender,
-        departmentId:     form.value.departmentId ? Number(form.value.departmentId) : undefined,
         eligibilityStatus: form.value.eligibilityStatus,
         accountApprovalStatus: form.value.accountApprovalStatus,
         isActive:         form.value.isActive,
@@ -453,13 +443,6 @@ function approvalBadge(status: string) {
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
                   <option value="Other">Other</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Department</label>
-                <select v-model="form.departmentId" class="input">
-                  <option value="">Select department...</option>
-                  <option v-for="dept in departments" :key="dept.id" :value="dept.id">{{ dept.name }}</option>
                 </select>
               </div>
               <div v-if="modalMode === 'edit'">

@@ -149,11 +149,24 @@ const filteredDepartments = computed(() => {
   return departments.value.filter(d => getDepartmentCategory(d.name) === modalCategory.value)
 })
 
+function requiresDepartment(role: string) {
+  return role === 'student' || role === 'faculty'
+}
+
+const roleUsesDepartment = computed(() => requiresDepartment(form.value.role))
+
 watch(modalCategory, (newCat, oldCat) => {
   if (oldCat !== undefined && newCat !== oldCat && modalMode.value === 'create') {
     form.value.departmentId = ''
   }
 })
+
+function handleRoleChange() {
+  if (!roleUsesDepartment.value) {
+    form.value.departmentId = ''
+    modalCategory.value = 'All Categories'
+  }
+}
 
 // Reject confirm
 const rejectTarget    = ref<UserRow | null>(null)
@@ -238,7 +251,7 @@ function openEdit(user: UserRow) {
     institutionalId: user.institutionalId,
     role:            user.role,
     gender:          user.gender ?? 'Male',
-    departmentId:    user.department?.id?.toString() ?? '',
+    departmentId:    requiresDepartment(user.role) ? user.department?.id?.toString() ?? '' : '',
     eligibilityStatus: user.eligibilityStatus,
     accountApprovalStatus: user.accountApprovalStatus,
     isActive:        user.isActive,
@@ -261,7 +274,7 @@ async function saveUser() {
   modalError.value = ''
   try {
     if (modalMode.value === 'create') {
-      const { eligibilityStatus, isActive, accountApprovalStatus, ...createPayload } = form.value
+      const { eligibilityStatus, isActive, accountApprovalStatus, departmentId, ...createPayload } = form.value
       const fd = new FormData()
       Object.entries(createPayload).forEach(([key, value]) => {
         if (key === 'displayPicture' && value) {
@@ -270,6 +283,9 @@ async function saveUser() {
           fd.append(key, value.toString())
         }
       })
+      if (roleUsesDepartment.value && departmentId) {
+        fd.append('departmentId', departmentId)
+      }
       fd.append('barcode', createPayload.institutionalId)
 
       await api.post('/users', fd, {
@@ -283,7 +299,7 @@ async function saveUser() {
         email:            form.value.email,
         role:             form.value.role,
         gender:           form.value.gender,
-        departmentId:     form.value.departmentId ? Number(form.value.departmentId) : undefined,
+        departmentId:     roleUsesDepartment.value && form.value.departmentId ? Number(form.value.departmentId) : undefined,
         eligibilityStatus: form.value.eligibilityStatus,
         accountApprovalStatus: form.value.accountApprovalStatus,
         isActive:         form.value.isActive,
@@ -648,12 +664,12 @@ function approvalBadge(status: string) {
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Role *</label>
-                <select v-model="form.role" required class="input">
+                <select v-model="form.role" required class="input" @change="handleRoleChange">
                   <option value="student">Student</option>
                   <option value="faculty">Faculty</option>
                   <option value="librarian">Librarian</option>
-                  <option value="admin">Admin</option>
                   <option value="kiosk">Kiosk</option>
+                  <option v-if="modalMode === 'edit' && form.role === 'admin'" value="admin" disabled>Admin</option>
                 </select>
               </div>
               <div>
@@ -664,13 +680,13 @@ function approvalBadge(status: string) {
                   <option value="Other">Other</option>
                 </select>
               </div>
-              <div>
+              <div v-if="roleUsesDepartment">
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Category</label>
                 <select v-model="modalCategory" class="input">
                   <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
                 </select>
               </div>
-              <div>
+              <div v-if="roleUsesDepartment">
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Course / Strand *</label>
                 <select v-model="form.departmentId" required class="input">
                   <option value="" disabled>Select department...</option>

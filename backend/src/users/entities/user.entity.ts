@@ -83,7 +83,7 @@ export class User {
     eager: true,
   })
   @JoinColumn({ name: 'department_id' })
-  department: Department;
+  department: Department | null;
 
   @Column({
     name: 'year_level',

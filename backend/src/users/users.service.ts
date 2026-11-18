@@ -19,6 +19,10 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { Like } from 'typeorm';
 import * as nodemailer from 'nodemailer';
 
+function roleUsesDepartment(role: UserRole): boolean {
+  return role === UserRole.STUDENT || role === UserRole.FACULTY;
+}
+
 @Injectable()
 export class UsersService implements OnModuleInit {
   constructor(
@@ -66,15 +70,57 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  private get transporter(): nodemailer.Transporter {
-    return nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+  private async sendEmail(
+    to: string,
+    subject: string,
+    text: string,
+    html: string,
+  ): Promise<void> {
+    const apiKey = process.env.RESEND_API_KEY;
+
+    if (apiKey) {
+      const from = process.env.FROM_EMAIL;
+      if (!from) {
+        throw new Error('FROM_EMAIL must be configured when using Resend');
+      }
+
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ from, to: [to], subject, text, html }),
+      });
+
+      if (!response.ok) {
+        const details = await response.text();
+        throw new Error(`Resend API returned ${response.status}: ${details}`);
+      }
+      return;
+    }
+
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+    if (!user || !pass) {
+      throw new Error(
+        'Configure RESEND_API_KEY and FROM_EMAIL, or SMTP_USER and SMTP_PASS',
+      );
+    }
+
+    await nodemailer
+      .createTransport({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: parseInt(process.env.SMTP_PORT || '587', 10),
+        auth: { user, pass },
+      })
+      .sendMail({
+        from: process.env.FROM_EMAIL || 'noreply@lumina-library.com',
+        to,
+        subject,
+        text,
+        html,
+      });
   }
 
   async create(dto: CreateUserDto): Promise<User> {
@@ -90,8 +136,8 @@ export class UsersService implements OnModuleInit {
         `Institutional ID ${dto.institutionalId} already registered`,
       );
 
-    let department: Department | undefined = undefined;
-    if (dto.departmentId) {
+    let department: Department | null = null;
+    if (roleUsesDepartment(dto.role) && dto.departmentId) {
       const dept = await this.deptRepo.findOne({
         where: { id: dto.departmentId },
       });
@@ -159,8 +205,8 @@ export class UsersService implements OnModuleInit {
         `Institutional ID ${dto.institutionalId} already registered`,
       );
 
-    let department: Department | undefined = undefined;
-    if (dto.departmentId) {
+    let department: Department | null = null;
+    if (roleUsesDepartment(dto.role) && dto.departmentId) {
       const dept = await this.deptRepo.findOne({
         where: { id: dto.departmentId },
       });
@@ -291,18 +337,23 @@ export class UsersService implements OnModuleInit {
   ): Promise<User> {
     const user = await this.findById(id);
 
-    if (dto.departmentId !== undefined) {
-      const dept = await this.deptRepo.findOne({
-        where: { id: dto.departmentId },
-      });
-      if (dept) user.department = dept;
+    if (dto.role !== undefined) user.role = dto.role;
+
+    if (roleUsesDepartment(user.role)) {
+      if (dto.departmentId !== undefined) {
+        const dept = await this.deptRepo.findOne({
+          where: { id: dto.departmentId },
+        });
+        if (dept) user.department = dept;
+      }
+    } else {
+      user.department = null;
     }
 
     if (dto.firstName !== undefined) user.firstName = dto.firstName;
     if (dto.lastName !== undefined) user.lastName = dto.lastName;
     if (dto.middleName !== undefined) user.middleName = dto.middleName;
     if (dto.email !== undefined) user.email = dto.email;
-    if (dto.role !== undefined) user.role = dto.role;
     if (dto.yearLevel !== undefined) user.yearLevel = dto.yearLevel;
     if (dto.section !== undefined) user.section = dto.section;
     if (dto.eligibilityStatus !== undefined)
@@ -329,37 +380,33 @@ export class UsersService implements OnModuleInit {
 
       // Email Notification
       if (previousStatus === AccountApprovalStatus.PENDING) {
-        const mailOptions = {
-          from: process.env.FROM_EMAIL || 'noreply@lumina-library.com',
-          to: user.email,
-          subject: '',
-          text: '',
-          html: '',
-        };
-
         if (dto.accountApprovalStatus === AccountApprovalStatus.APPROVED) {
-          mailOptions.subject = 'Lumina Registration Approved';
-          mailOptions.text = `Hello ${user.firstName},\n\nYour registration has been approved.\nYour Library ID is: ${user.barcode}.\n\nYou can now log in and print your ID card from your profile.\n\nThank you,\nLumina Library Team`;
-          mailOptions.html = `<p>Hello ${user.firstName},</p><p>Your registration has been <strong>approved</strong>.</p><p>Your Library ID is: <strong>${user.barcode}</strong>.</p><p>You can now log in and print your ID card from your profile.</p><p>Thank you,<br/>Lumina Library Team</p>`;
+          const text = `Hello ${user.firstName},\n\nYour registration has been approved.\nYour Library ID is: ${user.barcode}.\n\nYou can now log in and print your ID card from your profile.\n\nThank you,\nLumina Library Team`;
+          const html = `<p>Hello ${user.firstName},</p><p>Your registration has been <strong>approved</strong>.</p><p>Your Library ID is: <strong>${user.barcode}</strong>.</p><p>You can now log in and print your ID card from your profile.</p><p>Thank you,<br/>Lumina Library Team</p>`;
 
-          this.transporter
-            .sendMail(mailOptions)
-            .catch((err) =>
-              console.error('Failed to send approval email:', err),
-            );
+          void this.sendEmail(
+            user.email,
+            'Lumina Registration Approved',
+            text,
+            html,
+          ).catch((err) =>
+            console.error('Failed to send approval email:', err),
+          );
         } else if (
           dto.accountApprovalStatus === AccountApprovalStatus.REJECTED
         ) {
           const reason = dto.rejectionReason || 'No specific reason provided.';
-          mailOptions.subject = 'Lumina Registration Rejected';
-          mailOptions.text = `Hello ${user.firstName},\n\nUnfortunately, your registration was rejected.\n\nReason: ${reason}\n\nPlease contact the library administration for more details.\n\nThank you,\nLumina Library Team`;
-          mailOptions.html = `<p>Hello ${user.firstName},</p><p>Unfortunately, your registration was <strong>rejected</strong>.</p><p><strong>Reason:</strong> ${reason}</p><p>Please contact the library administration for more details.</p><p>Thank you,<br/>Lumina Library Team</p>`;
+          const text = `Hello ${user.firstName},\n\nUnfortunately, your registration was rejected.\n\nReason: ${reason}\n\nPlease contact the library administration for more details.\n\nThank you,\nLumina Library Team`;
+          const html = `<p>Hello ${user.firstName},</p><p>Unfortunately, your registration was <strong>rejected</strong>.</p><p><strong>Reason:</strong> ${reason}</p><p>Please contact the library administration for more details.</p><p>Thank you,<br/>Lumina Library Team</p>`;
 
-          this.transporter
-            .sendMail(mailOptions)
-            .catch((err) =>
-              console.error('Failed to send rejection email:', err),
-            );
+          void this.sendEmail(
+            user.email,
+            'Lumina Registration Rejected',
+            text,
+            html,
+          ).catch((err) =>
+            console.error('Failed to send rejection email:', err),
+          );
         }
       }
     }

@@ -64,8 +64,19 @@ const filteredDepartments = computed(() => {
   return departments.value.filter(d => getDepartmentCategory(d.name) === selectedCategory.value)
 })
 
+const roleUsesDepartment = computed(() =>
+  role.value === 'student' || role.value === 'faculty'
+)
+
 watch(selectedCategory, () => {
   departmentId.value = ''
+})
+
+watch(role, () => {
+  if (!roleUsesDepartment.value) {
+    selectedCategory.value = ''
+    departmentId.value = ''
+  }
 })
 
 onMounted(async () => {
@@ -92,7 +103,7 @@ async function handleSignUp() {
     clientMessage.value = 'Please select a display picture.'
     return
   }
-  if (!departmentId.value) {
+  if (roleUsesDepartment.value && !departmentId.value) {
     clientMessage.value = 'Please select a department.'
     return
   }
@@ -105,7 +116,7 @@ async function handleSignUp() {
       institutionalId: institutionalId.value.trim(),
       role: role.value,
       gender: gender.value,
-      departmentId: departmentId.value ? Number(departmentId.value) : undefined,
+      departmentId: roleUsesDepartment.value && departmentId.value ? Number(departmentId.value) : undefined,
       displayPicture: displayPicture.value,
     })
   } catch { /* error shown via auth.error */ }
@@ -145,7 +156,7 @@ async function handleSignUp() {
         <template v-else>
           <h2 class="text-xl font-semibold text-white mb-2">Create your account</h2>
           <p class="text-[#80b3ce] text-sm mb-7">
-            Register as a student or faculty member. A librarian must approve your account before you can sign in.
+            Register as a student, faculty member, or librarian. A librarian must approve your account before you can sign in.
           </p>
 
           <div
@@ -264,7 +275,7 @@ async function handleSignUp() {
               />
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 gap-4" :class="roleUsesDepartment ? 'sm:grid-cols-3' : ''">
               <div>
                 <label for="signup-gender" class="block text-xs font-semibold text-[#80b3ce] mb-1.5 uppercase tracking-wider">Gender</label>
                 <select
@@ -278,7 +289,7 @@ async function handleSignUp() {
                   <option value="Other">Other</option>
                 </select>
               </div>
-              <div>
+              <div v-if="roleUsesDepartment">
                 <label for="signup-category" class="block text-xs font-semibold text-[#80b3ce] mb-1.5 uppercase tracking-wider">Level</label>
                 <select
                   id="signup-category"
@@ -294,7 +305,7 @@ async function handleSignUp() {
                   <option value="Other">Other</option>
                 </select>
               </div>
-              <div>
+              <div v-if="roleUsesDepartment">
                 <label for="signup-department" class="block text-xs font-semibold text-[#80b3ce] mb-1.5 uppercase tracking-wider">Course/Strand</label>
                 <select
                   id="signup-department"

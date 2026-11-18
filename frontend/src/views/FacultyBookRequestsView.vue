@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { format, parseISO, differenceInDays } from 'date-fns'
-import { useLibraryStore, useAuthStore, type BookRequestItem } from '@/stores/useLibraryStore'
+import { useLibraryStore, type BookRequestItem } from '@/stores/useLibraryStore'
 import {
   BookOpenIcon, PlusIcon, XMarkIcon, ClockIcon,
   CheckCircleIcon, XCircleIcon, PaperAirplaneIcon,
@@ -9,9 +9,9 @@ import {
   ArrowPathIcon, ExclamationTriangleIcon
 } from '@heroicons/vue/24/outline'
 import Pagination from '@/components/Pagination.vue'
+import NavBar from '@/components/NavBar.vue'
 
 const store = useLibraryStore()
-const auth = useAuthStore()
 
 // Tab state
 const activeTab = ref<'my-requests' | 'new-acquisition' | 'borrowing-history'>('my-requests')
@@ -202,7 +202,10 @@ async function submitAcquisition() {
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto w-full">
+  <div class="min-h-screen md:pl-64 bg-[#F7F5F0] dark:bg-[#0F172A] transition-colors duration-200">
+    <NavBar />
+    <div class="px-4 sm:px-6 py-8">
+      <div class="max-w-5xl mx-auto w-full">
     <!-- Header -->
     <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
@@ -840,6 +843,8 @@ async function submitAcquisition() {
             Close
           </button>
         </div>
+      </div>
+    </div>
       </div>
     </div>
   </div>

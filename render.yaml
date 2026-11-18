@@ -25,3 +25,7 @@ services:
         sync: false
       - key: BACKEND_URL
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: FROM_EMAIL
+        sync: false
