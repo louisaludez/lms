@@ -25,7 +25,7 @@ services:
         sync: false
       - key: BACKEND_URL
         sync: false
-      - key: RESEND_API_KEY
+      - key: GOOGLE_APPS_SCRIPT_URL
         sync: false
-      - key: FROM_EMAIL
+      - key: GOOGLE_APPS_SCRIPT_TOKEN
         sync: false

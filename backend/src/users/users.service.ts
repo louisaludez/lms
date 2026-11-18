@@ -76,26 +76,57 @@ export class UsersService implements OnModuleInit {
     text: string,
     html: string,
   ): Promise<void> {
-    const apiKey = process.env.RESEND_API_KEY;
+    const relayUrl = process.env.GOOGLE_APPS_SCRIPT_URL;
+    const relayToken = process.env.GOOGLE_APPS_SCRIPT_TOKEN;
 
-    if (apiKey) {
-      const from = process.env.FROM_EMAIL;
-      if (!from) {
-        throw new Error('FROM_EMAIL must be configured when using Resend');
+    if (relayUrl || relayToken) {
+      if (!relayUrl || !relayToken) {
+        throw new Error(
+          'GOOGLE_APPS_SCRIPT_URL and GOOGLE_APPS_SCRIPT_TOKEN must both be configured',
+        );
       }
 
-      const response = await fetch('https://api.resend.com/emails', {
+      if (new URL(relayUrl).protocol !== 'https:') {
+        throw new Error('Google Apps Script relay URL must use HTTPS');
+      }
+
+      const response = await fetch(relayUrl, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ from, to: [to], subject, text, html }),
+        body: JSON.stringify({
+          token: relayToken,
+          to,
+          subject,
+          text,
+          html,
+        }),
       });
 
+      const responseBody = await response.text();
       if (!response.ok) {
-        const details = await response.text();
-        throw new Error(`Resend API returned ${response.status}: ${details}`);
+        throw new Error(
+          `Google Apps Script returned ${response.status}: ${responseBody}`,
+        );
+      }
+
+      let result: unknown;
+      try {
+        result = JSON.parse(responseBody);
+      } catch {
+        throw new Error('Google Apps Script returned an invalid response');
+      }
+
+      if (typeof result !== 'object' || result === null || !('ok' in result)) {
+        throw new Error('Google Apps Script returned an invalid response');
+      }
+      if (result.ok !== true) {
+        const details =
+          'error' in result && typeof result.error === 'string'
+            ? result.error
+            : 'Unknown email relay error';
+        throw new Error(`Google Apps Script failed: ${details}`);
       }
       return;
     }

@@ -63,31 +63,31 @@ const navItems = computed(() => {
     <!-- Sidebar -->
     <aside 
       :class="[
-        'fixed inset-y-0 left-0 z-50 w-64 bg-[#f4f7f6] dark:bg-[#1E293B] border-r border-slate-200 dark:border-slate-700/60 flex flex-col flex-shrink-0 transform transition-transform duration-300 md:relative md:translate-x-0 print:hidden',
+        'fixed inset-y-0 left-0 z-50 w-64 bg-[#6B131D] dark:bg-[#4A0D14] border-r border-white/10 flex flex-col flex-shrink-0 transform transition-transform duration-300 md:relative md:translate-x-0 print:hidden',
         isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
       ]"
     >
       <!-- Logo -->
-      <div class="h-16 flex items-center justify-between px-5 border-b border-slate-200 dark:border-slate-700/60">
+      <div class="h-16 flex items-center justify-between px-5 border-b border-white/10">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-200/50 dark:bg-slate-800">
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-white/10">
             <img :src="ndcLogo" class="w-full h-full object-contain p-0.5" alt="NDC Logo" />
           </div>
           <div>
-            <p class="text-slate-800 dark:text-slate-100 font-bold text-base leading-none">Lumina</p>
-            <p class="text-slate-500 dark:text-slate-400 text-[10px] font-medium">Library System</p>
+            <p class="text-white font-bold text-base leading-none">Lumina</p>
+            <p class="text-white/60 text-[10px] font-medium">Library System</p>
           </div>
         </div>
         <!-- Close button on mobile -->
-        <button @click="closeMobileSidebar" class="md:hidden text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+        <button @click="closeMobileSidebar" class="md:hidden text-white/80 hover:text-white p-1">
           <XMarkIcon class="w-6 h-6" />
         </button>
       </div>
 
       <!-- User info -->
-      <div class="px-4 py-4 border-b border-slate-200 dark:border-slate-700/60">
-        <p class="text-slate-800 dark:text-slate-100 font-semibold text-sm">{{ auth.user?.firstName }} {{ auth.user?.lastName }}</p>
-        <p class="text-slate-500 dark:text-slate-400 text-xs capitalize">{{ auth.user?.role }}</p>
+      <div class="px-4 py-4 border-b border-white/10">
+        <p class="text-white font-semibold text-sm">{{ auth.user?.firstName }} {{ auth.user?.lastName }}</p>
+        <p class="text-white/60 text-xs capitalize">{{ auth.user?.role }}</p>
       </div>
 
       <!-- Navigation -->
@@ -106,7 +106,7 @@ const navItems = computed(() => {
       </nav>
 
       <!-- Sidebar actions -->
-      <div class="px-3 py-3 space-y-1 border-t border-slate-200 dark:border-slate-700/60">
+      <div class="px-3 py-3 space-y-1 border-t border-white/10">
         <RouterLink to="/opac" class="nav-link" @click="closeMobileSidebar">
           <BookOpenIcon class="w-5 h-5 flex-shrink-0" />
           View OPAC
@@ -124,7 +124,7 @@ const navItems = computed(() => {
       </div>
 
       <!-- Logout -->
-      <button @click="logout" class="flex items-center gap-3 px-5 py-4 text-slate-500 dark:text-slate-400 hover:text-[#6B131D] dark:hover:text-rose-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all text-sm border-t border-slate-200 dark:border-slate-700/60 mt-auto cursor-pointer">
+      <button @click="logout" class="flex items-center gap-3 px-5 py-4 text-white/80 hover:text-white hover:bg-white/10 transition-all text-sm border-t border-white/10 mt-auto cursor-pointer">
         <ArrowRightOnRectangleIcon class="w-5 h-5" />
         Sign Out
       </button>
@@ -133,11 +133,11 @@ const navItems = computed(() => {
     <!-- Main content area -->
     <div class="flex-1 overflow-y-auto flex flex-col min-w-0 print:overflow-visible">
       <!-- Mobile control for opening the sidebar -->
-      <header class="h-16 bg-white dark:bg-[#1E293B] border-b border-slate-200 dark:border-slate-700/60 flex items-center px-4 sticky top-0 z-30 flex-shrink-0 md:hidden print:hidden transition-colors">
-        <button @click="isMobileSidebarOpen = true" class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 -ml-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Open sidebar">
+      <header class="h-16 bg-[#6B131D] dark:bg-[#4A0D14] border-b border-white/10 flex items-center px-4 sticky top-0 z-30 flex-shrink-0 md:hidden print:hidden transition-colors">
+        <button @click="isMobileSidebarOpen = true" class="text-white/80 hover:text-white p-1 -ml-2 rounded-md hover:bg-white/10" aria-label="Open sidebar">
           <Bars3Icon class="w-6 h-6" />
         </button>
-        <h1 class="ml-3 text-lg font-semibold text-slate-800 dark:text-slate-100 capitalize truncate">
+        <h1 class="ml-3 text-lg font-semibold text-white capitalize truncate">
           {{ route.name?.toString().replace(/([A-Z])/g, ' $1').trim() }}
         </h1>
       </header>
