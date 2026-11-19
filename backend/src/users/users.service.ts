@@ -154,7 +154,21 @@ export class UsersService implements OnModuleInit {
       });
   }
 
+  private async removeRejectedUserIfExists(email: string, institutionalId: string): Promise<void> {
+    const existingByEmail = await this.userRepo.findOne({ where: { email } });
+    if (existingByEmail?.accountApprovalStatus === AccountApprovalStatus.REJECTED) {
+      await this.userRepo.remove(existingByEmail);
+    }
+
+    const existingById = await this.userRepo.findOne({ where: { institutionalId } });
+    if (existingById?.accountApprovalStatus === AccountApprovalStatus.REJECTED) {
+      await this.userRepo.remove(existingById);
+    }
+  }
+
   async create(dto: CreateUserDto): Promise<User> {
+    await this.removeRejectedUserIfExists(dto.email, dto.institutionalId);
+
     const exists = await this.userRepo.findOne({ where: { email: dto.email } });
     if (exists)
       throw new ConflictException(`Email ${dto.email} already registered`);
@@ -224,6 +238,8 @@ export class UsersService implements OnModuleInit {
     departmentId?: number;
     profilePhotoUrl?: string;
   }): Promise<User> {
+    await this.removeRejectedUserIfExists(dto.email, dto.institutionalId);
+
     const exists = await this.userRepo.findOne({ where: { email: dto.email } });
     if (exists)
       throw new ConflictException(`Email ${dto.email} already registered`);

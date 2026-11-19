@@ -35,6 +35,7 @@ const searchQuery  = ref('')
 const filterRole           = ref('librarian')
 const filterApprovalStatus = ref('')
 const reviewingId          = ref<number | null>(null)
+const updatingStatusId     = ref<number | null>(null)
 
 const sortBy               = ref('createdAt')
 const sortOrder            = ref<'ASC'|'DESC'>('DESC')
@@ -203,15 +204,32 @@ async function setApprovalStatus(userId: number, status: 'approved' | 'rejected'
   }
 }
 
+async function setUserActive(user: UserRow, isActive: boolean) {
+  updatingStatusId.value = user.id
+  try {
+    await api.patch(`/users/${user.id}`, { isActive })
+    deleteTarget.value = null
+    await fetchUsers(currentPage.value)
+  } catch (e: any) {
+    alert(e.response?.data?.message ?? 'Could not update account status')
+  } finally {
+    updatingStatusId.value = null
+  }
+}
+
+function toggleUserActive(user: UserRow) {
+  if (user.isActive) {
+    deleteTarget.value = user
+    return
+  }
+  void setUserActive(user, true)
+}
+
 async function confirmDelete() {
   if (!deleteTarget.value) return
   deleting.value = true
   try {
-    await api.delete(`/users/${deleteTarget.value.id}`)
-    deleteTarget.value = null
-    await fetchUsers(currentPage.value)
-  } catch (e: any) {
-    alert(e.response?.data?.message ?? 'Delete failed')
+    await setUserActive(deleteTarget.value, false)
   } finally {
     deleting.value = false
   }
@@ -344,7 +362,13 @@ function approvalBadge(status: string) {
               </td>
               <!-- Status -->
               <td class="table-cell">
-                <span v-if="user.isActive" class="badge-pill-green">
+                <span v-if="user.accountApprovalStatus === 'pending'" class="badge-pill-amber">
+                  Pending
+                </span>
+                <span v-else-if="user.accountApprovalStatus === 'rejected'" class="badge-pill-rose">
+                  Rejected
+                </span>
+                <span v-else-if="user.isActive" class="badge-pill-green">
                   <span class="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 flex items-center justify-center">
                     <CheckIcon class="w-3 h-3 stroke-[3]" />
                   </span>
@@ -372,12 +396,18 @@ function approvalBadge(status: string) {
                     Edit
                   </button>
                   <button
-                    @click="deleteTarget = user"
-                    class="text-amber-600 hover:text-amber-700 inline-flex items-center gap-1 transition-colors"
-                    title="Deactivate"
+                    v-if="user.accountApprovalStatus === 'approved'"
+                    :disabled="updatingStatusId === user.id"
+                    @click="toggleUserActive(user)"
+                    :class="[
+                      'inline-flex items-center gap-1 transition-colors disabled:opacity-50',
+                      user.isActive ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'
+                    ]"
+                    :title="user.isActive ? 'Deactivate' : 'Activate'"
                   >
-                    <span>Deactivate</span>
-                    <TrashIcon class="w-3.5 h-3.5 text-rose-500" />
+                    <span>{{ updatingStatusId === user.id ? 'Updating...' : user.isActive ? 'Deactivate' : 'Activate' }}</span>
+                    <TrashIcon v-if="user.isActive" class="w-3.5 h-3.5 text-rose-500" />
+                    <CheckIcon v-else class="w-3.5 h-3.5" />
                   </button>
                 </div>
               </td>
