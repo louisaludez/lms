@@ -22,12 +22,20 @@ type AuthReq = ExpressRequest & { user: { id: number; role: string } };
 export class TransactionsController {
   constructor(private readonly txService: TransactionsService) {}
 
+  private getClientInfo(req: AuthReq) {
+    return {
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      userAgent: req.headers['user-agent'],
+    };
+  }
+
   /** POST /api/v1/transactions/checkout */
   @Post('checkout')
   @UseGuards(RolesGuard)
   @Roles('librarian', 'chief_librarian', 'admin')
   checkout(@Body() dto: CheckoutDto, @Request() req: AuthReq) {
-    return this.txService.checkout(dto, req.user.id);
+    const { ipAddress, userAgent } = this.getClientInfo(req);
+    return this.txService.checkout(dto, req.user.id, ipAddress, userAgent);
   }
 
   /** POST /api/v1/transactions/return */
@@ -35,13 +43,15 @@ export class TransactionsController {
   @UseGuards(RolesGuard)
   @Roles('librarian', 'chief_librarian', 'admin')
   returnBook(@Body() dto: ReturnDto, @Request() req: AuthReq) {
-    return this.txService.returnBook(dto, req.user.id);
+    const { ipAddress, userAgent } = this.getClientInfo(req);
+    return this.txService.returnBook(dto, req.user.id, ipAddress, userAgent);
   }
 
   /** POST /api/v1/transactions/renew */
   @Post('renew')
   renew(@Body() dto: RenewalDto, @Request() req: AuthReq) {
-    return this.txService.renew(dto, req.user);
+    const { ipAddress, userAgent } = this.getClientInfo(req);
+    return this.txService.renew(dto, req.user, ipAddress, userAgent);
   }
 
   /** GET /api/v1/transactions/my */

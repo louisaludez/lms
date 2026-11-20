@@ -5,7 +5,8 @@ import {
   BookOpenIcon, PlusIcon, MagnifyingGlassIcon,
   PencilSquareIcon, TrashIcon, XMarkIcon,
   CheckIcon, FunnelIcon, ArrowsUpDownIcon,
-  ArrowUpTrayIcon, DocumentArrowDownIcon
+  ArrowUpTrayIcon, DocumentArrowDownIcon,
+  InformationCircleIcon
 } from '@heroicons/vue/24/outline'
 import Pagination from '@/components/Pagination.vue'
 import DropdownFilter from '@/components/DropdownFilter.vue'
@@ -26,6 +27,8 @@ interface BookRow {
   otherTitle: string | null
   authors: string[]
   edition: string | null
+  issue: string | null
+  volume: string | null
   publisher: string | null
   publishYear: number | null
   category: Category | null
@@ -76,6 +79,7 @@ const bulkFile = ref<File | null>(null)
 const bulkLoading = ref(false)
 const bulkError = ref('')
 const bulkResult = ref<{ success: number; failed: number; errors: string[] } | null>(null)
+const bulkItemType = ref<string>('') // Selected item type for bulk upload
 
 const selectedBookIds = ref<number[]>([])
 const showBulkEditModal = ref(false)
@@ -98,7 +102,7 @@ const bulkEditForm = ref({
   updateLanguage: false,
   language: 'English',
   updateItemType: false,
-  itemType: 'BOOKS',
+  itemType: 'Books',
   updatePublisher: false,
   publisher: '',
   updatePublishYear: false,
@@ -112,14 +116,15 @@ const bulkEditForm = ref({
 })
 
 
-const itemTypes = ['Journals', 'Thesis', 'CD', 'BOOKS', 'DVD', 'Cartographic Materials', 'Electronics']
+const itemTypes = ['Journals', 'Thesis', 'CD', 'Books', 'DVD', 'Cartographic Materials', 'Electronics']
 
 const blankForm = () => ({
   title: '', otherTitle: '', isbn: '', issn: '', callNumber: '', edition: '',
+  issue: '', volume: '',
   publisher: '', publishYear: new Date().getFullYear(),
   categoryId: '', language: 'English', description: '',
   coverImageUrl: '', locationShelf: '', totalCopies: 1,
-  isReferenceOnly: false, isActive: true, itemType: 'BOOKS', authors: ''
+  isReferenceOnly: false, isActive: true, itemType: 'Books', authors: ''
 })
 const form = ref(blankForm())
 
@@ -130,7 +135,7 @@ const typeConfig = computed(() => {
     showOtherTitle: true,
     otherTitleLabel: 'Other Title',
     isbnLabel: 'ISBN *',
-    showIssn: true,
+    showIssn: false,
     issnLabel: 'ISSN',
     callNumberLabel: 'Call Number *',
     showCategory: true,
@@ -141,6 +146,10 @@ const typeConfig = computed(() => {
     publishYearLabel: 'Publish Year',
     showEdition: true,
     editionLabel: 'Edition',
+    showIssue: false,
+    issueLabel: 'Issue',
+    showVolume: false,
+    volumeLabel: 'Volume',
     locationLabel: 'Location / Shelf',
     showAuthors: true,
     authorsLabel: 'Authors (Comma Separated)',
@@ -148,7 +157,21 @@ const typeConfig = computed(() => {
 
   switch (type) {
     case 'Journals':
-      return { ...base, titleLabel: 'Journal Name *', editionLabel: 'Issue/Volume', isbnLabel: 'ISSN / Ref No. *', showIssn: false, showOtherTitle: false, authorsLabel: 'Authors / Contributors' };
+      return {
+        ...base,
+        titleLabel: 'Journal Name *',
+        isbnLabel: 'ISBN', // Optional for journals
+        showIssn: true,
+        issnLabel: 'ISSN *', // Required for journals
+        showOtherTitle: false,
+        showEdition: false, // Replace edition with issue/volume
+        showIssue: true,
+        issueLabel: 'Issue *',
+        showVolume: true,
+        volumeLabel: 'Volume *',
+        publisherLabel: 'Publisher',
+        authorsLabel: 'Authors / Contributors'
+      };
     case 'Thesis':
       return { ...base, titleLabel: 'Thesis Title *', otherTitleLabel: 'Degree Program', isbnLabel: 'Thesis ID / Ref No. *', showIssn: false, publisherLabel: 'University/Institution', publishYearLabel: 'Submission Year', showEdition: false, authorsLabel: 'Author(s)' };
     case 'CD':
@@ -243,6 +266,8 @@ function openEdit(book: BookRow) {
     issn:           book.issn ?? '',
     callNumber:     book.callNumber,
     edition:        book.edition ?? '',
+    issue:          book.issue ?? '',
+    volume:         book.volume ?? '',
     publisher:      book.publisher ?? '',
     publishYear:    book.publishYear ?? new Date().getFullYear(),
     categoryId:     book.category?.id?.toString() ?? '',
@@ -253,7 +278,7 @@ function openEdit(book: BookRow) {
     totalCopies:    book.totalCopies,
     isReferenceOnly: !!book.isReferenceOnly,
     isActive:       !!book.isActive,
-    itemType:       book.itemType || 'BOOKS',
+    itemType:       book.itemType || 'Books',
     authors:        book.authors?.join(', ') || '',
   }
   editingId.value  = book.id
@@ -275,6 +300,8 @@ async function saveBook() {
         categoryId:  createPayload.categoryId  ? Number(createPayload.categoryId)  : undefined,
         publishYear: createPayload.publishYear ? Number(createPayload.publishYear) : undefined,
         authors:     createPayload.authors || undefined,
+        issue:       createPayload.issue || undefined,
+        volume:      createPayload.volume || undefined,
       })
     } else {
       await api.patch(`/books/${editingId.value}`, {
@@ -284,6 +311,8 @@ async function saveBook() {
         issn:           form.value.issn         || undefined,
         callNumber:     form.value.callNumber   || undefined,
         edition:        form.value.edition      || undefined,
+        issue:          form.value.issue        || undefined,
+        volume:         form.value.volume       || undefined,
         publisher:      form.value.publisher    || undefined,
         publishYear:    form.value.publishYear  ? Number(form.value.publishYear) : undefined,
         categoryId:     form.value.categoryId   ? Number(form.value.categoryId)  : undefined,
@@ -337,6 +366,10 @@ async function submitBulkUpload() {
   try {
     const fd = new FormData()
     fd.append('file', bulkFile.value)
+    // Also send the selected item type for backend validation
+    if (bulkItemType.value) {
+      fd.append('itemType', bulkItemType.value)
+    }
     const { data } = await api.post('/books/bulk-upload', fd, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
@@ -349,13 +382,151 @@ async function submitBulkUpload() {
   }
 }
 
+// Helper: Get required fields for an item type
+function getRequiredFields(itemType: string): string[] {
+  const baseFields = ['Title', 'Author', 'Call Number']
+
+  switch (itemType) {
+    case 'Books':
+      return [...baseFields, 'ISBN']
+    case 'Journals':
+      return [...baseFields, 'ISSN', 'Issue', 'Volume']
+    case 'Thesis':
+      return [...baseFields, 'ISBN']
+    case 'CD':
+    case 'DVD':
+    case 'Cartographic Materials':
+    case 'Electronics':
+      return [...baseFields, 'ISBN or ISSN']
+    default:
+      return [...baseFields, 'ISBN or ISSN']
+  }
+}
+
+// Get all columns for an item type (for template)
+function getTemplateColumns(itemType: string): string[] {
+  const baseColumns = ['Title', 'Author', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
+
+  switch (itemType) {
+    case 'Books':
+      return ['Title', 'Other Title', 'Author', 'ISBN', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Edition', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
+    case 'Journals':
+      return ['Title', 'Author', 'ISSN', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Issue', 'Volume', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
+    case 'Thesis':
+      return ['Title', 'Author', 'ISBN', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Edition', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
+    case 'CD':
+    case 'DVD':
+    case 'Cartographic Materials':
+    case 'Electronics':
+      return ['Title', 'Author', 'ISBN', 'ISSN', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
+    default:
+      return ['Title', 'Author', 'ISBN', 'ISSN', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Edition', 'Issue', 'Volume', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
+  }
+}
+
+// Get example row for an item type
+function getExampleRow(itemType: string): string[] {
+  const year = new Date().getFullYear()
+
+  switch (itemType) {
+    case 'Books':
+      return [
+        'Sample Book Title',
+        'Subtitle',
+        'John Doe, Jane Smith',
+        '978-0123456789',
+        'FIC DOE',
+        'Pearson',
+        String(year),
+        'Fiction',
+        'English',
+        '2nd',
+        'A-101',
+        '3',
+        'false',
+        'A sample book description'
+      ]
+    case 'Journals':
+      return [
+        'Journal of Science',
+        'Jane Smith, Bob Johnson',
+        '1234-5678',
+        'PER SCI',
+        'Elsevier',
+        String(year),
+        'Science',
+        'English',
+        '12',
+        '5',
+        'B-201',
+        '2',
+        'false',
+        'A scientific journal issue'
+      ]
+    case 'Thesis':
+      return [
+        'Research on Machine Learning',
+        'John Doe',
+        '978-0123456789',
+        'THE ML 2024',
+        'University Press',
+        String(year),
+        'Research',
+        'English',
+        '1st',
+        'T-001',
+        '1',
+        'true',
+        'Master thesis on ML'
+      ]
+    default: // CD, DVD, Cartographic Materials, Electronics
+      return [
+        'Sample Title',
+        'Author Name',
+        '978-0123456789',
+        '',
+        'MED 001',
+        'Publisher',
+        String(year),
+        'Media',
+        'English',
+        'A-301',
+        '1',
+        'false',
+        'Description'
+      ]
+  }
+}
+
+function onBulkItemTypeChange() {
+  // Reset file selection when item type changes
+  bulkFile.value = null
+  bulkError.value = ''
+}
+
 function downloadCsvTemplate() {
-  const headers = ['Title', 'Author', 'ISBN', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Edition', 'Item Type', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
-  const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\\n"
+  if (!bulkItemType.value) return
+
+  const headers = getTemplateColumns(bulkItemType.value)
+  const exampleRow = getExampleRow(bulkItemType.value)
+
+  // Helper to properly escape CSV fields (quote if contains comma, quote, or newline)
+  const escapeCsv = (field: string): string => {
+    const str = String(field ?? '')
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return '"' + str.replace(/"/g, '""') + '"'
+    }
+    return str
+  }
+
+  const csvContent = "data:text/csv;charset=utf-8,"
+    + headers.map(escapeCsv).join(",") + "\n"
+    + exampleRow.map(escapeCsv).join(",") + "\n"
+
   const encodedUri = encodeURI(csvContent)
   const link = document.createElement("a")
   link.setAttribute("href", encodedUri)
-  link.setAttribute("download", "Lumina_Book_Bulk_Template.csv")
+  link.setAttribute("download", `Lumina_${bulkItemType.value.replace(/\s+/g, '_')}_Bulk_Template.csv`)
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
@@ -433,7 +604,7 @@ function openBulkEditModal() {
     callNumber: b.callNumber,
     categoryId: b.category?.id?.toString() ?? '',
     locationShelf: b.locationShelf ?? '',
-    itemType: b.itemType || 'BOOKS',
+    itemType: b.itemType || 'Books',
     language: b.language || 'English',
     publisher: b.publisher ?? '',
     publishYear: b.publishYear ?? new Date().getFullYear(),
@@ -856,6 +1027,14 @@ function availBadge(available: number, total: number) {
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{{ typeConfig.editionLabel }}</label>
                 <input v-model="form.edition" type="text" class="input" />
               </div>
+              <div v-if="typeConfig.showIssue">
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{{ typeConfig.issueLabel }}</label>
+                <input v-model="form.issue" type="text" class="input" />
+              </div>
+              <div v-if="typeConfig.showVolume">
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{{ typeConfig.volumeLabel }}</label>
+                <input v-model="form.volume" type="text" class="input" />
+              </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{{ typeConfig.locationLabel }}</label>
                 <input v-model="form.locationShelf" type="text" class="input" />
@@ -960,7 +1139,7 @@ function availBadge(available: number, total: number) {
           <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-4">
             <h3 class="font-bold text-slate-800 flex items-center gap-2">
               <ArrowUpTrayIcon class="w-5 h-5 text-[#447794]" />
-              Bulk Upload Books
+              Bulk Upload Items
             </h3>
             <button @click="closeBulkModal" class="text-slate-400 hover:text-slate-600">
               <XMarkIcon class="w-5 h-5" />
@@ -969,30 +1148,58 @@ function availBadge(available: number, total: number) {
 
           <div v-if="!bulkResult">
             <p class="text-sm text-slate-500 mb-4">
-              Upload a CSV file to add multiple books at once. Make sure your file follows the standard format.
+              Select the item type first, then download the appropriate CSV template.
             </p>
-            <button @click="downloadCsvTemplate" type="button" class="flex items-center gap-2 text-sm font-semibold text-[#447794] hover:underline mb-6">
-              <DocumentArrowDownIcon class="w-4 h-4" />
-              Download CSV Template
-            </button>
 
-            <form @submit.prevent="submitBulkUpload" class="space-y-4">
-              <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Select CSV File</label>
-                <input type="file" accept=".csv" required @change="handleBulkFileChange" class="input p-2" />
-              </div>
-              
-              <div v-if="bulkError" class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm">
-                {{ bulkError }}
+            <!-- Item Type Selector -->
+            <div class="mb-4">
+              <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Item Type *</label>
+              <select v-model="bulkItemType" class="input" @change="onBulkItemTypeChange">
+                <option value="" disabled>Select item type...</option>
+                <option v-for="type in itemTypes" :key="type" :value="type">{{ type }}</option>
+              </select>
+              <p class="text-xs text-slate-400 mt-1">Template and required fields change based on item type</p>
+            </div>
+
+            <div v-if="bulkItemType" class="space-y-4">
+              <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <p class="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1.5">
+                  <InfoCircleIcon class="w-4 h-4" />
+                  Required fields for <strong>{{ bulkItemType }}</strong>:
+                </p>
+                <ul class="text-xs text-slate-600 space-y-1">
+                  <li v-for="field in getRequiredFields(bulkItemType)" :key="field">{{ field }}</li>
+                </ul>
               </div>
 
-              <div class="flex gap-3 pt-2">
-                <button type="button" @click="closeBulkModal" class="btn-ghost flex-1 justify-center">Cancel</button>
-                <button type="submit" :disabled="bulkLoading || !bulkFile" class="btn-primary flex-1 justify-center">
-                  {{ bulkLoading ? 'Uploading...' : 'Upload Data' }}
-                </button>
-              </div>
-            </form>
+              <button @click="downloadCsvTemplate" type="button" class="flex items-center gap-2 text-sm font-semibold text-[#447794] hover:underline w-full justify-center py-2">
+                <DocumentArrowDownIcon class="w-4 h-4" />
+                Download {{ bulkItemType }} CSV Template
+              </button>
+
+              <form @submit.prevent="submitBulkUpload" class="space-y-4">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Select CSV File</label>
+                  <input type="file" accept=".csv" required @change="handleBulkFileChange" class="input p-2" />
+                </div>
+
+                <div v-if="bulkError" class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm">
+                  {{ bulkError }}
+                </div>
+
+                <div class="flex gap-3 pt-2">
+                  <button type="button" @click="closeBulkModal" class="btn-ghost flex-1 justify-center">Cancel</button>
+                  <button type="submit" :disabled="bulkLoading || !bulkFile" class="btn-primary flex-1 justify-center">
+                    {{ bulkLoading ? 'Uploading...' : 'Upload Data' }}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <div v-else class="text-center py-8 text-slate-400">
+              <ArrowUpTrayIcon class="w-12 h-12 mx-auto mb-3 text-slate-300" />
+              <p>Please select an item type above to continue</p>
+            </div>
           </div>
 
           <!-- Results View -->

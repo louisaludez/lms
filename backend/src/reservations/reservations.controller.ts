@@ -19,13 +19,21 @@ type AuthReq = ExpressRequest & { user: { id: number } };
 export class ReservationsController {
   constructor(private readonly reservationsService: ReservationsService) {}
 
+  private getClientInfo(req: AuthReq) {
+    return {
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      userAgent: req.headers['user-agent'],
+    };
+  }
+
   /** POST /api/v1/reservations/book/:bookId */
   @Post('book/:bookId')
   reserve(
     @Param('bookId', ParseIntPipe) bookId: number,
     @Request() req: AuthReq,
   ) {
-    return this.reservationsService.reserve(req.user.id, bookId);
+    const { ipAddress, userAgent } = this.getClientInfo(req);
+    return this.reservationsService.reserve(req.user.id, bookId, ipAddress, userAgent);
   }
 
   /** GET /api/v1/reservations/my */
@@ -37,6 +45,7 @@ export class ReservationsController {
   /** DELETE /api/v1/reservations/:id */
   @Delete(':id')
   cancel(@Param('id', ParseIntPipe) id: number, @Request() req: AuthReq) {
-    return this.reservationsService.cancelReservation(id, req.user.id);
+    const { ipAddress, userAgent } = this.getClientInfo(req);
+    return this.reservationsService.cancelReservation(id, req.user.id, ipAddress, userAgent);
   }
 }

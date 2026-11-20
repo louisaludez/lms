@@ -126,6 +126,12 @@ export class User {
   @Column({ name: 'last_login_at', nullable: true })
   lastLoginAt: Date;
 
+  @Column({ name: 'password_reset_token', type: 'varchar', length: 255, nullable: true, select: false })
+  passwordResetToken: string | null;
+
+  @Column({ name: 'password_reset_expires', type: 'datetime', nullable: true })
+  passwordResetExpires: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

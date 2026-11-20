@@ -6,9 +6,11 @@ import { Book } from '../books/entities/book.entity';
 import { Category } from '../books/entities/category.entity';
 import { BookRequestsService } from './book-requests.service';
 import { BookRequestsController } from './book-requests.controller';
+import { ActivityLogModule } from '../activity-log/activity-log.module';
+import { BooksModule } from '../books/books.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([BookRequest, User, Book, Category])],
+  imports: [TypeOrmModule.forFeature([BookRequest, User, Book, Category]), ActivityLogModule, BooksModule],
   providers: [BookRequestsService],
   controllers: [BookRequestsController],
 })

@@ -15,6 +15,7 @@ import { Category } from '../../books/entities/category.entity';
 export enum BookRequestType {
   BORROW = 'borrow',
   ACQUISITION = 'acquisition',
+  HOLD = 'hold',
 }
 
 export enum BookRequestStatus {
@@ -39,7 +40,7 @@ export class BookRequest {
   @Index()
   book: Book | null;
 
-  @Column({ name: 'item_type', type: 'varchar', length: 100, default: 'BOOKS' })
+  @Column({ name: 'item_type', type: 'varchar', length: 100, default: 'Books' })
   itemType: string;
 
   /** For acquisition requests — title of the book being requested */

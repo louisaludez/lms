@@ -82,6 +82,9 @@ export class ReportsService {
     const whereClauses: string[] = [];
     const queryParams: any[] = [];
 
+    // Check if we should show individual departments (when "All Departments" is selected)
+    const showIndividualDepartments = !department || department === 'All' || department === 'All Departments';
+
     if (frequency === 'Daily') {
       dateGroupSql = `DATE_FORMAT(a.scanned_at, '%Y-%m-%d')`;
       if (startDate && endDate) {
@@ -136,18 +139,35 @@ export class ReportsService {
       whereClauses.push('1=1');
     }
 
-    return this.dataSource.query(
+    // Build SELECT and GROUP BY clauses based on whether we show individual departments
+    const selectClause = showIndividualDepartments
+      ? `
+        ${dateGroupSql} as period,
+        d.code as departmentCode,
+        d.name as departmentName,
+        COUNT(CASE WHEN a.entry_type = 'entry' THEN 1 END) as entries,
+        COUNT(CASE WHEN a.entry_type = 'exit' THEN 1 END) as exits
       `
-      SELECT 
+      : `
         ${dateGroupSql} as period,
         COUNT(CASE WHEN a.entry_type = 'entry' THEN 1 END) as entries,
         COUNT(CASE WHEN a.entry_type = 'exit' THEN 1 END) as exits
+      `;
+
+    const groupByClause = showIndividualDepartments
+      ? `period, d.id, d.code, d.name`
+      : `period`;
+
+    return this.dataSource.query(
+      `
+      SELECT
+        ${selectClause}
       FROM attendance_logs a
       JOIN users u ON a.user_id = u.id
       LEFT JOIN departments d ON u.department_id = d.id
       WHERE ${whereClauses.join(' AND ')}
-      GROUP BY period
-      ORDER BY period ASC
+      GROUP BY ${groupByClause}
+      ORDER BY period ASC, departmentName ASC
     `,
       queryParams,
     );

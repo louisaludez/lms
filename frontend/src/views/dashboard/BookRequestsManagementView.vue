@@ -76,10 +76,11 @@ const filteredRequests = computed(() => {
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     res = res.filter(req => {
-      const title = (req.requestType === 'borrow' ? req.book?.title : req.title) || ''
-      const author = (req.requestType === 'borrow' ? req.book?.authors?.join(' ') : req.author) || ''
-      const isbn = (req.requestType === 'borrow' ? req.book?.isbn : req.isbn) || ''
-      const publisher = (req.requestType === 'borrow' ? req.book?.publisher : req.publisher) || ''
+      const isBookRef = isBookReferenceRequest(req.requestType)
+      const title = (isBookRef ? req.book?.title : req.title) || ''
+      const author = (isBookRef ? req.book?.authors?.join(' ') : req.author) || ''
+      const isbn = (isBookRef ? req.book?.isbn : req.isbn) || ''
+      const publisher = (isBookRef ? req.book?.publisher : req.publisher) || ''
       const faculty = `${req.user?.firstName} ${req.user?.lastName}`
       const instId = req.user?.institutionalId || ''
       const dept = req.user?.department?.name || ''
@@ -100,8 +101,8 @@ const filteredRequests = computed(() => {
   res.sort((a, b) => {
     let valA, valB
     if (sortBy.value === 'title') {
-      valA = (a.requestType === 'borrow' ? a.book?.title : a.title) || ''
-      valB = (b.requestType === 'borrow' ? b.book?.title : b.title) || ''
+      valA = (isBookReferenceRequest(a.requestType) ? a.book?.title : a.title) || ''
+      valB = (isBookReferenceRequest(b.requestType) ? b.book?.title : b.title) || ''
     } else if (sortBy.value === 'faculty') {
       valA = `${a.user?.lastName} ${a.user?.firstName}`.toLowerCase()
       valB = `${b.user?.lastName} ${b.user?.firstName}`.toLowerCase()
@@ -130,6 +131,11 @@ function handleSortChange() {
 function openDetailModal(req: BookRequestItem) {
   detailModalRequest.value = req
   librarianNotes.value = req.librarianNotes || ''
+}
+
+// Helper to check if request references an existing book (borrow or hold)
+function isBookReferenceRequest(type: string): boolean {
+  return type === 'borrow' || type === 'hold'
 }
 
 function closeDetailModal() {
@@ -277,7 +283,7 @@ const pendingCount = computed(() => store.pendingRequestCount)
             >
               <!-- Request Type -->
               <td class="table-cell">
-                <span :class="req.requestType === 'borrow' ? 'badge-pill-sky uppercase' : 'badge-pill-purple uppercase'">
+                <span :class="isBookReferenceRequest(req.requestType) ? 'badge-pill-sky uppercase' : 'badge-pill-purple uppercase'">
                   {{ req.requestType }}
                 </span>
               </td>
@@ -285,17 +291,17 @@ const pendingCount = computed(() => store.pendingRequestCount)
               <!-- Book / Title & Details -->
               <td class="table-cell max-w-[320px]">
                 <p class="font-bold text-slate-800 truncate">
-                  {{ req.requestType === 'borrow' ? req.book?.title : req.title }}
+                  {{ isBookReferenceRequest(req.requestType) ? req.book?.title : req.title }}
                 </p>
                 <div class="flex items-center gap-2 text-xs text-slate-500 mt-0.5 truncate">
-                  <span v-if="req.requestType === 'borrow' && req.book?.authors?.length">
+                  <span v-if="isBookReferenceRequest(req.requestType) && req.book?.authors?.length">
                     by {{ req.book.authors.join(', ') }}
                   </span>
                   <span v-else-if="req.requestType === 'acquisition' && req.author">
                     by {{ req.author }}
                   </span>
-                  <span v-if="(req.requestType === 'borrow' ? req.book?.isbn : req.isbn)" class="font-mono text-slate-400">
-                    · ISBN: {{ req.requestType === 'borrow' ? req.book?.isbn : req.isbn }}
+                  <span v-if="isBookReferenceRequest(req.requestType) ? req.book?.isbn : req.isbn" class="font-mono text-slate-400">
+                    · ISBN: {{ isBookReferenceRequest(req.requestType) ? req.book?.isbn : req.isbn }}
                   </span>
                 </div>
                 <p v-if="req.reason" class="text-xs text-slate-400 truncate italic mt-1">"{{ req.reason }}"</p>
@@ -401,9 +407,9 @@ const pendingCount = computed(() => store.pendingRequestCount)
             <div class="flex items-center gap-3">
               <div :class="[
                 'w-10 h-10 rounded-xl flex items-center justify-center',
-                detailModalRequest.requestType === 'borrow' ? 'bg-sky-100 text-sky-600' : 'bg-purple-100 text-purple-600'
+                isBookReferenceRequest(detailModalRequest.requestType) ? 'bg-sky-100 text-sky-600' : 'bg-purple-100 text-purple-600'
               ]">
-                <BookOpenIcon v-if="detailModalRequest.requestType === 'borrow'" class="w-5 h-5" />
+                <BookOpenIcon v-if="isBookReferenceRequest(detailModalRequest.requestType)" class="w-5 h-5" />
                 <AcademicCapIcon v-else class="w-5 h-5" />
               </div>
               <div>
@@ -428,7 +434,7 @@ const pendingCount = computed(() => store.pendingRequestCount)
             <div class="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex-wrap gap-3">
               <div class="flex items-center gap-2">
                 <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Request Type:</span>
-                <span :class="detailModalRequest.requestType === 'borrow' ? 'badge-pill-sky uppercase font-bold' : 'badge-pill-purple uppercase font-bold'">
+                <span :class="isBookReferenceRequest(detailModalRequest.requestType) ? 'badge-pill-sky uppercase font-bold' : 'badge-pill-purple uppercase font-bold'">
                   {{ detailModalRequest.requestType }}
                 </span>
               </div>
@@ -454,14 +460,14 @@ const pendingCount = computed(() => store.pendingRequestCount)
                 <div>
                   <p class="text-[11px] text-slate-400 font-semibold uppercase">Title</p>
                   <p class="font-bold text-slate-800 text-base leading-snug">
-                    {{ detailModalRequest.requestType === 'borrow' ? detailModalRequest.book?.title : detailModalRequest.title }}
+                    {{ isBookReferenceRequest(detailModalRequest.requestType) ? detailModalRequest.book?.title : detailModalRequest.title }}
                   </p>
                 </div>
 
                 <div>
                   <p class="text-[11px] text-slate-400 font-semibold uppercase">Author</p>
                   <p class="text-slate-700 text-sm font-medium">
-                    {{ detailModalRequest.requestType === 'borrow' ? (detailModalRequest.book?.authors?.join(', ') || 'N/A') : (detailModalRequest.author || 'N/A') }}
+                    {{ isBookReferenceRequest(detailModalRequest.requestType) ? (detailModalRequest.book?.authors?.join(', ') || 'N/A') : (detailModalRequest.author || 'N/A') }}
                   </p>
                 </div>
 
@@ -469,13 +475,13 @@ const pendingCount = computed(() => store.pendingRequestCount)
                   <div>
                     <p class="text-[11px] text-slate-400 font-semibold uppercase">Item Type</p>
                     <p class="text-slate-700 text-xs font-semibold">
-                      {{ detailModalRequest.itemType || 'BOOKS' }}
+                      {{ detailModalRequest.itemType || 'Books' }}
                     </p>
                   </div>
                   <div>
                     <p class="text-[11px] text-slate-400 font-semibold uppercase">ISBN / UPC</p>
                     <p class="font-mono text-slate-700 text-xs font-medium">
-                      {{ detailModalRequest.requestType === 'borrow' ? (detailModalRequest.book?.isbn || 'N/A') : (detailModalRequest.isbn || 'N/A') }}
+                      {{ isBookReferenceRequest(detailModalRequest.requestType) ? (detailModalRequest.book?.isbn || 'N/A') : (detailModalRequest.isbn || 'N/A') }}
                     </p>
                   </div>
                 </div>
@@ -488,7 +494,7 @@ const pendingCount = computed(() => store.pendingRequestCount)
                   <div>
                     <p class="text-[11px] text-slate-400 font-semibold uppercase">Publisher</p>
                     <p class="text-slate-700 text-xs font-medium">
-                      {{ detailModalRequest.requestType === 'borrow' ? (detailModalRequest.book?.publisher || 'N/A') : (detailModalRequest.publisher || 'N/A') }}
+                      {{ isBookReferenceRequest(detailModalRequest.requestType) ? (detailModalRequest.book?.publisher || 'N/A') : (detailModalRequest.publisher || 'N/A') }}
                     </p>
                   </div>
                 </div>
@@ -497,13 +503,13 @@ const pendingCount = computed(() => store.pendingRequestCount)
                   <div>
                     <p class="text-[11px] text-slate-400 font-semibold uppercase">Call Number</p>
                     <p class="font-mono text-slate-700 text-xs">
-                      {{ detailModalRequest.requestType === 'borrow' ? (detailModalRequest.book?.callNumber || 'N/A') : (detailModalRequest.callNumber || 'N/A') }}
+                      {{ isBookReferenceRequest(detailModalRequest.requestType) ? (detailModalRequest.book?.callNumber || 'N/A') : (detailModalRequest.callNumber || 'N/A') }}
                     </p>
                   </div>
                   <div>
                     <p class="text-[11px] text-slate-400 font-semibold uppercase">Category</p>
                     <p class="text-slate-700 text-xs">
-                      {{ detailModalRequest.requestType === 'borrow' ? (detailModalRequest.book?.category?.name || 'N/A') : (detailModalRequest.category?.name || 'N/A') }}
+                      {{ isBookReferenceRequest(detailModalRequest.requestType) ? (detailModalRequest.book?.category?.name || 'N/A') : (detailModalRequest.category?.name || 'N/A') }}
                     </p>
                   </div>
                 </div>
@@ -512,19 +518,19 @@ const pendingCount = computed(() => store.pendingRequestCount)
                   <div>
                     <p class="text-[11px] text-slate-400 font-semibold uppercase">Publish Year</p>
                     <p class="text-slate-700 text-xs">
-                      {{ detailModalRequest.requestType === 'borrow' ? (detailModalRequest.book?.publishYear || 'N/A') : (detailModalRequest.publishYear || 'N/A') }}
+                      {{ isBookReferenceRequest(detailModalRequest.requestType) ? (detailModalRequest.book?.publishYear || 'N/A') : (detailModalRequest.publishYear || 'N/A') }}
                     </p>
                   </div>
                   <div>
                     <p class="text-[11px] text-slate-400 font-semibold uppercase">Edition</p>
                     <p class="text-slate-700 text-xs">
-                      {{ detailModalRequest.requestType === 'borrow' ? (detailModalRequest.book?.edition || 'N/A') : (detailModalRequest.edition || 'N/A') }}
+                      {{ isBookReferenceRequest(detailModalRequest.requestType) ? (detailModalRequest.book?.edition || 'N/A') : (detailModalRequest.edition || 'N/A') }}
                     </p>
                   </div>
                   <div>
                     <p class="text-[11px] text-slate-400 font-semibold uppercase">Language</p>
                     <p class="text-slate-700 text-xs">
-                      {{ detailModalRequest.requestType === 'borrow' ? (detailModalRequest.book?.language || 'English') : (detailModalRequest.language || 'English') }}
+                      {{ isBookReferenceRequest(detailModalRequest.requestType) ? (detailModalRequest.book?.language || 'English') : (detailModalRequest.language || 'English') }}
                     </p>
                   </div>
                 </div>

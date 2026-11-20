@@ -24,6 +24,8 @@ export interface Book {
   callNumber: string
   title: string
   edition: string | null
+  issue: string | null
+  volume: string | null
   publisher: string | null
   publishYear: number | null
   category: { id: number; name: string } | null
@@ -73,7 +75,7 @@ export interface BookRequestItem {
   language?: string | null
   description?: string | null
   locationShelf?: string | null
-  requestType: 'borrow' | 'acquisition'
+  requestType: 'borrow' | 'acquisition' | 'hold'
   reason: string | null
   status: 'pending' | 'approved' | 'rejected' | 'fulfilled'
   librarian: { firstName: string; lastName: string } | null
@@ -122,6 +124,7 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('lumina_token'))
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const sidebarCollapsed = ref(false) // Guest sidebar state
 
   const isAuthenticated = computed(() => !!token.value && !!user.value)
   const isStudent = computed(() => user.value?.role === 'student')
@@ -130,6 +133,18 @@ export const useAuthStore = defineStore('auth', () => {
   const isKiosk = computed(() => user.value?.role === 'kiosk')
   const mustChangePassword = computed(() => !!user.value?.mustChangePassword)
   const isSuspended = computed(() => user.value?.eligibilityStatus === 'suspended')
+
+  // Sidebar visibility: always show for logged-in, toggleable for guests
+  const isSidebarVisible = computed(() => {
+    if (isAuthenticated.value) return true
+    return !sidebarCollapsed.value
+  })
+
+  function toggleSidebar() {
+    if (!isAuthenticated.value) {
+      sidebarCollapsed.value = !sidebarCollapsed.value
+    }
+  }
 
   async function login(email: string, password: string) {
     loading.value = true
@@ -238,7 +253,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, token, loading, error, isAuthenticated, isStudent, isFaculty, isLibrarian, isKiosk, mustChangePassword, isSuspended, login, register, logout, fetchMe, updateProfile, changePassword }
+  return { user, token, loading, error, isAuthenticated, isStudent, isFaculty, isLibrarian, isKiosk, mustChangePassword, isSuspended, sidebarCollapsed, isSidebarVisible, toggleSidebar, login, register, logout, fetchMe, updateProfile, changePassword }
 })
 
 // ─── LIBRARY STORE ────────────────────────────────────────────────────────────
@@ -361,6 +376,14 @@ export const useLibraryStore = defineStore('library', () => {
     return data
   }
 
+  async function requestHoldBook(bookId: number, reason?: string) {
+    const { data } = await api.post('/book-requests/hold', { bookId, reason })
+    await fetchMyBookRequests()
+    // Also refresh the current book to get updated availableCopies
+    await fetchBook(bookId)
+    return data
+  }
+
   async function requestAcquisition(payload: {
     itemType?: string
     title: string
@@ -469,7 +492,7 @@ export const useLibraryStore = defineStore('library', () => {
     stats, txStats,
     hasOverdue, overdueCount, totalFinesDue,
     searchBooks, fetchBook, fetchCategories, fetchMyTransactions, renewBook, reserveBook,
-    requestBorrowBook, requestAcquisition, fetchMyBookRequests, fetchAllBookRequests, fetchPendingRequestCount, updateBookRequestStatus,
+    requestBorrowBook, requestHoldBook, requestAcquisition, fetchMyBookRequests, fetchAllBookRequests, fetchPendingRequestCount, updateBookRequestStatus,
     fetchStats, resetSearch,
   }
 })

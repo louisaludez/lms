@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { format, parseISO, differenceInDays } from 'date-fns'
-import { useLibraryStore, type BookRequestItem } from '@/stores/useLibraryStore'
+import { useLibraryStore, useAuthStore, type BookRequestItem } from '@/stores/useLibraryStore'
 import {
   BookOpenIcon, PlusIcon, XMarkIcon, ClockIcon,
   CheckCircleIcon, XCircleIcon, PaperAirplaneIcon,
@@ -12,6 +12,17 @@ import Pagination from '@/components/Pagination.vue'
 import NavBar from '@/components/NavBar.vue'
 
 const store = useLibraryStore()
+const auth = useAuthStore()
+
+const isDesktop = ref(window.innerWidth >= 768)
+function handleResize() { isDesktop.value = window.innerWidth >= 768 }
+onMounted(() => window.addEventListener('resize', handleResize))
+onUnmounted(() => window.removeEventListener('resize', handleResize))
+
+const sidebarPadding = computed(() => {
+  if (!isDesktop.value) return '0'
+  return auth.isSidebarVisible ? '16rem' : '0'
+})
 
 // Tab state
 const activeTab = ref<'my-requests' | 'new-acquisition' | 'borrowing-history'>('my-requests')
@@ -24,23 +35,15 @@ const currentLimit = ref(10)
 const detailModalRequest = ref<BookRequestItem | null>(null)
 
 // Acquisition Form Item Types
-const itemTypes = ['BOOKS', 'Journals', 'Thesis', 'CD', 'DVD', 'Cartographic Materials', 'Electronics']
+const itemTypes = ['Books', 'Journals', 'CD', 'DVD']
 
 const blankAcqForm = () => ({
-  itemType: 'BOOKS',
+  itemType: 'Books',
   title: '',
-  otherTitle: '',
   author: '',
-  isbn: '',
-  issn: '',
-  callNumber: '',
-  categoryId: '',
   publisher: '',
   publishYear: new Date().getFullYear(),
   edition: '',
-  language: 'English',
-  locationShelf: '',
-  description: '',
   reason: '',
 })
 
@@ -55,40 +58,55 @@ const historyFilter = ref<'all' | 'returned' | 'currently_borrowed'>('all')
 const typeConfig = computed(() => {
   const type = acqForm.value.itemType
   const base = {
-    titleLabel: 'Main Title *',
-    showOtherTitle: true,
-    otherTitleLabel: 'Other Title / Subtitle',
-    isbnLabel: 'ISBN *',
-    showIssn: true,
-    issnLabel: 'ISSN',
-    callNumberLabel: 'Call Number',
-    showCategory: true,
-    showLanguage: true,
+    titleLabel: 'Title *',
+    showAuthors: true,
+    authorsLabel: 'Author(s) / Contributor(s)',
     showPublisher: true,
     publisherLabel: 'Publisher',
     showPublishYear: true,
     publishYearLabel: 'Publish Year',
     showEdition: true,
     editionLabel: 'Edition',
-    showAuthors: true,
-    authorsLabel: 'Author(s) / Contributor(s)',
   }
 
   switch (type) {
     case 'Journals':
-      return { ...base, titleLabel: 'Journal Name *', editionLabel: 'Issue / Volume', isbnLabel: 'ISSN / Ref No. *', showIssn: false, showOtherTitle: false, authorsLabel: 'Authors / Contributors' }
-    case 'Thesis':
-      return { ...base, titleLabel: 'Thesis Title *', otherTitleLabel: 'Degree Program', isbnLabel: 'Thesis ID / Ref No. *', showIssn: false, publisherLabel: 'University / Department', publishYearLabel: 'Submission Year', showEdition: false, authorsLabel: 'Author(s)' }
+      return { ...base, titleLabel: 'Journal Name *', authorsLabel: 'Author(s) / Contributor(s) / Corporate', editionLabel: 'Issue / Volume (Optional)', showEdition: false }
     case 'CD':
     case 'DVD':
-      return { ...base, titleLabel: 'Title *', editionLabel: 'Format / Duration', isbnLabel: 'UPC / EAN *', showIssn: false, publisherLabel: 'Studio / Producer', publishYearLabel: 'Release Year', authorsLabel: 'Artist / Director' }
-    case 'Cartographic Materials':
-      return { ...base, titleLabel: 'Title / Region *', editionLabel: 'Scale', isbnLabel: 'Identifier *', showIssn: false, authorsLabel: 'Cartographer(s)' }
-    case 'Electronics':
-      return { ...base, titleLabel: 'Item Name *', otherTitleLabel: 'Model / Specs', isbnLabel: 'Serial Number *', callNumberLabel: 'Control Number', showIssn: false, publisherLabel: 'Brand / Manufacturer', publishYearLabel: 'Acquisition Year', showCategory: false, showLanguage: false, showEdition: false, showAuthors: false }
+      return { ...base, titleLabel: 'Title *', authorsLabel: 'Artist / Director', publisherLabel: 'Studio / Producer', publishYearLabel: 'Release Year', showEdition: false }
     default:
       return base
   }
+})
+
+const publisherPlaceholder = computed(() => {
+  const type = acqForm.value.itemType
+  if (type === 'CD' || type === 'DVD') return 'e.g. Studio Name / Producer'
+  return 'e.g. O\'Reilly Media'
+})
+
+const yearPlaceholder = computed(() => {
+  return 'e.g. 2024'
+})
+
+const editionPlaceholder = computed(() => {
+  const type = acqForm.value.itemType
+  if (type === 'Journals') return 'e.g. Vol. 12, Issue 3 (Optional)'
+  return 'e.g. 3rd Edition'
+})
+
+const authorPlaceholder = computed(() => {
+  const type = acqForm.value.itemType
+  if (type === 'Journals') return 'e.g. John Doe, Jane Smith / Corporate Body'
+  if (type === 'CD' || type === 'DVD') return 'e.g. Artist Name / Director Name'
+  return 'e.g. John Doe, Jane Smith'
+})
+
+const titlePlaceholder = computed(() => {
+  const type = acqForm.value.itemType
+  if (type === 'Journals') return 'Enter journal name'
+  return 'Enter title'
 })
 
 onMounted(() => {
@@ -176,18 +194,10 @@ async function submitAcquisition() {
     await store.requestAcquisition({
       itemType: acqForm.value.itemType,
       title: acqForm.value.title,
-      otherTitle: acqForm.value.otherTitle || undefined,
       author: acqForm.value.author || undefined,
-      isbn: acqForm.value.isbn || undefined,
-      issn: acqForm.value.issn || undefined,
-      callNumber: acqForm.value.callNumber || undefined,
-      categoryId: acqForm.value.categoryId ? Number(acqForm.value.categoryId) : undefined,
       publisher: acqForm.value.publisher || undefined,
       publishYear: acqForm.value.publishYear ? Number(acqForm.value.publishYear) : undefined,
       edition: acqForm.value.edition || undefined,
-      language: acqForm.value.language || 'English',
-      locationShelf: acqForm.value.locationShelf || undefined,
-      description: acqForm.value.description || undefined,
       reason: acqForm.value.reason,
     })
     acqSuccess.value = true
@@ -202,7 +212,7 @@ async function submitAcquisition() {
 </script>
 
 <template>
-  <div class="min-h-screen md:pl-64 bg-[#F7F5F0] dark:bg-[#0F172A] transition-colors duration-200">
+  <div class="min-h-screen bg-[#F7F5F0] dark:bg-[#0F172A] transition-colors duration-200 transition-all duration-300" :style="{ paddingLeft: sidebarPadding }">
     <NavBar />
     <div class="px-4 sm:px-6 py-8">
       <div class="max-w-5xl mx-auto w-full">
@@ -241,7 +251,7 @@ async function submitAcquisition() {
       >
         <span class="flex items-center gap-2">
           <PlusIcon class="w-4 h-4 text-purple-600 dark:text-purple-400" />
-          Request New Book
+          Request New Item
         </span>
       </button>
       <button
@@ -374,23 +384,25 @@ async function submitAcquisition() {
                 <td class="table-cell px-4">
                   <span :class="[
                     'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider',
-                    req.requestType === 'borrow' ? 'bg-[#447794]/10 text-[#447794]' : 'bg-purple-100 text-purple-700'
+                    req.requestType === 'borrow' ? 'bg-[#447794]/10 text-[#447794]' :
+                    req.requestType === 'hold' ? 'bg-amber-100 text-amber-700' :
+                    'bg-purple-100 text-purple-700'
                   ]">
                     {{ req.requestType }}
                   </span>
                 </td>
                 <td class="table-cell px-4 max-w-[250px]">
                   <p class="font-medium text-slate-800 truncate">
-                    {{ req.requestType === 'borrow' ? req.book?.title : req.title }}
+                    {{ (req.requestType === 'borrow' || req.requestType === 'hold') ? req.book?.title : req.title }}
                   </p>
                   <p v-if="req.requestType === 'acquisition' && req.author" class="text-xs text-slate-500 truncate">
                     by {{ req.author }}
                   </p>
-                  <p v-if="req.requestType === 'borrow' && req.book?.authors?.length" class="text-xs text-slate-500 truncate">
+                  <p v-if="(req.requestType === 'borrow' || req.requestType === 'hold') && req.book?.authors?.length" class="text-xs text-slate-500 truncate">
                     by {{ req.book.authors.join(', ') }}
                   </p>
                   <div class="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400">
-                    <span v-if="req.itemType && req.itemType !== 'BOOKS'" class="px-1.5 py-0.2 rounded bg-slate-100 font-semibold text-slate-600">
+                    <span v-if="req.itemType && req.itemType !== 'Books'" class="px-1.5 py-0.2 rounded bg-slate-100 font-semibold text-slate-600">
                       {{ req.itemType }}
                     </span>
                     <span v-if="req.isbn">ISBN: {{ req.isbn }}</span>
@@ -436,15 +448,15 @@ async function submitAcquisition() {
       </div>
     </div>
 
-    <!-- TAB 2: REQUEST NEW BOOK (ACQUISITION) -->
+    <!-- TAB 2: REQUEST NEW ITEM (ACQUISITION) -->
     <div v-if="activeTab === 'new-acquisition'" class="card p-6">
       <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
         <div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0">
           <AcademicCapIcon class="w-5 h-5 text-purple-600" />
         </div>
         <div>
-          <h2 class="font-semibold text-slate-800">Request New Book Acquisition</h2>
-          <p class="text-xs text-slate-500">Suggest new learning resources or research titles for the library catalog</p>
+          <h2 class="font-semibold text-slate-800">Request New Item Acquisition</h2>
+          <p class="text-xs text-slate-500">Suggest new learning resources for the library catalog</p>
         </div>
       </div>
 
@@ -470,70 +482,20 @@ async function submitAcquisition() {
           </div>
         </div>
 
-        <!-- Main Title & Subtitle -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              {{ typeConfig.titleLabel }}
-            </label>
-            <input v-model="acqForm.title" type="text" required placeholder="Enter book or material title" class="input" />
-          </div>
-
-          <div v-if="typeConfig.showOtherTitle">
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              {{ typeConfig.otherTitleLabel }}
-            </label>
-            <input v-model="acqForm.otherTitle" type="text" placeholder="e.g. Subtitle or alternative title" class="input" />
-          </div>
+        <!-- Title -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+            {{ typeConfig.titleLabel }}
+          </label>
+          <input v-model="acqForm.title" type="text" required :placeholder="titlePlaceholder" class="input" />
         </div>
 
-        <!-- Author(s) & Identifiers -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div v-if="typeConfig.showAuthors">
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              {{ typeConfig.authorsLabel }}
-            </label>
-            <input v-model="acqForm.author" type="text" placeholder="e.g. John Doe, Jane Smith" class="input" />
-          </div>
-
-          <div>
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              {{ typeConfig.isbnLabel }}
-            </label>
-            <input v-model="acqForm.isbn" type="text" placeholder="e.g. 978-3-16-148410-0" class="input font-mono" />
-          </div>
-
-          <div v-if="typeConfig.showIssn">
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              {{ typeConfig.issnLabel }}
-            </label>
-            <input v-model="acqForm.issn" type="text" placeholder="e.g. 2049-3630" class="input font-mono" />
-          </div>
-        </div>
-
-        <!-- Call Number, Category, Language -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              {{ typeConfig.callNumberLabel }}
-            </label>
-            <input v-model="acqForm.callNumber" type="text" placeholder="e.g. QA76.73 .P98 2024" class="input font-mono" />
-          </div>
-
-          <div v-if="typeConfig.showCategory">
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Category</label>
-            <select v-model="acqForm.categoryId" class="input">
-              <option value="">Select Category</option>
-              <option v-for="cat in store.categories" :key="cat.id" :value="cat.id">
-                {{ cat.name }}
-              </option>
-            </select>
-          </div>
-
-          <div v-if="typeConfig.showLanguage">
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Language</label>
-            <input v-model="acqForm.language" type="text" placeholder="e.g. English" class="input" />
-          </div>
+        <!-- Author(s) / Contributor(s) / Artist / Director -->
+        <div v-if="typeConfig.showAuthors">
+          <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+            {{ typeConfig.authorsLabel }}
+          </label>
+          <input v-model="acqForm.author" type="text" :placeholder="authorPlaceholder" class="input" />
         </div>
 
         <!-- Publisher, Publish Year, Edition -->
@@ -542,33 +504,21 @@ async function submitAcquisition() {
             <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
               {{ typeConfig.publisherLabel }}
             </label>
-            <input v-model="acqForm.publisher" type="text" placeholder="e.g. O'Reilly Media" class="input" />
+            <input v-model="acqForm.publisher" type="text" :placeholder="publisherPlaceholder" class="input" />
           </div>
 
           <div v-if="typeConfig.showPublishYear">
             <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
               {{ typeConfig.publishYearLabel }}
             </label>
-            <input v-model.number="acqForm.publishYear" type="number" min="1800" :max="new Date().getFullYear() + 2" placeholder="e.g. 2024" class="input" />
+            <input v-model.number="acqForm.publishYear" type="number" min="1800" :max="new Date().getFullYear() + 2" :placeholder="yearPlaceholder" class="input" />
           </div>
 
           <div v-if="typeConfig.showEdition">
             <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
               {{ typeConfig.editionLabel }}
             </label>
-            <input v-model="acqForm.edition" type="text" placeholder="e.g. 3rd Edition" class="input" />
-          </div>
-        </div>
-
-        <!-- Description & Shelf Location -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Description / Overview</label>
-            <textarea v-model="acqForm.description" rows="2" placeholder="Brief description or course relevance" class="input resize-none" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Preferred Location / Shelf</label>
-            <input v-model="acqForm.locationShelf" type="text" placeholder="e.g. Shelf A-3, Reserve Section" class="input" />
+            <input v-model="acqForm.edition" type="text" :placeholder="editionPlaceholder" class="input" />
           </div>
         </div>
 
@@ -595,7 +545,7 @@ async function submitAcquisition() {
       </div>
       <div v-if="acqSuccess" class="mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-sm">
         <p class="font-semibold text-emerald-700">✅ Request submitted successfully!</p>
-        <p class="text-slate-600 mt-1">The library management team will review your book recommendation.</p>
+        <p class="text-slate-600 mt-1">The library management team will review your recommendation.</p>
       </div>
     </div>
 
@@ -779,7 +729,7 @@ async function submitAcquisition() {
         <div class="bg-slate-50 rounded-xl p-4 grid grid-cols-2 gap-3 text-xs">
           <div>
             <span class="text-slate-400 block font-medium">Item Type</span>
-            <span class="text-slate-700 font-semibold">{{ detailModalRequest.itemType || 'BOOKS' }}</span>
+            <span class="text-slate-700 font-semibold">{{ detailModalRequest.itemType || 'Books' }}</span>
           </div>
           <div v-if="detailModalRequest.isbn">
             <span class="text-slate-400 block font-medium">ISBN / Ref No.</span>

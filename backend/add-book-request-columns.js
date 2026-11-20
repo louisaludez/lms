@@ -13,7 +13,7 @@ async function migrate() {
     console.log('Connected to MySQL database...');
 
     const columns = [
-      "ALTER TABLE `book_requests` ADD COLUMN `item_type` VARCHAR(100) NOT NULL DEFAULT 'BOOKS'",
+      "ALTER TABLE `book_requests` ADD COLUMN `item_type` VARCHAR(100) NOT NULL DEFAULT 'Books'",
       "ALTER TABLE `book_requests` ADD COLUMN `other_title` VARCHAR(512) NULL",
       "ALTER TABLE `book_requests` ADD COLUMN `issn` VARCHAR(50) NULL",
       "ALTER TABLE `book_requests` ADD COLUMN `call_number` VARCHAR(100) NULL",

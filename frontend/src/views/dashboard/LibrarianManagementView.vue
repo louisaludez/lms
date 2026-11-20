@@ -34,6 +34,7 @@ const loading      = ref(false)
 const searchQuery  = ref('')
 const filterRole           = ref('librarian')
 const filterApprovalStatus = ref('')
+const filterIsActive       = ref('')
 const reviewingId          = ref<number | null>(null)
 const updatingStatusId     = ref<number | null>(null)
 
@@ -47,10 +48,16 @@ const sortOptions = [
 ]
 
 const approvalOptions = [
-  { label: 'All Approvals', value: '' },
+  { label: 'All Statuses', value: '' },
   { label: 'Pending', value: 'pending' },
   { label: 'Approved', value: 'approved' },
   { label: 'Rejected', value: 'rejected' }
+]
+
+const activeOptions = [
+  { label: 'All Accounts', value: '' },
+  { label: 'Active', value: 'true' },
+  { label: 'Inactive', value: 'false' }
 ]
 
 // Modal
@@ -96,6 +103,7 @@ async function fetchUsers(page = 1) {
     if (searchQuery.value) params.search = searchQuery.value
     if (filterRole.value) params.role = filterRole.value
     if (filterApprovalStatus.value) params.approvalStatus = filterApprovalStatus.value
+    if (filterIsActive.value) params.isActive = filterIsActive.value
     const { data } = await api.get<{ data: UserRow[], total: number, page: number, lastPage: number }>('/users', { params })
     users.value = data.data
     currentPage.value = data.page
@@ -305,6 +313,13 @@ function approvalBadge(status: string) {
         />
 
         <DropdownFilter
+          v-model="filterIsActive"
+          :options="activeOptions"
+          @change="fetchUsers(1)"
+          width="w-36"
+        />
+
+        <DropdownFilter
           v-model="sortBy"
           :options="sortOptions"
           @change="handleSortChange"
@@ -457,7 +472,7 @@ function approvalBadge(status: string) {
                 <input v-model="form.email" type="email" required class="input" />
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Student/Faculty ID *</label>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Institutional ID *</label>
                 <input
                   v-model="form.institutionalId"
                   type="text"

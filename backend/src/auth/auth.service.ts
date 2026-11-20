@@ -11,6 +11,7 @@ import {
   AccountApprovalStatus,
 } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
+import { ActivityLogService, ActivityAction, ActivityResource } from '../activity-log/activity-log.service';
 import { RegisterDto } from './dto/register.dto';
 
 export interface JwtPayload {
@@ -25,9 +26,10 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly activityLogService: ActivityLogService,
   ) {}
 
-  async register(dto: RegisterDto, profilePhotoUrl: string | null = null) {
+  async register(dto: RegisterDto, profilePhotoUrl: string | null = null, ipAddress?: string, userAgent?: string) {
     if (
       ![UserRole.STUDENT, UserRole.FACULTY, UserRole.LIBRARIAN].includes(
         dto.role,
@@ -52,7 +54,7 @@ export class AuthService {
       gender: dto.gender,
       departmentId: dto.departmentId,
       profilePhotoUrl: profilePhotoUrl,
-    });
+    }, ipAddress, userAgent);
 
     return {
       message:
@@ -61,7 +63,7 @@ export class AuthService {
     };
   }
 
-  async validateUser(email: string, password: string): Promise<User> {
+  async validateUser(email: string, password: string, ipAddress?: string, userAgent?: string): Promise<User> {
     const user = await this.usersService.findByEmailWithPassword(email);
     if (!user) throw new UnauthorizedException('Invalid credentials');
     if (!user.isActive) throw new UnauthorizedException('Account is inactive');
@@ -82,6 +84,10 @@ export class AuthService {
 
     // Update last login
     await this.usersService.updateLastLogin(user.id);
+
+    // Log login activity
+    await this.activityLogService.logLogin(user, ipAddress, userAgent);
+
     return user;
   }
 
@@ -126,5 +132,9 @@ export class AuthService {
         mustChangePassword: Boolean(user.mustChangePassword),
       },
     };
+  }
+
+  async logout(user: User, ipAddress?: string, userAgent?: string): Promise<void> {
+    await this.activityLogService.logLogout(user, ipAddress, userAgent);
   }
 }

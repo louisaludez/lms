@@ -11,6 +11,7 @@ import { Category } from './entities/category.entity';
 import { SearchBooksDto, CreateBookDto, UpdateBookDto, BulkUpdateBookDto, BatchUpdateBooksDto } from './dto/book.dto';
 import { Readable } from 'stream';
 import csv = require('csv-parser');
+import { ActivityLogService, ActivityAction, ActivityResource } from '../activity-log/activity-log.service';
 
 export interface PaginatedBooks {
   data: Book[];
@@ -29,6 +30,7 @@ export class BooksService {
     @InjectRepository(Category)
     private readonly categoryRepo: Repository<Category>,
     private readonly dataSource: DataSource,
+    private readonly activityLogService: ActivityLogService,
   ) {}
 
   // ─── OPAC SEARCH ─────────────────────────────────────────────────────────────
@@ -155,7 +157,7 @@ export class BooksService {
   }
 
   // ─── CREATE BOOK ─────────────────────────────────────────────────────────────
-  async create(dto: CreateBookDto): Promise<Book> {
+  async create(dto: CreateBookDto, requesterId: number | null = null, ipAddress?: string, userAgent?: string): Promise<Book> {
     const existingIsbn = await this.bookRepo.findOne({
       where: { isbn: dto.isbn },
     });
@@ -174,9 +176,12 @@ export class BooksService {
 
     const bookPartial: Partial<Book> = {
       isbn: dto.isbn,
+      issn: dto.issn,
       callNumber: dto.callNumber,
       title: dto.title,
       edition: dto.edition,
+      issue: dto.issue,
+      volume: dto.volume,
       publisher: dto.publisher,
       publishYear: dto.publishYear,
       category,
@@ -187,7 +192,7 @@ export class BooksService {
       availableCopies: dto.totalCopies ?? 1,
       locationShelf: dto.locationShelf,
       isReferenceOnly: dto.isReferenceOnly ?? false,
-      itemType: dto.itemType ?? 'BOOKS',
+      itemType: dto.itemType ?? 'Books',
     };
 
     const book = this.bookRepo.create(bookPartial as any);
@@ -207,6 +212,16 @@ export class BooksService {
     if (dto.authors !== undefined) {
       await this.syncAuthors(saved.id, dto.authors);
     }
+
+    // Log activity
+    await this.activityLogService.logCreate(
+      requesterId,
+      ActivityResource.BOOK,
+      saved.id,
+      { title: saved.title, isbn: saved.isbn, itemType: saved.itemType },
+      ipAddress,
+      userAgent,
+    );
 
     return this.findById(saved.id);
   }
@@ -344,8 +359,24 @@ export class BooksService {
   }
 
   // ── UPDATE BOOK ──────────────────────────────────────────────────────
-  async update(id: number, dto: UpdateBookDto): Promise<Book> {
+  async update(id: number, dto: UpdateBookDto, requesterId: number | null = null, ipAddress?: string, userAgent?: string): Promise<Book> {
     const book = await this.findById(id);
+    const previousData = {
+      title: book.title,
+      isbn: book.isbn,
+      callNumber: book.callNumber,
+      edition: book.edition,
+      publisher: book.publisher,
+      publishYear: book.publishYear,
+      language: book.language,
+      description: book.description,
+      coverImageUrl: book.coverImageUrl,
+      locationShelf: book.locationShelf,
+      isReferenceOnly: book.isReferenceOnly,
+      isActive: book.isActive,
+      itemType: book.itemType,
+      categoryId: book.category?.id,
+    };
 
     if (dto.categoryId !== undefined) {
       const cat = await this.categoryRepo.findOne({ where: { id: dto.categoryId } });
@@ -354,8 +385,11 @@ export class BooksService {
 
     if (dto.title !== undefined)         book.title          = dto.title;
     if (dto.isbn !== undefined)          book.isbn           = dto.isbn;
+    if (dto.issn !== undefined)          book.issn           = dto.issn;
     if (dto.callNumber !== undefined)    book.callNumber     = dto.callNumber;
     if (dto.edition !== undefined)       book.edition        = dto.edition;
+    if (dto.issue !== undefined)         book.issue          = dto.issue;
+    if (dto.volume !== undefined)        book.volume         = dto.volume;
     if (dto.publisher !== undefined)     book.publisher      = dto.publisher;
     if (dto.publishYear !== undefined)   book.publishYear    = dto.publishYear;
     if (dto.language !== undefined)      book.language       = dto.language;
@@ -372,14 +406,44 @@ export class BooksService {
       await this.syncAuthors(id, dto.authors);
     }
 
+    // Log activity
+    const changes: Record<string, any> = {};
+    Object.keys(previousData).forEach(key => {
+      const newValue = (book as any)[key];
+      if (previousData[key as keyof typeof previousData] !== newValue) {
+        changes[key] = { from: previousData[key as keyof typeof previousData], to: newValue };
+      }
+    });
+
+    if (Object.keys(changes).length > 0) {
+      await this.activityLogService.logUpdate(
+        requesterId,
+        ActivityResource.BOOK,
+        id,
+        changes,
+        ipAddress,
+        userAgent,
+      );
+    }
+
     return this.findById(id);
   }
 
   // ── SOFT-DELETE BOOK ────────────────────────────────────────────────
-  async remove(id: number): Promise<void> {
+  async remove(id: number, requesterId: number | null = null, ipAddress?: string, userAgent?: string): Promise<void> {
     const book = await this.findById(id);
+    const bookTitle = book.title;
     book.isActive = false;
     await this.bookRepo.save(book as any);
+
+    await this.activityLogService.logDelete(
+      requesterId,
+      ActivityResource.BOOK,
+      id,
+      { title: bookTitle },
+      ipAddress,
+      userAgent,
+    );
   }
 
   // ── BULK UPDATE BOOKS ───────────────────────────────────────────────
@@ -453,37 +517,76 @@ export class BooksService {
 
 
   // ── BULK UPLOAD ────────────────────────────────────────────────────
-  async bulkUpload(file: Express.Multer.File): Promise<{ success: number; failed: number; errors: string[] }> {
+  async bulkUpload(file: Express.Multer.File, selectedItemType?: string): Promise<{ success: number; failed: number; errors: string[] }> {
     return new Promise((resolve, reject) => {
       const results: any[] = [];
       const errors: string[] = [];
-      
+
       const stream = Readable.from(file.buffer);
-      
+
       stream
         .pipe(csv())
         .on('data', (data: any) => results.push(data))
         .on('end', async () => {
           let success = 0;
           let failed = 0;
-          
+
           // Get all categories to match by name
           const categories = await this.getCategories();
-          
+
+          // If user selected a specific item type in frontend, we can use it as default/validation
+          const frontendItemType = selectedItemType?.trim();
+
           for (let i = 0; i < results.length; i++) {
             const row = results[i];
             try {
               // Map CSV columns to book data
               const title = row['Title'] || row['title'];
+              const otherTitle = row['Other Title'] || row['otherTitle'] || row['other_title'] || undefined;
               const isbn = row['ISBN'] || row['isbn'];
+              const issn = row['ISSN'] || row['issn'];
               const callNumber = row['Call Number'] || row['callNumber'] || row['call_number'];
-              
-              if (!title || !isbn || !callNumber) {
+              // Use item type from CSV row, or fallback to frontend selection, or default to Books
+              const itemType = (row['Item Type'] || row['itemType'] || frontendItemType || 'Books').trim();
+
+              // Conditional validation based on item type
+              if (!title || !callNumber) {
                 failed++;
-                errors.push(`Row ${i + 1}: Missing required fields (Title, ISBN, Call Number)`);
+                errors.push(`Row ${i + 1}: Missing required fields (Title, Call Number)`);
                 continue;
               }
-              
+
+              // If frontend selected a specific type, enforce it matches CSV rows
+              if (frontendItemType && itemType !== frontendItemType) {
+                failed++;
+                errors.push(`Row ${i + 1}: Item Type mismatch. Expected "${frontendItemType}", got "${itemType}"`);
+                continue;
+              }
+
+              // For Journals, ISSN is required instead of ISBN
+              // For Books, ISBN is required
+              // For other types, at least one identifier is preferred
+              if (itemType === 'Journals') {
+                if (!issn) {
+                  failed++;
+                  errors.push(`Row ${i + 1}: Journals require ISSN`);
+                  continue;
+                }
+              } else if (itemType === 'Books') {
+                if (!isbn) {
+                  failed++;
+                  errors.push(`Row ${i + 1}: Books require ISBN`);
+                  continue;
+                }
+              } else {
+                // For other types, prefer at least one identifier
+                if (!isbn && !issn) {
+                  failed++;
+                  errors.push(`Row ${i + 1}: ${itemType} requires at least ISBN or ISSN`);
+                  continue;
+                }
+              }
+
               const categoryName = row['Category'] || row['category'];
               let categoryId: number | undefined = undefined;
               if (categoryName) {
@@ -492,44 +595,57 @@ export class BooksService {
                   categoryId = cat.id;
                 }
               }
-              
-              const existingBook = await this.bookRepo.findOne({ where: { isbn } });
+
+              // Check for existing by ISBN (for books) or ISSN (for journals) or both
+              let existingBook = null;
+              if (isbn) {
+                existingBook = await this.bookRepo.findOne({ where: { isbn } });
+              }
+              if (!existingBook && issn) {
+                existingBook = await this.bookRepo.findOne({ where: { issn } });
+              }
+
+              // Parse issue and volume for Journals
+              const issue = row['Issue'] || row['issue'] || undefined;
+              const volume = row['Volume'] || row['volume'] || undefined;
+              const edition = row['Edition'] || row['edition'] || undefined;
+
+              const baseData = {
+                title,
+                otherTitle,
+                callNumber,
+                authors: row['Authors'] || row['authors'] || undefined,
+                publisher: row['Publisher'] || row['publisher'] || undefined,
+                publishYear: row['Publish Year'] || row['publishYear'] ? Number(row['Publish Year'] || row['publishYear']) : undefined,
+                categoryId,
+                language: row['Language'] || row['language'] || 'English',
+                locationShelf: row['Location Shelf'] || row['locationShelf'] || undefined,
+                itemType,
+                isReferenceOnly: (row['Reference Only'] || row['isReferenceOnly'])?.toString().toLowerCase() === 'true',
+                description: row['Description'] || row['description'] || undefined,
+              };
 
               if (existingBook) {
                 const updateDto: UpdateBookDto = {
-                  title,
-                  callNumber,
-                  authors: row['Authors'] || row['authors'] || undefined,
-                  publisher: row['Publisher'] || row['publisher'] || undefined,
-                  publishYear: row['Publish Year'] || row['publishYear'] ? Number(row['Publish Year'] || row['publishYear']) : undefined,
-                  categoryId,
-                  language: row['Language'] || row['language'] || 'English',
-                  edition: row['Edition'] || row['edition'] || undefined,
-                  locationShelf: row['Location Shelf'] || row['locationShelf'] || undefined,
-                  itemType: row['Item Type'] || row['itemType'] || 'BOOKS',
-                  isReferenceOnly: (row['Reference Only'] || row['isReferenceOnly'])?.toString().toLowerCase() === 'true',
-                  description: row['Description'] || row['description'] || undefined,
+                  ...baseData,
+                  // Only include ISBN/ISSN if they exist (don't overwrite)
+                  isbn: isbn || undefined,
+                  issn: issn || undefined,
+                  // For Journals, use issue/volume; for Books, use edition
+                  ...(itemType === 'Journals' ? { issue, volume } : { edition }),
                 };
-                
+
                 await this.update(existingBook.id, updateDto);
               } else {
                 const createDto: CreateBookDto = {
-                  title,
-                  isbn,
-                  callNumber,
-                  authors: row['Authors'] || row['authors'] || undefined,
-                  publisher: row['Publisher'] || row['publisher'] || undefined,
-                  publishYear: row['Publish Year'] || row['publishYear'] ? Number(row['Publish Year'] || row['publishYear']) : undefined,
-                  categoryId,
-                  language: row['Language'] || row['language'] || 'English',
-                  edition: row['Edition'] || row['edition'] || undefined,
-                  locationShelf: row['Location Shelf'] || row['locationShelf'] || undefined,
+                  ...baseData,
+                  isbn: isbn || undefined,
+                  issn: issn || undefined,
+                  // For Journals, use issue/volume; for Books, use edition
+                  ...(itemType === 'Journals' ? { issue, volume } : { edition }),
                   totalCopies: row['Total Copies'] || row['totalCopies'] ? Number(row['Total Copies'] || row['totalCopies']) : 1,
-                  itemType: row['Item Type'] || row['itemType'] || 'BOOKS',
-                  isReferenceOnly: (row['Reference Only'] || row['isReferenceOnly'])?.toString().toLowerCase() === 'true',
-                  description: row['Description'] || row['description'] || undefined,
                 };
-                
+
                 await this.create(createDto);
               }
               success++;
@@ -538,7 +654,7 @@ export class BooksService {
               errors.push(`Row ${i + 1} (${row['Title'] || 'Unknown'}): ${e.message}`);
             }
           }
-          
+
           resolve({ success, failed, errors });
         })
         .on('error', (error: any) => {

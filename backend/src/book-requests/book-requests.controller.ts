@@ -1,15 +1,4 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Patch,
-  Param,
-  Body,
-  Query,
-  ParseIntPipe,
-  UseGuards,
-  Request,
-} from '@nestjs/common';
+import { Controller, Post, Get, Patch, Param, Body, Query, ParseIntPipe, UseGuards, Request } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import { BookRequestsService } from './book-requests.service';
 import {
@@ -17,6 +6,7 @@ import {
   CreateAcquisitionRequestDto,
   UpdateRequestStatusDto,
 } from './dto/book-request.dto';
+import { BookRequestType } from './entities/book-request.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -28,6 +18,13 @@ type AuthReq = ExpressRequest & { user: { id: number; role: string } };
 export class BookRequestsController {
   constructor(private readonly service: BookRequestsService) {}
 
+  private getClientInfo(req: AuthReq) {
+    return {
+      ipAddress: req.ip || req.socket?.remoteAddress,
+      userAgent: req.headers['user-agent'],
+    };
+  }
+
   /** POST /api/v1/book-requests/borrow — Faculty requests to borrow a book */
   @Post('borrow')
   @UseGuards(RolesGuard)
@@ -36,7 +33,20 @@ export class BookRequestsController {
     @Body() dto: CreateBorrowRequestDto,
     @Request() req: AuthReq,
   ) {
-    return this.service.createBorrowRequest(req.user.id, dto);
+    const { ipAddress, userAgent } = this.getClientInfo(req);
+    return this.service.createBorrowRequest(req.user.id, dto, ipAddress, userAgent);
+  }
+
+  /** POST /api/v1/book-requests/hold — Faculty requests to hold a book (decreases available copies) */
+  @Post('hold')
+  @UseGuards(RolesGuard)
+  @Roles('faculty')
+  createHoldRequest(
+    @Body() dto: CreateBorrowRequestDto,
+    @Request() req: AuthReq,
+  ) {
+    const { ipAddress, userAgent } = this.getClientInfo(req);
+    return this.service.createHoldRequest(req.user.id, dto, ipAddress, userAgent);
   }
 
   /** POST /api/v1/book-requests/acquisition — Faculty requests a new book acquisition */
@@ -47,7 +57,8 @@ export class BookRequestsController {
     @Body() dto: CreateAcquisitionRequestDto,
     @Request() req: AuthReq,
   ) {
-    return this.service.createAcquisitionRequest(req.user.id, dto);
+    const { ipAddress, userAgent } = this.getClientInfo(req);
+    return this.service.createAcquisitionRequest(req.user.id, dto, ipAddress, userAgent);
   }
 
   /** GET /api/v1/book-requests/my — Faculty gets their own requests */
@@ -99,6 +110,7 @@ export class BookRequestsController {
     @Body() dto: UpdateRequestStatusDto,
     @Request() req: AuthReq,
   ) {
-    return this.service.updateStatus(id, req.user.id, dto);
+    const { ipAddress, userAgent } = this.getClientInfo(req);
+    return this.service.updateStatus(id, req.user.id, dto, ipAddress, userAgent);
   }
 }

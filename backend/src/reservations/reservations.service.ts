@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { addDays } from 'date-fns';
@@ -10,6 +6,7 @@ import { Reservation, ReservationStatus } from './entities/reservation.entity';
 import { User } from '../users/entities/user.entity';
 import { Book } from '../books/entities/book.entity';
 import { ConfigService } from '@nestjs/config';
+import { ActivityLogService, ActivityAction, ActivityResource } from '../activity-log/activity-log.service';
 
 @Injectable()
 export class ReservationsService {
@@ -23,11 +20,12 @@ export class ReservationsService {
     @InjectRepository(Book)
     private readonly bookRepo: Repository<Book>,
     private readonly config: ConfigService,
+    private readonly activityLogService: ActivityLogService,
   ) {
     this.expiryDays = this.config.get<number>('RESERVATION_EXPIRY_DAYS', 3);
   }
 
-  async reserve(userId: number, bookId: number): Promise<Reservation> {
+  async reserve(userId: number, bookId: number, ipAddress?: string, userAgent?: string): Promise<Reservation> {
     const [user, book] = await Promise.all([
       this.userRepo.findOne({ where: { id: userId } }),
       this.bookRepo.findOne({ where: { id: bookId } }),
@@ -55,23 +53,49 @@ export class ReservationsService {
       status: ReservationStatus.PENDING,
     });
 
-    return this.resRepo.save(res);
+    const saved = await this.resRepo.save(res);
+
+    // Log activity
+    await this.activityLogService.logReserve(
+      userId,
+      bookId,
+      { expiresAt: saved.expiresAt },
+      ipAddress,
+      userAgent,
+    );
+
+    return saved;
   }
 
   async cancelReservation(
     reservationId: number,
     userId: number,
+    ipAddress?: string,
+    userAgent?: string,
   ): Promise<Reservation> {
     const res = await this.resRepo.findOne({
       where: { id: reservationId, user: { id: userId } },
+      relations: ['book'],
     });
     if (!res) throw new NotFoundException('Reservation not found');
     if (res.status !== ReservationStatus.PENDING)
       throw new BadRequestException(
         'Only pending reservations can be cancelled',
       );
+    const bookId = res.book.id;
     res.status = ReservationStatus.CANCELLED;
-    return this.resRepo.save(res);
+    const saved = await this.resRepo.save(res);
+
+    // Log activity
+    await this.activityLogService.logCancelReservation(
+      userId,
+      bookId,
+      {},
+      ipAddress,
+      userAgent,
+    );
+
+    return saved;
   }
 
   async getUserReservations(userId: number): Promise<Reservation[]> {

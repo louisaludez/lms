@@ -7,6 +7,8 @@ import {
   Request,
   UseInterceptors,
   UploadedFile,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -27,6 +29,23 @@ class LoginDto {
   password: string;
 }
 
+class ForgotPasswordDto {
+  @IsEmail()
+  email: string;
+}
+
+class ResetPasswordDto {
+  @IsString()
+  token: string;
+
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @MinLength(6)
+  newPassword: string;
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -36,9 +55,25 @@ export class AuthController {
 
   /** POST /api/v1/auth/login */
   @Post('login')
-  async login(@Body() dto: LoginDto) {
-    const user = await this.authService.validateUser(dto.email, dto.password);
+  async login(@Body() dto: LoginDto, @Request() req: ExpressRequest) {
+    const ipAddress = req.ip || req.socket?.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    const user = await this.authService.validateUser(dto.email, dto.password, ipAddress, userAgent);
     return this.authService.login(user);
+  }
+
+  /** POST /api/v1/auth/logout */
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async logout(@Request() req: ExpressRequest & { user: { id: number; email: string; role: string } }) {
+    const ipAddress = req.ip || req.socket?.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    const user = await this.usersService.findById(req.user.id);
+    if (user) {
+      await this.authService.logout(user, ipAddress, userAgent);
+    }
+    return { message: 'Logged out successfully' };
   }
 
   @Get('departments')
@@ -62,10 +97,13 @@ export class AuthController {
   )
   async register(
     @Body() dto: RegisterDto,
+    @Request() req: ExpressRequest,
     @UploadedFile() file?: Express.Multer.File,
   ) {
     const profilePhotoUrl = file ? `/uploads/profiles/${file.filename}` : null;
-    return this.authService.register(dto, profilePhotoUrl);
+    const ipAddress = req.ip || req.socket?.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    return this.authService.register(dto, profilePhotoUrl, ipAddress, userAgent);
   }
 
   @Get('me')
@@ -75,5 +113,21 @@ export class AuthController {
     req: ExpressRequest & { user: { id: number; email: string; role: string } },
   ) {
     return this.authService.getProfile(req.user.id);
+  }
+
+  /** POST /api/v1/auth/forgot-password — request password reset email */
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    await this.usersService.requestPasswordReset(dto.email);
+    return { message: 'If the email exists, a password reset link has been sent' };
+  }
+
+  /** POST /api/v1/auth/reset-password — reset password with token */
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    await this.usersService.resetPassword(dto.token, dto.email, dto.newPassword);
+    return { message: 'Password has been reset successfully' };
   }
 }

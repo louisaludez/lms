@@ -98,6 +98,14 @@ export class CreateBookDto {
 
   @IsOptional()
   @IsString()
+  issue?: string;
+
+  @IsOptional()
+  @IsString()
+  volume?: string;
+
+  @IsOptional()
+  @IsString()
   publisher?: string;
 
   @IsOptional()
@@ -145,6 +153,8 @@ export class UpdateBookDto {
   @IsOptional() @IsString() issn?: string;
   @IsOptional() @IsString() callNumber?: string;
   @IsOptional() @IsString() edition?: string;
+  @IsOptional() @IsString() issue?: string;
+  @IsOptional() @IsString() volume?: string;
   @IsOptional() @IsString() publisher?: string;
   @IsOptional() @IsNumber() publishYear?: number;
   @IsOptional() @IsInt() categoryId?: number;
@@ -166,6 +176,8 @@ export class BulkUpdateBookDto {
 
   @IsOptional() @IsString() title?: string;
   @IsOptional() @IsString() edition?: string;
+  @IsOptional() @IsString() issue?: string;
+  @IsOptional() @IsString() volume?: string;
   @IsOptional() @IsString() publisher?: string;
   @IsOptional() @IsNumber() publishYear?: number;
   @IsOptional() @IsInt() categoryId?: number;
@@ -182,6 +194,8 @@ export class UpdateBookItemDto {
 
   @IsOptional() @IsString() title?: string;
   @IsOptional() @IsString() edition?: string;
+  @IsOptional() @IsString() issue?: string;
+  @IsOptional() @IsString() volume?: string;
   @IsOptional() @IsString() publisher?: string;
   @IsOptional() @IsNumber() publishYear?: number;
   @IsOptional() @IsInt() categoryId?: number;

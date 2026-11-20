@@ -1,16 +1,31 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLibraryStore } from '@/stores/useLibraryStore'
-import { MagnifyingGlassIcon, FunnelIcon, BookOpenIcon, XMarkIcon, CheckIcon } from '@heroicons/vue/24/outline'
+import { useAuthStore } from '@/stores/useLibraryStore'
+import { MagnifyingGlassIcon, FunnelIcon, BookOpenIcon, XMarkIcon, CheckIcon, Bars3Icon } from '@heroicons/vue/24/outline'
 import { CheckCircleIcon } from '@heroicons/vue/24/solid'
 import NavBar from '@/components/NavBar.vue'
 
 const router = useRouter()
 const store = useLibraryStore()
+const auth = useAuthStore()
 
 const searchInput = ref('')
 const showFilters = ref(false)
+const isDesktop = ref(window.innerWidth >= 768)
+
+function handleResize() {
+  isDesktop.value = window.innerWidth >= 768
+}
+onMounted(() => window.addEventListener('resize', handleResize))
+onUnmounted(() => window.removeEventListener('resize', handleResize))
+
+// Sidebar padding for main content animation
+const sidebarPadding = computed(() => {
+  if (!isDesktop.value) return '0'
+  return auth.isSidebarVisible ? '16rem' : '0'
+})
 
 onMounted(async () => {
   await Promise.all([store.fetchCategories(), store.searchBooks()])
@@ -35,7 +50,7 @@ function handleFilterChange() {
   store.searchBooks(1)
 }
 
-const itemTypes = ['BOOKS', 'Journals', 'Thesis', 'CD', 'DVD', 'Cartographic Materials', 'Electronics']
+const itemTypes = ['Books', 'Journals', 'Thesis', 'CD', 'DVD', 'Cartographic Materials', 'Electronics']
 
 function handleItemTypeSelect(type: string | null) {
   store.selectedItemType = type
@@ -45,7 +60,7 @@ function handleItemTypeSelect(type: string | null) {
 const groupedBooks = computed(() => {
   const groups: Record<string, typeof store.books> = {}
   store.books.forEach(b => {
-    const type = (b as any).itemType || 'BOOKS'
+    const type = (b as any).itemType || 'Books'
     if (!groups[type]) groups[type] = []
     groups[type].push(b)
   })
@@ -65,11 +80,11 @@ function clearSearch() {
 </script>
 
 <template>
-  <div class="min-h-screen md:pl-64 print:pl-0 bg-[#F7F5F0] dark:bg-[#0F172A] transition-colors duration-200">
+  <div class="min-h-screen print:pl-0 bg-[#F7F5F0] dark:bg-[#0F172A] transition-colors duration-200 transition-all duration-300" :style="{ paddingLeft: sidebarPadding }">
     <NavBar />
 
     <!-- Hero Search Section -->
-    <div class="py-10 sm:py-14 px-4 sm:px-6">
+    <div class="sticky top-16 z-40 py-10 sm:py-14 px-4 sm:px-6 bg-[#F7F5F0] dark:bg-[#0F172A] md:top-0 md:z-30">
       <div class="max-w-4xl mx-auto text-center">
         <!-- Main Title & Subtitle -->
         <div class="flex items-center justify-center gap-3 mb-2">
@@ -126,20 +141,20 @@ function clearSearch() {
         </div>
 
         <!-- 3 Quick Status Pills -->
-        <div class="flex flex-wrap justify-center items-center gap-2.5 sm:gap-4 mt-6 text-xs sm:text-sm font-semibold">
+        <div class="flex flex-wrap justify-center items-center gap-2 sm:gap-3 mt-4 text-xs font-semibold">
           <!-- Steel Blue Pill (#3880C3) -->
-          <span class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#3880C3] text-white shadow-xs">
-            {{ store.totalBooks.toLocaleString() }} books found
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#3880C3] text-white shadow-xs">
+            {{ store.totalBooks.toLocaleString() }} Items found
           </span>
 
           <!-- Emerald Green Pill (#38A169) -->
-          <span class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#38A169] text-white shadow-xs">
-            <CheckIcon class="w-4 h-4 stroke-[3]" /> Available Now
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#38A169] text-white shadow-xs">
+            <CheckIcon class="w-3.5 h-3.5 stroke-[3]" /> Available Now
           </span>
 
           <!-- Deep Burgundy Pill (#6B131D) -->
-          <span class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#6B131D] text-white shadow-xs">
-            <CheckIcon class="w-4 h-4 stroke-[3]" /> Reserve Online
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#6B131D] text-white shadow-xs">
+            <CheckIcon class="w-3.5 h-3.5 stroke-[3]" /> Reserve Online
           </span>
         </div>
       </div>
@@ -378,7 +393,7 @@ function clearSearch() {
         <!-- Empty State -->
         <div v-else class="bg-white dark:bg-[#1E293B] rounded-2xl p-12 text-center border border-slate-200/80 dark:border-slate-700/60">
           <BookOpenIcon class="w-14 h-14 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-          <p class="text-base font-bold text-[#1F2937] dark:text-slate-100">No books found</p>
+          <p class="text-base font-bold text-[#1F2937] dark:text-slate-100">No Items found</p>
           <p class="text-xs text-[#6B7280] dark:text-slate-400 mt-1">Try adjusting your search criteria or clearing active filters.</p>
           <button @click="clearSearch" class="mt-4 btn-ghost text-xs">Clear Search</button>
         </div>

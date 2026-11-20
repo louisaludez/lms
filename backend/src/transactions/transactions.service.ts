@@ -16,6 +16,7 @@ import { User, EligibilityStatus } from '../users/entities/user.entity';
 import { BooksService } from '../books/books.service';
 import { CheckoutDto, ReturnDto, RenewalDto } from './dto/transaction.dto';
 import { addDays, differenceInDays, isAfter, parseISO } from 'date-fns';
+import { ActivityLogService, ActivityAction, ActivityResource } from '../activity-log/activity-log.service';
 
 const MAX_RENEWALS = 2;
 const MAX_BORROWS = 3; // max concurrent books per user
@@ -32,13 +33,14 @@ export class TransactionsService {
     private readonly userRepo: Repository<User>,
     private readonly booksService: BooksService,
     private readonly config: ConfigService,
+    private readonly activityLogService: ActivityLogService,
   ) {
     this.borrowDays = this.config.get<number>('BORROW_DAYS', 7);
     this.finePerDay = this.config.get<number>('FINE_PER_DAY', 5);
   }
 
   // ─── CHECKOUT ────────────────────────────────────────────────────────────────
-  async checkout(dto: CheckoutDto, librarianId: number): Promise<Transaction> {
+  async checkout(dto: CheckoutDto, librarianId: number, ipAddress?: string, userAgent?: string): Promise<Transaction> {
     const user = await this.userRepo.findOne({
       where: { barcode: dto.userBarcode },
     });
@@ -122,11 +124,20 @@ export class TransactionsService {
     // Decrement available copies
     await this.booksService.decrementAvailable(copy.book.id);
 
+    // Log activity
+    await this.activityLogService.logBorrow(
+      user.id,
+      copy.book.id,
+      { copyBarcode: copy.barcode, dueDate: saved.dueDate },
+      ipAddress,
+      userAgent,
+    );
+
     return this.findById(saved.id);
   }
 
   // ─── RETURN ──────────────────────────────────────────────────────────────────
-  async returnBook(dto: ReturnDto, librarianId: number): Promise<Transaction> {
+  async returnBook(dto: ReturnDto, librarianId: number, ipAddress?: string, userAgent?: string): Promise<Transaction> {
     const copy = await this.booksService.findCopyByBarcode(dto.bookCopyBarcode);
 
     const tx = await this.txRepo.findOne({
@@ -143,16 +154,18 @@ export class TransactionsService {
         throw new NotFoundException(
           'No active or overdue transaction found for this copy',
         );
-      return this._processReturn(overdueTx, librarianId, dto.notes);
+      return this._processReturn(overdueTx, librarianId, dto.notes, ipAddress, userAgent);
     }
 
-    return this._processReturn(tx, librarianId, dto.notes);
+    return this._processReturn(tx, librarianId, dto.notes, ipAddress, userAgent);
   }
 
   private async _processReturn(
     tx: Transaction,
     librarianId: number,
     notes?: string,
+    ipAddress?: string,
+    userAgent?: string,
   ): Promise<Transaction> {
     const today = new Date();
     const due = parseISO(tx.dueDate);
@@ -177,11 +190,20 @@ export class TransactionsService {
       await this._checkAndLiftSuspension(tx.user.id);
     }
 
+    // Log activity
+    await this.activityLogService.logReturn(
+      tx.user.id,
+      tx.bookCopy.book.id,
+      { copyBarcode: tx.bookCopy.barcode, overdueDays, fineAmount: fine },
+      ipAddress,
+      userAgent,
+    );
+
     return this.findById(tx.id);
   }
 
   // ─── RENEWAL ─────────────────────────────────────────────────────────────────
-  async renew(dto: RenewalDto, requestingUser: { id: number; role: string }): Promise<Transaction> {
+  async renew(dto: RenewalDto, requestingUser: { id: number; role: string }, ipAddress?: string, userAgent?: string): Promise<Transaction> {
     if (!dto.transactionId && !dto.bookCopyBarcode) {
       throw new BadRequestException('Must provide either transactionId or bookCopyBarcode');
     }
@@ -221,7 +243,18 @@ export class TransactionsService {
     tx.renewalCount += 1;
     tx.transactionType = TransactionType.RENEWAL;
 
-    return this.txRepo.save(tx);
+    const saved = await this.txRepo.save(tx);
+
+    // Log activity
+    await this.activityLogService.logExtend(
+      tx.user.id,
+      tx.bookCopy.book.id,
+      { copyBarcode: tx.bookCopy.barcode, newDueDate: saved.dueDate, renewalCount: saved.renewalCount },
+      ipAddress,
+      userAgent,
+    );
+
+    return this.findById(saved.id);
   }
 
   // ─── GET USER TRANSACTIONS ────────────────────────────────────────────────────

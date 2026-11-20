@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed, ref, watchEffect } from 'vue'
+import { onMounted, computed, ref, watchEffect, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { format, parseISO, isPast, differenceInDays } from 'date-fns'
 import { useLibraryStore, useAuthStore } from '@/stores/useLibraryStore'
@@ -22,6 +22,16 @@ import ProfileSettingsModal from '@/components/ProfileSettingsModal.vue'
 const router = useRouter()
 const auth = useAuthStore()
 const store = useLibraryStore()
+
+const isDesktop = ref(window.innerWidth >= 768)
+function handleResize() { isDesktop.value = window.innerWidth >= 768 }
+onMounted(() => window.addEventListener('resize', handleResize))
+onUnmounted(() => window.removeEventListener('resize', handleResize))
+
+const sidebarPadding = computed(() => {
+  if (!isDesktop.value) return '0'
+  return auth.isSidebarVisible ? '16rem' : '0'
+})
 
 const barcodeCanvas = ref<HTMLCanvasElement | null>(null)
 const idCardRef = ref<HTMLElement | null>(null)
@@ -216,7 +226,7 @@ const monthlyActivityData = computed(() => {
 </script>
 
 <template>
-  <div class="min-h-screen md:pl-64 print:pl-0 bg-[#F7F5F0] dark:bg-[#0F172A] transition-colors duration-200">
+  <div class="min-h-screen print:pl-0 bg-[#F7F5F0] dark:bg-[#0F172A] transition-colors duration-200 transition-all duration-300" :style="{ paddingLeft: sidebarPadding }">
     <NavBar />
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">

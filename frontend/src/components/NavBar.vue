@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/useLibraryStore'
 import { useRouter } from 'vue-router'
 import { useTheme } from '@/composables/useTheme'
@@ -7,11 +7,21 @@ import {
   ArrowRightOnRectangleIcon,
   Bars3Icon,
   BookOpenIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   DocumentTextIcon,
   MoonIcon,
   SunIcon,
   UserCircleIcon,
   XMarkIcon,
+  ArrowRightIcon,
+  HomeIcon,
+  ArrowsRightLeftIcon,
+  ClipboardDocumentListIcon,
+  ChartBarIcon,
+  UserGroupIcon,
+  ExclamationTriangleIcon,
+  DocumentMagnifyingGlassIcon,
 } from '@heroicons/vue/24/outline'
 import ndcLogo from '@/assets/ndc_logo.png'
 
@@ -19,6 +29,9 @@ const auth = useAuthStore()
 const router = useRouter()
 const { isDark, toggleTheme } = useTheme()
 const isMobileMenuOpen = ref(false)
+
+// Sidebar visibility computed from auth store
+const isSidebarVisible = computed(() => auth.isSidebarVisible)
 
 function logout() {
   auth.logout()
@@ -29,6 +42,34 @@ function logout() {
 function closeMobileMenu() {
   isMobileMenuOpen.value = false
 }
+
+function toggleSidebar() {
+  auth.toggleSidebar()
+}
+
+// Dashboard navigation items for librarian/admin
+const dashboardNavItems = computed(() => {
+  const role = auth.user?.role || ''
+  return [
+    { to: '/dashboard', name: 'DashboardHome', label: 'Dashboard', icon: HomeIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
+    { to: '/dashboard/circulation', name: 'Circulation', label: 'Circulation', icon: ArrowsRightLeftIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
+    { to: '/dashboard/history', name: 'TransactionHistory', label: 'Transaction History', icon: DocumentTextIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
+    { to: '/dashboard/attendance', name: 'Attendance', label: 'Attendance', icon: ClipboardDocumentListIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
+    { to: '/dashboard/books', name: 'ManageBooks', label: 'Manage Items', icon: BookOpenIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
+    { to: '/dashboard/users', name: 'ManageUsers', label: 'Manage Users', icon: UserGroupIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
+    { to: '/dashboard/librarians', name: 'ManageLibrarians', label: 'Manage Librarians', icon: UserGroupIcon, roles: ['admin', 'chief_librarian'] },
+    { to: '/dashboard/book-requests', name: 'ManageBookRequests', label: 'Book Requests', icon: DocumentTextIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
+    { to: '/dashboard/reports', name: 'ReportsView', label: 'Reports', icon: ChartBarIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
+    { to: '/dashboard/activity-log', name: 'ActivityLog', label: 'Activity Log', icon: DocumentMagnifyingGlassIcon, roles: ['librarian', 'chief_librarian', 'admin'] },
+  ].filter(item => item.roles.includes(role))
+})
+
+// Standard nav items for non-librarian (student/faculty)
+const standardNavItems = computed(() => [
+  { to: '/opac', name: 'Opac', label: 'Catalog', icon: BookOpenIcon, roles: ['student', 'faculty'] },
+  { to: '/profile', name: 'Profile', label: 'Profile', icon: UserCircleIcon, roles: ['student', 'faculty'] },
+  { to: '/dashboard/faculty-requests', name: 'FacultyRequests', label: 'My Requests', icon: DocumentTextIcon, roles: ['faculty'] },
+])
 </script>
 
 <template>
@@ -48,6 +89,16 @@ function closeMobileMenu() {
       </div>
       <span>Lumina</span>
     </router-link>
+    <!-- Guest sidebar toggle in mobile header -->
+    <button
+      v-if="!auth.isAuthenticated"
+      @click="toggleSidebar"
+      class="ml-auto p-2 rounded-md text-white/90 hover:bg-white/10"
+      :aria-label="auth.sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'"
+    >
+      <ChevronLeftIcon v-if="!auth.sidebarCollapsed" class="w-6 h-6" />
+      <ChevronRightIcon v-else class="w-6 h-6" />
+    </button>
   </header>
 
   <div
@@ -57,8 +108,9 @@ function closeMobileMenu() {
   ></div>
 
   <aside
+    v-if="isSidebarVisible"
     :class="[
-      'fixed inset-y-0 left-0 z-50 w-64 flex flex-col bg-[#6B131D] dark:bg-[#4A0D14] text-white shadow-xl transition-transform duration-300 print:hidden',
+      'fixed inset-y-0 left-0 z-50 w-64 flex flex-col bg-[#6B131D] dark:bg-[#4A0D14] text-white shadow-xl transition-all duration-300 print:hidden',
       isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
     ]"
   >
@@ -69,6 +121,16 @@ function closeMobileMenu() {
         </div>
         <span class="font-bold text-lg">Lumina</span>
       </router-link>
+      <!-- Guest sidebar toggle in sidebar header (desktop) -->
+      <button
+        v-if="!auth.isAuthenticated"
+        @click="toggleSidebar"
+        class="ml-auto p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors md:block hidden"
+        :aria-label="auth.sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'"
+      >
+        <ChevronLeftIcon v-if="!auth.sidebarCollapsed" class="w-5 h-5" />
+        <ChevronRightIcon v-else class="w-5 h-5" />
+      </button>
     </div>
 
     <div v-if="auth.isAuthenticated" class="px-5 py-4 border-b border-white/10">
@@ -77,51 +139,49 @@ function closeMobileMenu() {
     </div>
 
     <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-      <router-link
-        to="/opac"
-        @click="closeMobileMenu"
-        class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-        active-class="!text-white !bg-white/20 !font-semibold"
-      >
-        <BookOpenIcon class="w-5 h-5 flex-shrink-0" />
-        Catalog
-      </router-link>
+      <!-- Dashboard nav for librarian/admin (Dashboard FIRST) -->
+      <template v-if="auth.isLibrarian">
+        <router-link
+          v-for="item in dashboardNavItems"
+          :key="item.to"
+          :to="item.to"
+          @click="closeMobileMenu"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+          :class="{ '!text-white !bg-white/20 !font-semibold': $route.name === item.name }"
+        >
+          <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
+          {{ item.label }}
+        </router-link>
+      </template>
 
-      <router-link
-        v-if="auth.isAuthenticated"
-        to="/profile"
-        @click="closeMobileMenu"
-        class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-        active-class="!text-white !bg-white/20 !font-semibold"
-      >
-        <UserCircleIcon class="w-5 h-5 flex-shrink-0" />
-        Profile
-      </router-link>
-
-      <router-link
-        v-if="auth.isFaculty"
-        to="/dashboard/faculty-requests"
-        @click="closeMobileMenu"
-        class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-        active-class="!text-white !bg-white/20 !font-semibold"
-      >
-        <DocumentTextIcon class="w-5 h-5 flex-shrink-0" />
-        My Requests
-      </router-link>
-
-      <router-link
-        v-if="auth.isLibrarian"
-        to="/dashboard"
-        @click="closeMobileMenu"
-        class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-        active-class="!text-white !bg-white/20 !font-semibold"
-      >
-        <DocumentTextIcon class="w-5 h-5 flex-shrink-0" />
-        Dashboard
-      </router-link>
+      <!-- Standard nav for student/faculty -->
+      <template v-else>
+        <router-link
+          v-for="item in standardNavItems"
+          :key="item.to"
+          :to="item.to"
+          @click="closeMobileMenu"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+          :class="{ '!text-white !bg-white/20 !font-semibold': $route.name === item.name }"
+        >
+          <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
+          {{ item.label }}
+        </router-link>
+      </template>
     </nav>
 
     <div class="px-3 py-3 border-t border-white/10 space-y-1">
+      <!-- View OPAC link for librarian/admin -->
+      <router-link
+        v-if="auth.isLibrarian"
+        to="/opac"
+        @click="closeMobileMenu"
+        class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+      >
+        <BookOpenIcon class="w-5 h-5 flex-shrink-0" />
+        View OPAC
+      </router-link>
+
       <button
         @click="toggleTheme"
         class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
@@ -153,4 +213,15 @@ function closeMobileMenu() {
       </router-link>
     </div>
   </aside>
+
+  <!-- Floating "Show Sidebar" button for guests when sidebar is collapsed (desktop only) -->
+  <button
+    v-if="!auth.isAuthenticated && auth.sidebarCollapsed"
+    @click="toggleSidebar"
+    class="fixed left-4 top-1/2 -translate-y-1/2 z-40 md:block hidden p-2 rounded-full bg-[#6B131D] dark:bg-[#4A0D14] text-white shadow-xl hover:bg-[#8B1A28] transition-all duration-200 hover:scale-105"
+    :aria-label="auth.sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'"
+    title="Show navigation"
+  >
+    <ArrowRightIcon class="w-6 h-6" />
+  </button>
 </template>

@@ -5,9 +5,10 @@ import { User } from '../users/entities/user.entity';
 import { Book } from '../books/entities/book.entity';
 import { ReservationsService } from './reservations.service';
 import { ReservationsController } from './reservations.controller';
+import { ActivityLogModule } from '../activity-log/activity-log.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Reservation, User, Book])],
+  imports: [TypeOrmModule.forFeature([Reservation, User, Book]), ActivityLogModule],
   providers: [ReservationsService],
   controllers: [ReservationsController],
 })

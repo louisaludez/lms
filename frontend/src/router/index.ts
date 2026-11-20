@@ -21,6 +21,18 @@ const router = createRouter({
       meta: { requiresGuest: true },
     },
     {
+      path: '/forgot-password',
+      name: 'ForgotPassword',
+      component: () => import('@/views/ForgotPasswordView.vue'),
+      meta: { requiresGuest: true },
+    },
+    {
+      path: '/reset-password',
+      name: 'ResetPassword',
+      component: () => import('@/views/ResetPasswordView.vue'),
+      meta: { requiresGuest: true },
+    },
+    {
       path: '/opac',
       name: 'Opac',
       component: () => import('@/views/StudentOpacView.vue'),
@@ -94,6 +106,12 @@ const router = createRouter({
           path: 'reports',
           name: 'ReportsView',
           component: () => import('@/views/dashboard/ReportsView.vue'),
+          meta: { roles: ['librarian', 'chief_librarian', 'admin'] },
+        },
+        {
+          path: 'activity-log',
+          name: 'ActivityLog',
+          component: () => import('@/views/dashboard/ActivityLogView.vue'),
           meta: { roles: ['librarian', 'chief_librarian', 'admin'] },
         },
       ],

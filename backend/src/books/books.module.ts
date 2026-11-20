@@ -5,9 +5,10 @@ import { BookCopy } from './entities/book-copy.entity';
 import { Category } from './entities/category.entity';
 import { BooksService } from './books.service';
 import { BooksController } from './books.controller';
+import { ActivityLogModule } from '../activity-log/activity-log.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Book, BookCopy, Category])],
+  imports: [TypeOrmModule.forFeature([Book, BookCopy, Category]), ActivityLogModule],
   providers: [BooksService],
   controllers: [BooksController],
   exports: [BooksService],

@@ -38,6 +38,12 @@ export class Book {
   @Column({ length: 30, nullable: true })
   edition: string;
 
+  @Column({ name: 'issue', length: 30, nullable: true })
+  issue: string;
+
+  @Column({ name: 'volume', length: 30, nullable: true })
+  volume: string;
+
   @Column({ length: 200, nullable: true })
   publisher: string;
 
@@ -60,7 +66,7 @@ export class Book {
   @Column({ name: 'cover_image_url', length: 512, nullable: true })
   coverImageUrl: string;
 
-  @Column({ name: 'item_type', length: 50, default: 'BOOKS' })
+  @Column({ name: 'item_type', length: 50, default: 'Books' })
   itemType: string;
 
   @Column({

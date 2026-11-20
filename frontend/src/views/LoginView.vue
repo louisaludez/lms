@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/useLibraryStore'
-import { BookOpenIcon, EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline'
+import { BookOpenIcon, EyeIcon, EyeSlashIcon, KeyIcon } from '@heroicons/vue/24/outline'
 import ndcLogo from '@/assets/ndc_logo.png'
 
 const router = useRouter()
@@ -90,6 +90,12 @@ async function handleLogin() {
                 <EyeSlashIcon v-if="showPassword" class="w-5 h-5" />
                 <EyeIcon v-else class="w-5 h-5" />
               </button>
+            </div>
+            <div class="mt-2 text-right">
+              <router-link to="/forgot-password" class="text-xs text-[#447794] hover:text-[#80b3ce] font-medium transition-colors flex items-center justify-end gap-1">
+                <KeyIcon class="w-4 h-4" />
+                Forgot Password?
+              </router-link>
             </div>
           </div>
 

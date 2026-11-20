@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { format, subDays, startOfMonth, differenceInDays, parseISO } from 'date-fns'
 import { useRouter } from 'vue-router'
 import { useLibraryStore } from '@/stores/useLibraryStore'
 import api from '@/api/axios'
 import {
   BookOpenIcon, ArrowsRightLeftIcon, ExclamationTriangleIcon,
   CheckCircleIcon, UserGroupIcon, ChartPieIcon, ArrowRightIcon,
-  ArrowPathIcon, DocumentTextIcon, BuildingOfficeIcon, ChartBarIcon
+  ArrowPathIcon, DocumentTextIcon, BuildingOfficeIcon, ChartBarIcon,
+  ArrowDownRightIcon, ArrowUpRightIcon, ClockIcon, CalendarIcon
 } from '@heroicons/vue/24/outline'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js'
 import { Doughnut, Bar } from 'vue-chartjs'
@@ -21,6 +23,14 @@ const loadingOverdue = ref(false)
 
 const departmentEntryData = ref<any[]>([])
 const loadingDeptEntry = ref(false)
+
+// Attendance stats
+const attendanceStats = ref({ entries: 0, exits: 0, total: 0 })
+const attendanceLoading = ref(false)
+
+// Date range for attendance (default: last 30 days)
+const attendanceStartDate = ref('')
+const attendanceEndDate = ref('')
 
 async function fetchOverdueItems() {
   loadingOverdue.value = true
@@ -46,10 +56,33 @@ async function fetchDepartmentEntry() {
   }
 }
 
+async function fetchAttendanceStats() {
+  attendanceLoading.value = true
+  try {
+    const params: Record<string, string> = {}
+    if (attendanceStartDate.value) params.startDate = attendanceStartDate.value
+    if (attendanceEndDate.value) params.endDate = attendanceEndDate.value
+    const { data } = await api.get('/attendance/stats', { params })
+    attendanceStats.value = data
+  } catch (e) {
+    console.error('Failed to fetch attendance stats', e)
+  } finally {
+    attendanceLoading.value = false
+  }
+}
+
 onMounted(() => {
   store.fetchStats()
   fetchOverdueItems()
   fetchDepartmentEntry()
+  store.fetchPendingRequestCount()
+
+  // Default attendance date range: last 30 days
+  const today = new Date()
+  const thirtyDaysAgo = subDays(today, 29)
+  attendanceStartDate.value = format(thirtyDaysAgo, 'yyyy-MM-dd')
+  attendanceEndDate.value = format(today, 'yyyy-MM-dd')
+  fetchAttendanceStats()
 })
 
 const chartOptions = {
@@ -118,6 +151,29 @@ const departmentChartData = computed(() => {
       }
     ]
   }
+})
+
+// Attendance daily averages
+const attendanceDaysInRange = computed(() => {
+  if (attendanceStartDate.value && attendanceEndDate.value) {
+    const start = parseISO(attendanceStartDate.value)
+    const end = parseISO(attendanceEndDate.value)
+    const diff = differenceInDays(end, start) + 1
+    return Math.max(1, diff)
+  }
+  return 30 // default 30 days
+})
+
+const entriesPerDay = computed(() => {
+  return attendanceDaysInRange.value > 0
+    ? (attendanceStats.value.entries / attendanceDaysInRange.value).toFixed(1)
+    : '0'
+})
+
+const exitsPerDay = computed(() => {
+  return attendanceDaysInRange.value > 0
+    ? (attendanceStats.value.exits / attendanceDaysInRange.value).toFixed(1)
+    : '0'
 })
 
 const barChartOptions = {
@@ -205,7 +261,7 @@ function processReturnForCopy(barcode: string) {
         </div>
       </div>
 
-      <div 
+      <div
         @click="goToOverdueTransactions"
         class="stat-card cursor-pointer hover:border-rose-300 transition-all"
         :title="'Click to view overdue transactions'"
@@ -222,6 +278,43 @@ function processReturnForCopy(barcode: string) {
       </div>
     </div>
 
+    <!-- Attendance Daily Average Cards (AttendanceView style) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+      <!-- Entries Per Day Card -->
+      <div class="card p-5 border border-slate-100 shadow-xs hover:shadow-md transition-shadow">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Entries Per Day</span>
+          <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+            <ArrowDownRightIcon class="w-5 h-5 stroke-[2.5]" />
+          </div>
+        </div>
+        <div class="mt-3">
+          <p class="text-3xl font-extrabold text-slate-900 tracking-tight">{{ entriesPerDay }}</p>
+          <p class="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+            <CalendarIcon class="w-3.5 h-3.5 text-slate-400" />
+            <span>Avg over {{ attendanceDaysInRange }} days</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Exits Per Day Card -->
+      <div class="card p-5 border border-slate-100 shadow-xs hover:shadow-md transition-shadow">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Exits Per Day</span>
+          <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+            <ArrowUpRightIcon class="w-5 h-5 stroke-[2.5]" />
+          </div>
+        </div>
+        <div class="mt-3">
+          <p class="text-3xl font-extrabold text-slate-900 tracking-tight">{{ exitsPerDay }}</p>
+          <p class="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+            <CalendarIcon class="w-3.5 h-3.5 text-slate-400" />
+            <span>Avg over {{ attendanceDaysInRange }} days</span>
+          </p>
+        </div>
+      </div>
+    </div>
+
     <!-- Overdue Alert Banner -->
     <div v-if="store.txStats.overdue > 0" class="rounded-2xl bg-rose-50 border border-rose-200 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div class="flex gap-4">
@@ -233,13 +326,33 @@ function processReturnForCopy(barcode: string) {
           </p>
         </div>
       </div>
-      <button 
+      <button
         @click="goToOverdueTransactions"
         class="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all whitespace-nowrap"
       >
         View Overdue History
         <ArrowRightIcon class="w-3.5 h-3.5" />
       </button>
+    </div>
+
+    <!-- Pending Book Requests Alert Banner -->
+    <div v-if="store.pendingRequestCount > 0" class="rounded-2xl bg-amber-50 border border-amber-200 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex gap-4">
+        <DocumentTextIcon class="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" />
+        <div>
+          <p class="font-semibold text-amber-800">{{ store.pendingRequestCount }} pending book request{{ store.pendingRequestCount > 1 ? 's' : '' }} awaiting review</p>
+          <p class="text-amber-600 text-sm mt-0.5">
+            Faculty and acquisition requests need librarian approval. Click to review and process.
+          </p>
+        </div>
+      </div>
+      <router-link
+        to="/dashboard/book-requests"
+        class="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all whitespace-nowrap"
+      >
+        Review Requests
+        <ArrowRightIcon class="w-3.5 h-3.5" />
+      </router-link>
     </div>
 
     <!-- Overdue Items List Table Section -->

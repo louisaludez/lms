@@ -39,6 +39,7 @@ const loading      = ref(false)
 const searchQuery  = ref('')
 const filterRole           = ref('')
 const filterApprovalStatus = ref('')
+const filterIsActive       = ref('')
 const reviewingId          = ref<number | null>(null)
 const updatingStatusId     = ref<number | null>(null)
 
@@ -61,10 +62,16 @@ const roleOptions = [
 ]
 
 const approvalOptions = [
-  { label: 'All Approvals', value: '' },
+  { label: 'All Statuses', value: '' },
   { label: 'Pending', value: 'pending' },
   { label: 'Approved', value: 'approved' },
   { label: 'Rejected', value: 'rejected' }
+]
+
+const activeOptions = [
+  { label: 'All Accounts', value: '' },
+  { label: 'Active', value: 'true' },
+  { label: 'Inactive', value: 'false' }
 ]
 
 // View ID
@@ -189,15 +196,16 @@ const currentLimit = ref(10)
 async function fetchUsers(page = 1) {
   loading.value = true
   try {
-    const params: Record<string, string | number> = { 
-      page, 
+    const params: Record<string, string | number> = {
+      page,
       limit: currentLimit.value,
       sortBy: sortBy.value,
-      sortOrder: sortOrder.value 
+      sortOrder: sortOrder.value
     }
     if (searchQuery.value) params.search = searchQuery.value
     if (filterRole.value) params.role = filterRole.value
     if (filterApprovalStatus.value) params.approvalStatus = filterApprovalStatus.value
+    if (filterIsActive.value) params.isActive = filterIsActive.value
     const { data } = await api.get<{ data: UserRow[], total: number, page: number, lastPage: number }>('/users', { params })
     users.value = data.data
     currentPage.value = data.page
@@ -493,6 +501,13 @@ function approvalBadge(status: string) {
         />
 
         <DropdownFilter
+          v-model="filterIsActive"
+          :options="activeOptions"
+          @change="fetchUsers(1)"
+          width="w-36"
+        />
+
+        <DropdownFilter
           v-model="sortBy"
           :options="sortOptions"
           @change="handleSortChange"
@@ -682,14 +697,16 @@ function approvalBadge(status: string) {
                 <input v-model="form.email" type="email" required class="input" />
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Student/Faculty ID *</label>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">
+                  {{ form.role === 'student' ? 'Student ID' : form.role === 'faculty' ? 'Faculty ID' : 'Institutional ID' }} *
+                </label>
                 <input
                   v-model="form.institutionalId"
                   type="text"
                   :required="modalMode === 'create'"
                   :disabled="modalMode === 'edit'"
                   class="input font-mono"
-                  placeholder="e.g. 2024-CCS-001"
+                  :placeholder="form.role === 'student' ? 'e.g. 2024-CCS-001' : form.role === 'faculty' ? 'e.g. FAC-2024-001' : 'e.g. 2024-CCS-001'"
                 />
               </div>
               <div>
@@ -697,7 +714,7 @@ function approvalBadge(status: string) {
                 <select v-model="form.role" required class="input" @change="handleRoleChange">
                   <option value="student">Student</option>
                   <option value="faculty">Faculty</option>
-                  <option value="librarian">Librarian</option>
+                 
                   <option value="kiosk">Kiosk</option>
                   <option v-if="modalMode === 'edit' && form.role === 'admin'" value="admin" disabled>Admin</option>
                 </select>
@@ -870,7 +887,9 @@ function approvalBadge(status: string) {
 
               <div class="grid grid-cols-2 gap-4">
                 <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                  <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Institutional ID</p>
+                  <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">
+                    {{ viewingIdUser.role === 'student' ? 'Student ID' : viewingIdUser.role === 'faculty' ? 'Faculty ID' : 'Institutional ID' }}
+                  </p>
                   <p class="font-mono text-slate-800 font-medium">{{ viewingIdUser.institutionalId }}</p>
                 </div>
                 <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
@@ -967,7 +986,7 @@ function approvalBadge(status: string) {
               </div>
 
 
-            </div>
+            </div>  
 
             <button 
               @click="downloadId" 

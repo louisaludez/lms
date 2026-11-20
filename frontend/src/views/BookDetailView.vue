@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLibraryStore, useAuthStore } from '@/stores/useLibraryStore'
 import NavBar from '@/components/NavBar.vue'
 import {
-  BookOpenIcon, ArrowLeftIcon, MapPinIcon, GlobeAltIcon,
+  BookOpenIcon, HomeIcon, MapPinIcon, GlobeAltIcon,
   CalendarIcon, BookmarkIcon, CheckCircleIcon, XCircleIcon, QrCodeIcon,
   DocumentTextIcon, PaperAirplaneIcon
 } from '@heroicons/vue/24/outline'
@@ -21,8 +21,14 @@ const requestLoading = ref(false)
 const requestSuccess = ref(false)
 const requestError = ref('')
 
-onMounted(() => {
-  store.fetchBook(Number(route.params.id))
+const isDesktop = ref(window.innerWidth >= 768)
+function handleResize() { isDesktop.value = window.innerWidth >= 768 }
+onMounted(() => { store.fetchBook(Number(route.params.id)); window.addEventListener('resize', handleResize) })
+onUnmounted(() => window.removeEventListener('resize', handleResize))
+
+const sidebarPadding = computed(() => {
+  if (!isDesktop.value) return '0'
+  return auth.isSidebarVisible ? '16rem' : '0'
 })
 
 async function handleReserve() {
@@ -47,7 +53,7 @@ async function handleFacultyRequest() {
   requestError.value = ''
   requestSuccess.value = false
   try {
-    await store.requestBorrowBook(Number(route.params.id), requestReason.value || undefined)
+    await store.requestHoldBook(Number(route.params.id), requestReason.value || undefined)
     requestSuccess.value = true
     requestReason.value = ''
     setTimeout(() => { showRequestModal.value = false; requestSuccess.value = false }, 2000)
@@ -60,13 +66,19 @@ async function handleFacultyRequest() {
 </script>
 
 <template>
-  <div class="min-h-screen md:pl-64 print:pl-0 bg-slate-50">
+  <div class="min-h-screen print:pl-0 bg-slate-50 transition-all duration-300" :style="{ paddingLeft: sidebarPadding }">
     <NavBar />
 
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-      <button @click="router.back()" class="btn-ghost mb-6 text-sm">
-        <ArrowLeftIcon class="w-4 h-4" /> Back to Catalog
-      </button>
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+      <!-- Home button - hidden for admin and librarian (isLibrarian includes admin) -->
+      <router-link
+        v-if="!auth.isLibrarian"
+        to="/opac"
+        class="btn-ghost mb-6 p-2"
+        aria-label="Go to Home"
+      >
+        <HomeIcon class="w-5 h-5" />
+      </router-link>
 
       <div v-if="store.loading" class="card p-8 space-y-4">
         <div class="skeleton h-8 w-3/4" />
@@ -170,13 +182,13 @@ async function handleFacultyRequest() {
                 <BookmarkIcon class="w-4 h-4" /> Reserve Book
               </button>
 
-              <!-- Faculty: Request to Borrow (when available) -->
+              <!-- Faculty: Request to Hold (when available) -->
               <button
                 v-if="auth.isFaculty && store.currentBook.availableCopies > 0 && !store.currentBook.isReferenceOnly"
                 @click="showRequestModal = true"
                 class="btn-primary bg-purple-600 hover:bg-purple-700 shadow-purple-200"
               >
-                <DocumentTextIcon class="w-4 h-4" /> Request to Borrow
+                <DocumentTextIcon class="w-4 h-4" /> Request to Hold
               </button>
 
               <!-- Student / non-faculty: visit counter message -->
@@ -221,7 +233,7 @@ async function handleFacultyRequest() {
             <DocumentTextIcon class="w-5 h-5 text-purple-600" />
           </div>
           <div>
-            <h3 class="font-bold text-slate-800">Request to Borrow</h3>
+            <h3 class="font-bold text-slate-800">Request to Hold</h3>
             <p class="text-xs text-slate-500 truncate max-w-[260px]">{{ store.currentBook?.title }}</p>
           </div>
         </div>
@@ -240,7 +252,7 @@ async function handleFacultyRequest() {
           {{ requestError }}
         </div>
         <div v-if="requestSuccess" class="mb-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold">
-          ✅ Request submitted! The librarian will process it shortly.
+          ✅ Hold request submitted! Available copies reduced by 1. The librarian will process it shortly.
         </div>
 
         <div class="flex gap-3">
@@ -251,7 +263,7 @@ async function handleFacultyRequest() {
             class="flex-1 justify-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 transition-all flex items-center gap-2"
           >
             <PaperAirplaneIcon class="w-4 h-4" />
-            {{ requestLoading ? 'Submitting...' : 'Submit Request' }}
+            {{ requestLoading ? 'Submitting...' : 'Submit Hold Request' }}
           </button>
         </div>
       </div>

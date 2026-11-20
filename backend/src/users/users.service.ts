@@ -18,6 +18,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { Like } from 'typeorm';
 import * as nodemailer from 'nodemailer';
+import { ActivityLogService, ActivityAction, ActivityResource } from '../activity-log/activity-log.service';
 
 function roleUsesDepartment(role: UserRole): boolean {
   return role === UserRole.STUDENT || role === UserRole.FACULTY;
@@ -30,6 +31,7 @@ export class UsersService implements OnModuleInit {
     private readonly userRepo: Repository<User>,
     @InjectRepository(Department)
     private readonly deptRepo: Repository<Department>,
+    private readonly activityLogService: ActivityLogService,
   ) {}
 
   async onModuleInit() {
@@ -166,7 +168,7 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  async create(dto: CreateUserDto): Promise<User> {
+  async create(dto: CreateUserDto, ipAddress?: string, userAgent?: string): Promise<User> {
     await this.removeRejectedUserIfExists(dto.email, dto.institutionalId);
 
     const exists = await this.userRepo.findOne({ where: { email: dto.email } });
@@ -209,7 +211,19 @@ export class UsersService implements OnModuleInit {
     };
 
     const user = this.userRepo.create(partial as any);
-    return (await this.userRepo.save(user as any)) as User;
+    const savedUser = (await this.userRepo.save(user as any)) as User;
+
+    // Log activity
+    await this.activityLogService.logCreate(
+      null, // system created
+      ActivityResource.USER,
+      savedUser.id,
+      { email: savedUser.email, role: savedUser.role },
+      ipAddress,
+      userAgent,
+    );
+
+    return savedUser;
   }
 
   private async generateUniqueLibraryBarcode(): Promise<string> {
@@ -237,7 +251,7 @@ export class UsersService implements OnModuleInit {
     gender?: any;
     departmentId?: number;
     profilePhotoUrl?: string;
-  }): Promise<User> {
+  }, ipAddress?: string, userAgent?: string): Promise<User> {
     await this.removeRejectedUserIfExists(dto.email, dto.institutionalId);
 
     const exists = await this.userRepo.findOne({ where: { email: dto.email } });
@@ -278,7 +292,19 @@ export class UsersService implements OnModuleInit {
       isActive: true,
     } as any);
 
-    return (await this.userRepo.save(user as any)) as User;
+    const savedUser = (await this.userRepo.save(user as any)) as User;
+
+    // Log activity
+    await this.activityLogService.logCreate(
+      savedUser.id,
+      ActivityResource.USER,
+      savedUser.id,
+      { email: savedUser.email, role: savedUser.role, status: 'pending' },
+      ipAddress,
+      userAgent,
+    );
+
+    return savedUser;
   }
 
   async findById(id: number): Promise<User> {
@@ -329,6 +355,7 @@ export class UsersService implements OnModuleInit {
     page: number = 1,
     limit: number = 10,
     approvalStatus?: string,
+    isActive?: string,
     sortBy?: string,
     sortOrder: 'ASC' | 'DESC' = 'DESC',
   ): Promise<{
@@ -357,6 +384,9 @@ export class UsersService implements OnModuleInit {
       qb.andWhere('user.accountApprovalStatus = :approvalStatus', {
         approvalStatus,
       });
+    if (isActive !== undefined && isActive !== '') {
+      qb.andWhere('user.isActive = :isActive', { isActive: isActive === 'true' });
+    }
     if (search) {
       qb.andWhere(
         '(user.firstName LIKE :s OR user.lastName LIKE :s OR user.email LIKE :s OR user.institutionalId LIKE :s)',
@@ -381,8 +411,14 @@ export class UsersService implements OnModuleInit {
     id: number,
     dto: UpdateUserDto,
     requesterRole?: UserRole,
+    requesterId: number | null = null,
+    ipAddress?: string,
+    userAgent?: string,
   ): Promise<User> {
     const user = await this.findById(id);
+    const previousStatus = user.accountApprovalStatus;
+    const previousRole = user.role;
+    const previousIsActive = user.isActive;
 
     if (dto.role !== undefined) user.role = dto.role;
 
@@ -407,6 +443,7 @@ export class UsersService implements OnModuleInit {
       user.eligibilityStatus = dto.eligibilityStatus;
     if (dto.isActive !== undefined) user.isActive = dto.isActive;
 
+    let approvalAction: 'approve' | 'reject' | null = null;
     if (
       dto.accountApprovalStatus !== undefined &&
       dto.accountApprovalStatus !== user.accountApprovalStatus
@@ -422,12 +459,11 @@ export class UsersService implements OnModuleInit {
         }
       }
 
-      const previousStatus = user.accountApprovalStatus;
       user.accountApprovalStatus = dto.accountApprovalStatus;
 
-      // Email Notification
       if (previousStatus === AccountApprovalStatus.PENDING) {
         if (dto.accountApprovalStatus === AccountApprovalStatus.APPROVED) {
+          approvalAction = 'approve';
           const text = `Hello ${user.firstName},\n\nYour registration has been approved.\nYour Library ID is: ${user.barcode}.\n\nYou can now log in and print your ID card from your profile.\n\nThank you,\nLumina Library Team`;
           const html = `<p>Hello ${user.firstName},</p><p>Your registration has been <strong>approved</strong>.</p><p>Your Library ID is: <strong>${user.barcode}</strong>.</p><p>You can now log in and print your ID card from your profile.</p><p>Thank you,<br/>Lumina Library Team</p>`;
 
@@ -442,6 +478,7 @@ export class UsersService implements OnModuleInit {
         } else if (
           dto.accountApprovalStatus === AccountApprovalStatus.REJECTED
         ) {
+          approvalAction = 'reject';
           const reason = dto.rejectionReason || 'No specific reason provided.';
           const text = `Hello ${user.firstName},\n\nUnfortunately, your registration was rejected.\n\nReason: ${reason}\n\nPlease contact the library administration for more details.\n\nThank you,\nLumina Library Team`;
           const html = `<p>Hello ${user.firstName},</p><p>Unfortunately, your registration was <strong>rejected</strong>.</p><p><strong>Reason:</strong> ${reason}</p><p>Please contact the library administration for more details.</p><p>Thank you,<br/>Lumina Library Team</p>`;
@@ -458,23 +495,94 @@ export class UsersService implements OnModuleInit {
       }
     }
 
-    return this.userRepo.save(user);
+    const savedUser = await this.userRepo.save(user);
+
+    // Log activity based on what changed
+    const changes: Record<string, any> = {};
+    if (previousRole !== savedUser.role) changes.role = { from: previousRole, to: savedUser.role };
+    if (previousIsActive !== savedUser.isActive) changes.isActive = { from: previousIsActive, to: savedUser.isActive };
+    if (previousStatus !== savedUser.accountApprovalStatus) {
+      changes.accountApprovalStatus = { from: previousStatus, to: savedUser.accountApprovalStatus };
+    }
+    if (dto.firstName !== undefined && dto.firstName !== savedUser.firstName) changes.firstName = dto.firstName;
+    if (dto.lastName !== undefined && dto.lastName !== savedUser.lastName) changes.lastName = dto.lastName;
+    if (dto.email !== undefined && dto.email !== savedUser.email) changes.email = dto.email;
+    if (dto.yearLevel !== undefined && dto.yearLevel !== savedUser.yearLevel) changes.yearLevel = dto.yearLevel;
+    if (dto.section !== undefined && dto.section !== savedUser.section) changes.section = dto.section;
+    if (dto.eligibilityStatus !== undefined && dto.eligibilityStatus !== savedUser.eligibilityStatus) changes.eligibilityStatus = dto.eligibilityStatus;
+
+    if (approvalAction === 'approve') {
+      await this.activityLogService.logApprove(
+        requesterId,
+        ActivityResource.USER,
+        savedUser.id,
+        { ...changes, rejectionReason: dto.rejectionReason },
+        ipAddress,
+        userAgent,
+      );
+    } else if (approvalAction === 'reject') {
+      await this.activityLogService.logReject(
+        requesterId,
+        ActivityResource.USER,
+        savedUser.id,
+        { ...changes, rejectionReason: dto.rejectionReason },
+        ipAddress,
+        userAgent,
+      );
+    } else if (Object.keys(changes).length > 0) {
+      await this.activityLogService.logUpdate(
+        requesterId,
+        ActivityResource.USER,
+        savedUser.id,
+        changes,
+        ipAddress,
+        userAgent,
+      );
+    }
+
+    return savedUser;
   }
 
-  async updateProfile(id: number, dto: UpdateProfileDto): Promise<User> {
+  async updateProfile(id: number, dto: UpdateProfileDto, ipAddress?: string, userAgent?: string): Promise<User> {
     const user = await this.findById(id);
 
-    if (dto.firstName !== undefined) user.firstName = dto.firstName;
-    if (dto.lastName !== undefined) user.lastName = dto.lastName;
-    if (dto.middleName !== undefined) user.middleName = dto.middleName;
-    if (dto.gender !== undefined) user.gender = dto.gender;
-    if (dto.profilePhotoUrl !== undefined)
+    const changes: Record<string, any> = {};
+    if (dto.firstName !== undefined && dto.firstName !== user.firstName) {
+      changes.firstName = { from: user.firstName, to: dto.firstName };
+      user.firstName = dto.firstName;
+    }
+    if (dto.lastName !== undefined && dto.lastName !== user.lastName) {
+      changes.lastName = { from: user.lastName, to: dto.lastName };
+      user.lastName = dto.lastName;
+    }
+    if (dto.middleName !== undefined && dto.middleName !== user.middleName) {
+      changes.middleName = { from: user.middleName, to: dto.middleName };
+      user.middleName = dto.middleName;
+    }
+    if (dto.gender !== undefined && dto.gender !== user.gender) {
+      changes.gender = { from: user.gender, to: dto.gender };
+      user.gender = dto.gender;
+    }
+    if (dto.profilePhotoUrl !== undefined && dto.profilePhotoUrl !== user.profilePhotoUrl) {
+      changes.profilePhotoUrl = { from: user.profilePhotoUrl ? 'updated' : 'added', to: 'updated' };
       user.profilePhotoUrl = dto.profilePhotoUrl;
+    }
 
-    return this.userRepo.save(user);
+    const savedUser = await this.userRepo.save(user);
+
+    if (Object.keys(changes).length > 0) {
+      await this.activityLogService.logUpdateProfile(
+        id,
+        changes,
+        ipAddress,
+        userAgent,
+      );
+    }
+
+    return savedUser;
   }
 
-  async changePassword(id: number, dto: ChangePasswordDto): Promise<void> {
+  async changePassword(id: number, dto: ChangePasswordDto, ipAddress?: string, userAgent?: string): Promise<void> {
     const user = await this.userRepo
       .createQueryBuilder('user')
       .addSelect('user.passwordHash')
@@ -494,12 +602,73 @@ export class UsersService implements OnModuleInit {
     user.passwordHash = await bcrypt.hash(dto.newPassword, 10);
     user.mustChangePassword = false;
     await this.userRepo.save(user);
+
+    await this.activityLogService.logChangePassword(id, ipAddress, userAgent);
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: number, requesterId: number | null = null, ipAddress?: string, userAgent?: string): Promise<void> {
     const user = await this.findById(id);
+    const userEmail = user.email;
     // Soft-delete: just deactivate the account
     user.isActive = false;
     await this.userRepo.save(user);
+
+    await this.activityLogService.logDelete(
+      requesterId,
+      ActivityResource.USER,
+      id,
+      { email: userEmail },
+      ipAddress,
+      userAgent,
+    );
+  }
+
+  // ─── Password Reset ────────────────────────────────────────────────────────────
+  async requestPasswordReset(email: string): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { email } });
+    if (!user) {
+      // Don't reveal if email exists or not for security
+      return;
+    }
+
+    // Generate secure random token
+    const token = randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hour expiry
+
+    user.passwordResetToken = token;
+    user.passwordResetExpires = expires;
+    await this.userRepo.save(user);
+
+    // Send reset email
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+    const text = `Hello ${user.firstName},\n\nYou requested a password reset. Click the link below to set a new password:\n\n${resetUrl}\n\nThis link expires in 1 hour.\n\nIf you didn't request this, please ignore this email.\n\nThank you,\nLumina Library Team`;
+    const html = `<p>Hello ${user.firstName},</p><p>You requested a password reset. Click the link below to set a new password:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>This link expires in 1 hour.</p><p>If you didn't request this, please ignore this email.</p><p>Thank you,<br/>Lumina Library Team</p>`;
+
+    await this.sendEmail(user.email, 'Lumina Password Reset', text, html).catch((err) =>
+      console.error('Failed to send password reset email:', err),
+    );
+  }
+
+  async resetPassword(token: string, email: string, newPassword: string): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { email } });
+    if (!user) {
+      throw new ConflictException('Invalid reset token');
+    }
+
+    if (!user.passwordResetToken || user.passwordResetToken !== token) {
+      throw new ConflictException('Invalid reset token');
+    }
+
+    if (!user.passwordResetExpires || user.passwordResetExpires < new Date()) {
+      throw new ConflictException('Reset token has expired');
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    user.passwordResetToken = null;
+    user.passwordResetExpires = null;
+    user.mustChangePassword = false;
+    await this.userRepo.save(user);
+
+    await this.activityLogService.logChangePassword(user.id);
   }
 }
