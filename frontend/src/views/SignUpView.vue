@@ -10,7 +10,7 @@ const firstName = ref('')
 const lastName = ref('')
 const email = ref('')
 const institutionalId = ref('')
-const role = ref<'student' | 'faculty' | 'librarian'>('student')
+const role = ref<'student' | 'faculty' | 'librarian' | 'non_teaching_staff'>('student')
 const password = ref('')
 const confirmPassword = ref('')
 const gender = ref('Male')
@@ -65,7 +65,7 @@ const filteredDepartments = computed(() => {
 })
 
 const roleUsesDepartment = computed(() =>
-  role.value === 'student' || role.value === 'faculty'
+  role.value === 'student' || role.value === 'faculty' || role.value === 'non_teaching_staff'
 )
 
 watch(selectedCategory, () => {
@@ -156,7 +156,7 @@ async function handleSignUp() {
         <template v-else>
           <h2 class="text-xl font-semibold text-white mb-2">Create your account</h2>
           <p class="text-[#80b3ce] text-sm mb-7">
-            Register as a student, faculty member, or librarian. A librarian must approve your account before you can sign in.
+            Register as a student, faculty member, staff, or librarian. A librarian must approve your account before you can sign in.
           </p>
 
           <div
@@ -169,7 +169,7 @@ async function handleSignUp() {
           <form @submit.prevent="handleSignUp" class="space-y-4">
             <div>
               <label class="block text-xs font-semibold text-[#80b3ce] mb-2 uppercase tracking-wider">I am a</label>
-              <div class="grid grid-cols-3 gap-3">
+              <div class="grid grid-cols-4 gap-3">
                 <label
                   class="flex items-center justify-center py-3 rounded-xl border cursor-pointer transition-colors text-sm font-semibold"
                   :class="role === 'student'
@@ -187,6 +187,15 @@ async function handleSignUp() {
                 >
                   <input v-model="role" type="radio" value="faculty" class="sr-only" />
                   Faculty
+                </label>
+                <label
+                  class="flex items-center justify-center py-3 rounded-xl border cursor-pointer transition-colors text-sm font-semibold"
+                  :class="role === 'non_teaching_staff'
+                    ? 'bg-[#447794]/20 border-[#447794] text-white'
+                    : 'bg-[#123249] border-[#447794]/30 text-[#80b3ce] hover:border-[#447794]/50'"
+                >
+                  <input v-model="role" type="radio" value="non_teaching_staff" class="sr-only" />
+                  Staff
                 </label>
                 <label
                   class="flex items-center justify-center py-3 rounded-xl border cursor-pointer transition-colors text-sm font-semibold"
@@ -262,7 +271,7 @@ async function handleSignUp() {
 
             <div>
               <label for="signup-inst-id" class="block text-xs font-semibold text-[#80b3ce] mb-1.5 uppercase tracking-wider">
-                {{ role === 'student' ? 'Student ID' : role === 'faculty' ? 'Faculty ID' : 'Employee ID' }}
+                {{ role === 'student' ? 'Student ID' : role === 'faculty' ? 'Faculty ID' : role === 'non_teaching_staff' ? 'Employee ID' : 'Employee ID' }}
               </label>
               <input
                 id="signup-inst-id"
