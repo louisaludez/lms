@@ -322,12 +322,12 @@ const monthlyActivityData = computed(() => {
               </div>
 
               <!-- Role -->
-              <div 
+              <div
                 class="absolute z-10 w-full text-center flex justify-center"
                 style="top: 345px;"
               >
                 <p class="text-[13px] font-bold text-[#b91c1c] uppercase tracking-[0.1em]" style="min-width: 120px;">
-                  {{ user.role || 'STUDENT' }}
+                  {{ user.role === 'non_teaching_staff' ? 'STAFF' : (user.role || 'STUDENT').toUpperCase() }}
                 </p>
               </div>
 
