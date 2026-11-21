@@ -625,7 +625,12 @@ export class UsersService implements OnModuleInit {
 
   // ─── Password Reset ────────────────────────────────────────────────────────────
   async requestPasswordReset(email: string): Promise<void> {
-    const user = await this.userRepo.findOne({ where: { email } });
+    // Use case-insensitive email lookup
+    const user = await this.userRepo
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = LOWER(:email)', { email: email.trim().toLowerCase() })
+      .getOne();
+
     if (!user) {
       // Don't reveal if email exists or not for security
       return;
@@ -639,8 +644,8 @@ export class UsersService implements OnModuleInit {
     user.passwordResetExpires = expires;
     await this.userRepo.save(user);
 
-    // Send reset email
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+    // Send reset email using the user's actual email (preserves original case)
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}&email=${encodeURIComponent(user.email)}`;
     const text = `Hello ${user.firstName},\n\nYou requested a password reset. Click the link below to set a new password:\n\n${resetUrl}\n\nThis link expires in 1 hour.\n\nIf you didn't request this, please ignore this email.\n\nThank you,\nLumina Library Team`;
     const html = `<p>Hello ${user.firstName},</p><p>You requested a password reset. Click the link below to set a new password:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>This link expires in 1 hour.</p><p>If you didn't request this, please ignore this email.</p><p>Thank you,<br/>Lumina Library Team</p>`;
 
@@ -650,12 +655,24 @@ export class UsersService implements OnModuleInit {
   }
 
   async resetPassword(token: string, email: string, newPassword: string): Promise<void> {
-    const user = await this.userRepo.findOne({ where: { email } });
+    // Use case-insensitive email lookup (MySQL collation may be case-sensitive)
+    const user = await this.userRepo
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .addSelect('user.passwordResetToken')
+      .addSelect('user.passwordResetExpires')
+      .where('LOWER(user.email) = LOWER(:email)', { email: email.trim().toLowerCase() })
+      .getOne();
+
     if (!user) {
       throw new ConflictException('Invalid reset token');
     }
 
-    if (!user.passwordResetToken || user.passwordResetToken !== token) {
+    // Trim token in case of whitespace issues
+    const providedToken = token.trim();
+    const storedToken = user.passwordResetToken?.trim();
+
+    if (!storedToken || storedToken !== providedToken) {
       throw new ConflictException('Invalid reset token');
     }
 

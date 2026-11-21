@@ -147,17 +147,29 @@ const filteredStandardNavItems = computed(() => {
     <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
       <!-- Dashboard nav for librarian/admin (Dashboard FIRST) -->
       <template v-if="auth.isLibrarian">
-        <router-link
-          v-for="item in dashboardNavItems"
-          :key="item.to"
-          :to="item.to"
-          @click="closeMobileMenu"
-          class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-          :class="{ '!text-white !bg-white/20 !font-semibold': $route.name === item.name }"
-        >
-          <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
-          {{ item.label }}
-        </router-link>
+        <template v-for="(item, index) in dashboardNavItems" :key="item.to">
+          <router-link
+            :to="item.to"
+            @click="closeMobileMenu"
+            class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            :class="{ '!text-white !bg-white/20 !font-semibold': $route.name === item.name }"
+          >
+            <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
+            {{ item.label }}
+          </router-link>
+
+          <!-- View OPAC link for librarian/admin (right after Dashboard, index 0) -->
+          <router-link
+            v-if="index === 0"
+            to="/opac"
+            @click="closeMobileMenu"
+            class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            :class="{ '!text-white !bg-white/20 !font-semibold': $route.name === 'Opac' }"
+          >
+            <BookOpenIcon class="w-5 h-5 flex-shrink-0" />
+            View OPAC
+          </router-link>
+        </template>
       </template>
 
       <!-- Standard nav for student/faculty -->
@@ -177,17 +189,6 @@ const filteredStandardNavItems = computed(() => {
     </nav>
 
     <div class="px-3 py-3 border-t border-white/10 space-y-1">
-      <!-- View OPAC link for librarian/admin -->
-      <router-link
-        v-if="auth.isLibrarian"
-        to="/opac"
-        @click="closeMobileMenu"
-        class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-      >
-        <BookOpenIcon class="w-5 h-5 flex-shrink-0" />
-        View OPAC
-      </router-link>
-
       <button
         @click="toggleTheme"
         class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
