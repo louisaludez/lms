@@ -129,6 +129,62 @@ export class BooksService {
     return { data: books, total, page, lastPage: Math.ceil(total / limit) };
   }
 
+  // ─── GET COUNTS PER ITEM TYPE ─────────────────────────────────────────────────
+  async getItemTypeCounts(searchParams?: Partial<SearchBooksDto>): Promise<Record<string, number>> {
+    const qb = this.bookRepo
+      .createQueryBuilder('book')
+      .where('book.is_active = 1');
+
+    if (searchParams?.q) {
+      const like = `%${searchParams.q}%`;
+      if (searchParams.searchBy === 'title') {
+        qb.andWhere('book.title LIKE :like', { like });
+      } else if (searchParams.searchBy === 'author') {
+        qb.andWhere(`EXISTS (
+          SELECT 1 FROM book_authors ba
+          JOIN authors a ON a.id = ba.author_id
+          WHERE ba.book_id = book.id AND a.full_name LIKE :like
+        )`, { like });
+      } else if (searchParams.searchBy === 'isbn') {
+        qb.andWhere('book.isbn LIKE :like', { like });
+      } else if (searchParams.searchBy === 'callNumber') {
+        qb.andWhere('book.call_number LIKE :like', { like });
+      } else {
+        qb.andWhere(
+          `(MATCH(book.title, book.description) AGAINST (:q IN BOOLEAN MODE)
+            OR book.isbn LIKE :like
+            OR book.call_number LIKE :like
+            OR EXISTS (
+              SELECT 1 FROM book_authors ba
+              JOIN authors a ON a.id = ba.author_id
+              WHERE ba.book_id = book.id AND a.full_name LIKE :like
+            ))`,
+          { q: `${searchParams.q}*`, like },
+        );
+      }
+    }
+
+    if (searchParams?.categoryId) qb.andWhere('book.category_id = :categoryId', { categoryId: searchParams.categoryId });
+    if (searchParams?.language) qb.andWhere('book.language = :language', { language: searchParams.language });
+    if (searchParams?.publisher) qb.andWhere('book.publisher LIKE :publisher', { publisher: `%${searchParams.publisher}%` });
+    if (searchParams?.availableOnly) qb.andWhere('book.available_copies > 0');
+    if (searchParams?.excludeReference) qb.andWhere('book.is_reference_only = 0');
+    if (searchParams?.publishYearStart) qb.andWhere('book.publish_year >= :start', { start: searchParams.publishYearStart });
+    if (searchParams?.publishYearEnd) qb.andWhere('book.publish_year <= :end', { end: searchParams.publishYearEnd });
+
+    const results = await qb
+      .select('book.item_type', 'itemType')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('book.item_type')
+      .getRawMany();
+
+    const counts: Record<string, number> = {};
+    results.forEach((row: any) => {
+      counts[row.itemType] = Number(row.count);
+    });
+    return counts;
+  }
+
   // ─── GET BY ID ───────────────────────────────────────────────────────────────
   async findById(id: number): Promise<Book> {
     const book = await this.bookRepo.findOne({
@@ -179,6 +235,7 @@ export class BooksService {
       issn: dto.issn,
       callNumber: dto.callNumber,
       title: dto.title,
+      otherTitle: dto.otherTitle,
       edition: dto.edition,
       issue: dto.issue,
       volume: dto.volume,
@@ -363,6 +420,7 @@ export class BooksService {
     const book = await this.findById(id);
     const previousData = {
       title: book.title,
+      otherTitle: book.otherTitle,
       isbn: book.isbn,
       callNumber: book.callNumber,
       edition: book.edition,
@@ -384,6 +442,7 @@ export class BooksService {
     }
 
     if (dto.title !== undefined)         book.title          = dto.title;
+    if (dto.otherTitle !== undefined)    book.otherTitle     = dto.otherTitle;
     if (dto.isbn !== undefined)          book.isbn           = dto.isbn;
     if (dto.issn !== undefined)          book.issn           = dto.issn;
     if (dto.callNumber !== undefined)    book.callNumber     = dto.callNumber;
@@ -549,6 +608,9 @@ export class BooksService {
               // Use item type from CSV row, or fallback to frontend selection, or default to Books
               const itemType = (row['Item Type'] || row['itemType'] || frontendItemType || 'Books').trim();
 
+              // Support both 'Authors' (plural) and 'Author' (singular) for backward compatibility
+              const authors = row['Authors'] || row['Author'] || row['authors'] || row['author'] || undefined;
+
               // Conditional validation based on item type
               if (!title || !callNumber) {
                 failed++;
@@ -614,7 +676,7 @@ export class BooksService {
                 title,
                 otherTitle,
                 callNumber,
-                authors: row['Authors'] || row['authors'] || undefined,
+                authors,
                 publisher: row['Publisher'] || row['publisher'] || undefined,
                 publishYear: row['Publish Year'] || row['publishYear'] ? Number(row['Publish Year'] || row['publishYear']) : undefined,
                 categoryId,

@@ -67,6 +67,11 @@ const groupedBooks = computed(() => {
   return groups
 })
 
+// Get total count for an item type (across all pages)
+function getItemTypeTotalCount(type: string): number {
+  return store.itemTypeCounts[type] || 0
+}
+
 function goToPage(page: number) {
   store.searchBooks(page)
   window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -310,7 +315,10 @@ function clearSearch() {
             <div class="bg-white dark:bg-[#1E293B] px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
               <h3 class="font-bold text-[#1F2937] dark:text-slate-100 text-base uppercase tracking-wider">{{ type }}</h3>
               <span class="px-2.5 py-0.5 rounded-full bg-[#ECEBE8] dark:bg-[#283548] text-[#6B7280] dark:text-slate-300 text-xs font-semibold">
-                {{ groupBooks.length }} {{ groupBooks.length === 1 ? 'item' : 'items' }}
+                {{ getItemTypeTotalCount(type) }} {{ getItemTypeTotalCount(type) === 1 ? 'item' : 'items' }} total
+              </span>
+              <span class="px-2.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-400 text-[10px] font-semibold">
+                {{ groupBooks.length }} on this page
               </span>
             </div>
             

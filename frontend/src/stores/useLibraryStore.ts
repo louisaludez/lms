@@ -263,6 +263,7 @@ export const useLibraryStore = defineStore('library', () => {
   const currentBook = ref<Book | null>(null)
   const categories = ref<{ id: number; name: string }[]>([])
   const totalBooks = ref(0)
+  const itemTypeCounts = ref<Record<string, number>>({})
   const currentPage = ref(1)
   const lastPage = ref(1)
   const loading = ref(false)
@@ -317,11 +318,15 @@ export const useLibraryStore = defineStore('library', () => {
       if (publishYearStart.value) params.publishYearStart = publishYearStart.value
       if (publishYearEnd.value) params.publishYearEnd = publishYearEnd.value
 
-      const { data } = await api.get<PaginatedBooks>('/books/search', { params })
-      books.value = data.data
-      totalBooks.value = data.total
-      currentPage.value = data.page
-      lastPage.value = data.lastPage
+      const [searchResult, countsResult] = await Promise.all([
+        api.get<PaginatedBooks>('/books/search', { params }),
+        api.get<Record<string, number>>('/books/item-type-counts', { params }),
+      ])
+      books.value = searchResult.data.data
+      totalBooks.value = searchResult.data.total
+      currentPage.value = searchResult.data.page
+      lastPage.value = searchResult.data.lastPage
+      itemTypeCounts.value = countsResult.data
     } finally {
       loading.value = false
     }
@@ -482,7 +487,7 @@ export const useLibraryStore = defineStore('library', () => {
   )
 
   return {
-    books, currentBook, categories, totalBooks, currentPage, lastPage,
+    books, currentBook, categories, totalBooks, itemTypeCounts, currentPage, lastPage,
     loading, searchQuery, searchBy, selectedItemType, selectedCategory, availableOnly, excludeReference,
     publishYearStart, publishYearEnd,
     myTransactions, myActiveTransactions, loadingTransactions,

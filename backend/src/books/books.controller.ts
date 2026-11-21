@@ -49,6 +49,12 @@ export class BooksController {
     return this.booksService.getCategories();
   }
 
+  /** GET /api/v1/books/item-type-counts — public: get total counts per item type */
+  @Get('item-type-counts')
+  getItemTypeCounts(@Query() dto: SearchBooksDto) {
+    return this.booksService.getItemTypeCounts(dto);
+  }
+
   /** GET /api/v1/books/stats/overview — dashboard stats */
   @Get('stats/overview')
   @UseGuards(JwtAuthGuard)

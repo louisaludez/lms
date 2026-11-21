@@ -66,10 +66,16 @@ const dashboardNavItems = computed(() => {
 
 // Standard nav items for non-librarian (student/faculty)
 const standardNavItems = computed(() => [
-  { to: '/opac', name: 'Opac', label: 'Catalog', icon: BookOpenIcon, roles: ['student', 'faculty'] },
-  { to: '/profile', name: 'Profile', label: 'Profile', icon: UserCircleIcon, roles: ['student', 'faculty'] },
+  { to: '/opac', name: 'Opac', label: 'Catalog', icon: BookOpenIcon, roles: ['student', 'faculty', 'guest'] },
+  { to: '/profile', name: 'Profile', label: 'Profile', icon: UserCircleIcon, roles: ['student', 'faculty', 'guest'] },
   { to: '/dashboard/faculty-requests', name: 'FacultyRequests', label: 'My Requests', icon: DocumentTextIcon, roles: ['faculty'] },
 ])
+
+// Filtered nav items based on current user role
+const filteredStandardNavItems = computed(() => {
+  const role = auth.user?.role || 'guest'
+  return standardNavItems.value.filter(item => item.roles.includes(role))
+})
 </script>
 
 <template>
@@ -157,7 +163,7 @@ const standardNavItems = computed(() => [
       <!-- Standard nav for student/faculty -->
       <template v-else>
         <router-link
-          v-for="item in standardNavItems"
+          v-for="item in filteredStandardNavItems"
           :key="item.to"
           :to="item.to"
           @click="closeMobileMenu"

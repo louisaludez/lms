@@ -272,7 +272,7 @@ function openEdit(book: BookRow) {
     publishYear:    book.publishYear ?? new Date().getFullYear(),
     categoryId:     book.category?.id?.toString() ?? '',
     language:       book.language,
-    description:    '',
+    description:    book.description ?? '',
     coverImageUrl:  book.coverImageUrl ?? '',
     locationShelf:  book.locationShelf ?? '',
     totalCopies:    book.totalCopies,
@@ -384,7 +384,7 @@ async function submitBulkUpload() {
 
 // Helper: Get required fields for an item type
 function getRequiredFields(itemType: string): string[] {
-  const baseFields = ['Title', 'Author', 'Call Number']
+  const baseFields = ['Title', 'Authors', 'Call Number']
 
   switch (itemType) {
     case 'Books':
@@ -405,22 +405,22 @@ function getRequiredFields(itemType: string): string[] {
 
 // Get all columns for an item type (for template)
 function getTemplateColumns(itemType: string): string[] {
-  const baseColumns = ['Title', 'Author', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
+  const baseColumns = ['Title', 'Authors', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
 
   switch (itemType) {
     case 'Books':
-      return ['Title', 'Other Title', 'Author', 'ISBN', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Edition', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
+      return ['Title', 'Other Title', 'Authors', 'ISBN', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Edition', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
     case 'Journals':
-      return ['Title', 'Author', 'ISSN', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Issue', 'Volume', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
+      return ['Title', 'Authors', 'ISSN', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Issue', 'Volume', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
     case 'Thesis':
-      return ['Title', 'Author', 'ISBN', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Edition', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
+      return ['Title', 'Authors', 'ISBN', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Edition', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
     case 'CD':
     case 'DVD':
     case 'Cartographic Materials':
     case 'Electronics':
-      return ['Title', 'Author', 'ISBN', 'ISSN', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
+      return ['Title', 'Authors', 'ISBN', 'ISSN', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
     default:
-      return ['Title', 'Author', 'ISBN', 'ISSN', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Edition', 'Issue', 'Volume', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
+      return ['Title', 'Authors', 'ISBN', 'ISSN', 'Call Number', 'Publisher', 'Publish Year', 'Category', 'Language', 'Edition', 'Issue', 'Volume', 'Location Shelf', 'Total Copies', 'Reference Only', 'Description']
   }
 }
 

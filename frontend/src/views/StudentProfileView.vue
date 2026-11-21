@@ -298,7 +298,7 @@ const monthlyActivityData = computed(() => {
                 style="top: 100px;"
               >
                 <h3 class="text-[14px] font-black text-[#1a233a] uppercase tracking-widest drop-shadow-sm">
-                  AUTOMATED ID
+                  LIBRARY CARD
                 </h3>
               </div>
 
