@@ -22,6 +22,7 @@ export enum UserRole {
   CHIEF_LIBRARIAN = 'chief_librarian',
   ADMIN = 'admin',
   KIOSK = 'kiosk',
+  NON_TEACHING_STAFF = 'non_teaching_staff',
 }
 
 export enum Gender {
