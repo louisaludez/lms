@@ -31,12 +31,12 @@ export class AuthService {
 
   async register(dto: RegisterDto, profilePhotoUrl: string | null = null, ipAddress?: string, userAgent?: string) {
     if (
-      ![UserRole.STUDENT, UserRole.FACULTY, UserRole.LIBRARIAN].includes(
+      ![UserRole.STUDENT, UserRole.FACULTY, UserRole.LIBRARIAN, UserRole.NON_TEACHING_STAFF].includes(
         dto.role,
       )
     ) {
       throw new BadRequestException(
-        'Only student, faculty, or librarian accounts can be created via sign-up',
+        'Only student, faculty, staff, or librarian accounts can be created via sign-up',
       );
     }
 

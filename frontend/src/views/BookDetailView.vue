@@ -6,7 +6,7 @@ import NavBar from '@/components/NavBar.vue'
 import {
   BookOpenIcon, HomeIcon, MapPinIcon, GlobeAltIcon,
   CalendarIcon, BookmarkIcon, CheckCircleIcon, XCircleIcon, QrCodeIcon,
-  DocumentTextIcon, PaperAirplaneIcon
+  DocumentTextIcon, PaperAirplaneIcon, ArrowLeftIcon
 } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
@@ -70,14 +70,15 @@ async function handleFacultyRequest() {
     <NavBar />
 
     <div class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-      <!-- Home button - hidden for admin and librarian (isLibrarian includes admin) -->
+      <!-- Back to Catalog button - shown only for librarian/admin -->
       <router-link
-        v-if="!auth.isLibrarian"
+        v-if="auth.isLibrarian"
         to="/opac"
-        class="btn-ghost mb-6 p-2"
-        aria-label="Go to Home"
+        class="btn-ghost mb-6 p-2 inline-flex items-center gap-1.5"
+        aria-label="Back to Catalog"
       >
-        <HomeIcon class="w-5 h-5" />
+        <ArrowLeftIcon class="w-5 h-5" />
+        <span class="hidden sm:inline text-sm font-medium whitespace-nowrap">Back to Catalog</span>
       </router-link>
 
       <div v-if="store.loading" class="card p-8 space-y-4">

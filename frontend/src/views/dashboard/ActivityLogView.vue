@@ -73,6 +73,7 @@ const actions = [
   { value: 'approve_book_request', label: 'Approve Book Request' },
   { value: 'reject_book_request', label: 'Reject Book Request' },
   { value: 'export_report', label: 'Export Report' },
+  { value: 'import_data', label: 'Import Data' },
   { value: 'change_password', label: 'Change Password' },
   { value: 'update_profile', label: 'Update Profile' },
 ]
@@ -152,6 +153,7 @@ const getActionBadgeClass = (action: string) => {
     approve_book_request: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
     reject_book_request: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400',
     export_report: 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300',
+    import_data: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400',
     change_password: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
     update_profile: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-400',
   }
@@ -176,6 +178,7 @@ const getActionIcon = (action: string) => {
     approve_book_request: CheckCircleIcon,
     reject_book_request: XCircleIcon,
     export_report: ArrowDownTrayIcon,
+    import_data: ArrowDownTrayIcon,
     change_password: UserCircleIcon,
     update_profile: UserCircleIcon,
   }

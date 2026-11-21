@@ -65,7 +65,11 @@ const filteredDepartments = computed(() => {
 })
 
 const roleUsesDepartment = computed(() =>
-  role.value === 'student' || role.value === 'faculty' || role.value === 'non_teaching_staff'
+  role.value === 'student' || role.value === 'faculty'
+)
+
+const staffUsesDepartment = computed(() =>
+  role.value === 'non_teaching_staff'
 )
 
 watch(selectedCategory, () => {
@@ -73,7 +77,7 @@ watch(selectedCategory, () => {
 })
 
 watch(role, () => {
-  if (!roleUsesDepartment.value) {
+  if (!roleUsesDepartment.value && !staffUsesDepartment.value) {
     selectedCategory.value = ''
     departmentId.value = ''
   }
@@ -103,7 +107,7 @@ async function handleSignUp() {
     clientMessage.value = 'Please select a display picture.'
     return
   }
-  if (roleUsesDepartment.value && !departmentId.value) {
+  if ((roleUsesDepartment.value || staffUsesDepartment.value) && !departmentId.value) {
     clientMessage.value = 'Please select a department.'
     return
   }
@@ -116,7 +120,7 @@ async function handleSignUp() {
       institutionalId: institutionalId.value.trim(),
       role: role.value,
       gender: gender.value,
-      departmentId: roleUsesDepartment.value && departmentId.value ? Number(departmentId.value) : undefined,
+      departmentId: (roleUsesDepartment.value || staffUsesDepartment.value) && departmentId.value ? Number(departmentId.value) : undefined,
       displayPicture: displayPicture.value,
     })
   } catch { /* error shown via auth.error */ }
@@ -284,7 +288,7 @@ async function handleSignUp() {
               />
             </div>
 
-            <div class="grid grid-cols-1 gap-4" :class="roleUsesDepartment ? 'sm:grid-cols-3' : ''">
+            <div class="grid grid-cols-1 gap-4" :class="(roleUsesDepartment || staffUsesDepartment) ? 'sm:grid-cols-3' : ''">
               <div>
                 <label for="signup-gender" class="block text-xs font-semibold text-[#80b3ce] mb-1.5 uppercase tracking-wider">Gender</label>
                 <select
@@ -325,6 +329,20 @@ async function handleSignUp() {
                 >
                   <option value="" disabled>Select Course</option>
                   <option v-for="dept in filteredDepartments" :key="dept.id" :value="dept.id">
+                    {{ dept.name }}
+                  </option>
+                </select>
+              </div>
+              <div v-if="staffUsesDepartment" class="sm:col-span-2">
+                <label for="signup-staff-dept" class="block text-xs font-semibold text-[#80b3ce] mb-1.5 uppercase tracking-wider">Department</label>
+                <select
+                  id="signup-staff-dept"
+                  v-model="departmentId"
+                  required
+                  class="input bg-[#123249] border-[#447794]/30 text-white placeholder:text-slate-500 focus:ring-[#447794]/40 focus:border-[#447794]"
+                >
+                  <option value="" disabled>Select Department</option>
+                  <option v-for="dept in departments" :key="dept.id" :value="dept.id">
                     {{ dept.name }}
                   </option>
                 </select>

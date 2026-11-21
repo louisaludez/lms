@@ -193,9 +193,11 @@ export class UsersService implements OnModuleInit {
 
     const hash = await bcrypt.hash(dto.password, 10);
 
+    const barcode = this.generateBarcodeFromInstitutionalId(dto.institutionalId);
+
     const partial: Partial<User> = {
       institutionalId: dto.institutionalId,
-      barcode: dto.barcode,
+      barcode,
       email: dto.email,
       passwordHash: hash,
       firstName: dto.firstName,
@@ -226,18 +228,12 @@ export class UsersService implements OnModuleInit {
     return savedUser;
   }
 
-  private async generateUniqueLibraryBarcode(): Promise<string> {
-    for (let attempt = 0; attempt < 25; attempt++) {
-      const raw = randomBytes(4).toString('hex').toUpperCase(); // Exactly 8 characters
-      const candidate = `LUM-${raw}`; // Total 12 characters
-      const taken = await this.userRepo.exist({
-        where: { barcode: candidate },
-      });
-      if (!taken) return candidate;
-    }
-    throw new InternalServerErrorException(
-      'Could not generate a unique library barcode',
-    );
+  /**
+   * Generate barcode from institutional ID (pure ID, no prefix)
+   * The institutional ID is already unique, so use it directly
+   */
+  private generateBarcodeFromInstitutionalId(institutionalId: string): string {
+    return institutionalId.toUpperCase();
   }
 
   /** Public self-registration: pending librarian approval, barcode assigned here. */
@@ -274,7 +270,7 @@ export class UsersService implements OnModuleInit {
       if (dept) department = dept;
     }
 
-    const barcode = await this.generateUniqueLibraryBarcode();
+    const barcode = this.generateBarcodeFromInstitutionalId(dto.institutionalId);
     const hash = await bcrypt.hash(dto.password, 10);
 
     const user = this.userRepo.create({

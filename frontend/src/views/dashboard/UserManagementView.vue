@@ -162,17 +162,20 @@ function requiresDepartment(role: string) {
   return role === 'student' || role === 'faculty' || role === 'non_teaching_staff'
 }
 
-const roleUsesDepartment = computed(() => requiresDepartment(form.value.role))
+const roleUsesDepartment = computed(() => form.value.role === 'student' || form.value.role === 'faculty')
+const staffUsesDepartment = computed(() => form.value.role === 'non_teaching_staff')
 
 watch(modalCategory, (newCat, oldCat) => {
-  if (oldCat !== undefined && newCat !== oldCat && modalMode.value === 'create') {
+  if (oldCat !== undefined && newCat !== oldCat && modalMode.value === 'create' && roleUsesDepartment.value) {
     form.value.departmentId = ''
   }
 })
 
 function handleRoleChange() {
-  if (!roleUsesDepartment.value) {
+  if (!roleUsesDepartment.value && !staffUsesDepartment.value) {
     form.value.departmentId = ''
+    modalCategory.value = 'All Categories'
+  } else if (staffUsesDepartment.value) {
     modalCategory.value = 'All Categories'
   }
 }
@@ -744,6 +747,13 @@ function approvalBadge(status: string) {
                 <select v-model="form.departmentId" required class="input">
                   <option value="" disabled>Select department...</option>
                   <option v-for="dept in filteredDepartments" :key="dept.id" :value="dept.id">{{ dept.name }}</option>
+                </select>
+              </div>
+              <div v-if="staffUsesDepartment" class="col-span-2">
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Department *</label>
+                <select v-model="form.departmentId" required class="input">
+                  <option value="" disabled>Select department...</option>
+                  <option v-for="dept in departments" :key="dept.id" :value="dept.id">{{ dept.name }}</option>
                 </select>
               </div>
               <div class="col-span-2">

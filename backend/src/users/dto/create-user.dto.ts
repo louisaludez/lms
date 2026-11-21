@@ -15,8 +15,9 @@ export class CreateUserDto {
   @IsString()
   institutionalId: string;
 
+  @IsOptional()
   @IsString()
-  barcode: string;
+  barcode?: string;
 
   @IsEmail()
   email: string;
