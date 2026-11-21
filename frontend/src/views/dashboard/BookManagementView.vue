@@ -41,6 +41,7 @@ interface BookRow {
   coverImageUrl: string | null
   itemType: string
   issn: string | null
+  description: string | null
   copies?: BookCopyRow[]
 }
 

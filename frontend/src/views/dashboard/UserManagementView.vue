@@ -950,7 +950,7 @@ function approvalBadge(status: string) {
               
               <!-- "AUTOMATED ID" Title -->
               <div class="absolute z-10 w-full text-center flex justify-center" style="top: 100px;">
-                <h3 class="text-[14px] font-black text-[#1a233a] uppercase tracking-widest drop-shadow-sm">AUTOMATED ID</h3>
+                <h3 class="text-[14px] font-black text-[#1a233a] uppercase tracking-widest drop-shadow-sm">LIBRARY CARD</h3>
               </div>
 
               <!-- Photo with Red Border -->
