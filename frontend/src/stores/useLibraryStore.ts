@@ -8,7 +8,7 @@ export interface User {
   email: string
   firstName: string
   lastName: string
-  role: 'student' | 'faculty' | 'librarian' | 'chief_librarian' | 'admin' | 'kiosk'
+  role: 'student' | 'faculty' | 'librarian' | 'chief_librarian' | 'admin' | 'kiosk' | 'non_teaching_staff'
   institutionalId: string
   eligibilityStatus: 'eligible' | 'suspended' | 'expelled'
   profilePhotoUrl: string | null
@@ -112,7 +112,7 @@ export interface RegisterPayload {
   firstName: string
   lastName: string
   institutionalId: string
-  role: 'student' | 'faculty' | 'librarian'
+  role: 'student' | 'faculty' | 'librarian' | 'non_teaching_staff'
   gender?: string
   departmentId?: number
   displayPicture?: File
@@ -131,6 +131,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isFaculty = computed(() => user.value?.role === 'faculty')
   const isLibrarian = computed(() => ['librarian', 'chief_librarian', 'admin'].includes(user.value?.role ?? ''))
   const isKiosk = computed(() => user.value?.role === 'kiosk')
+  const isStaff = computed(() => user.value?.role === 'non_teaching_staff')
   const mustChangePassword = computed(() => !!user.value?.mustChangePassword)
   const isSuspended = computed(() => user.value?.eligibilityStatus === 'suspended')
 
@@ -253,7 +254,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, token, loading, error, isAuthenticated, isStudent, isFaculty, isLibrarian, isKiosk, mustChangePassword, isSuspended, sidebarCollapsed, isSidebarVisible, toggleSidebar, login, register, logout, fetchMe, updateProfile, changePassword }
+  return { user, token, loading, error, isAuthenticated, isStudent, isFaculty, isLibrarian, isKiosk, isStaff, mustChangePassword, isSuspended, sidebarCollapsed, isSidebarVisible, toggleSidebar, login, register, logout, fetchMe, updateProfile, changePassword }
 })
 
 // ─── LIBRARY STORE ────────────────────────────────────────────────────────────
