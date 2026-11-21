@@ -64,10 +64,10 @@ const dashboardNavItems = computed(() => {
   ].filter(item => item.roles.includes(role))
 })
 
-// Standard nav items for non-librarian (student/faculty)
+// Standard nav items for non-librarian (student/faculty/staff)
 const standardNavItems = computed(() => [
-  { to: '/opac', name: 'Opac', label: 'Catalog', icon: BookOpenIcon, roles: ['student', 'faculty', 'guest'] },
-  { to: '/profile', name: 'Profile', label: 'Profile', icon: UserCircleIcon, roles: ['student', 'faculty', 'guest'] },
+  { to: '/opac', name: 'Opac', label: 'View opac', icon: BookOpenIcon, roles: ['student', 'faculty', 'guest', 'non_teaching_staff'] },
+  { to: '/profile', name: 'Profile', label: 'Profile', icon: UserCircleIcon, roles: ['student', 'faculty', 'guest', 'non_teaching_staff'] },
   { to: '/dashboard/faculty-requests', name: 'FacultyRequests', label: 'My Requests', icon: DocumentTextIcon, roles: ['faculty'] },
 ])
 
