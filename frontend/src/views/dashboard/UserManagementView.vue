@@ -56,6 +56,7 @@ const roleOptions = [
   { label: 'All Roles', value: '' },
   { label: 'Student', value: 'student' },
   { label: 'Faculty', value: 'faculty' },
+  { label: 'Staff', value: 'non_teaching_staff' },
   { label: 'Librarian', value: 'librarian' },
   { label: 'Admin', value: 'admin' },
   { label: 'Kiosk', value: 'kiosk' }
@@ -158,7 +159,7 @@ const filteredDepartments = computed(() => {
 })
 
 function requiresDepartment(role: string) {
-  return role === 'student' || role === 'faculty'
+  return role === 'student' || role === 'faculty' || role === 'non_teaching_staff'
 }
 
 const roleUsesDepartment = computed(() => requiresDepartment(form.value.role))
@@ -427,10 +428,11 @@ function handleFileChange(e: Event) {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function roleBadge(role: string) {
   const map: Record<string, string> = {
-    student:   'bg-sky-100 text-sky-700',
-    faculty:   'bg-purple-100 text-purple-700',
-    librarian: 'bg-[#447794]/10 text-[#447794]',
-    admin:     'bg-rose-100 text-rose-700',
+    student:            'bg-sky-100 text-sky-700',
+    faculty:            'bg-purple-100 text-purple-700',
+    non_teaching_staff: 'bg-emerald-100 text-emerald-700',
+    librarian:          'bg-[#447794]/10 text-[#447794]',
+    admin:              'bg-rose-100 text-rose-700',
   }
   return map[role] ?? 'bg-slate-100 text-slate-600'
 }
@@ -575,6 +577,9 @@ function approvalBadge(status: string) {
                 <span v-else-if="user.role === 'faculty'" class="badge-pill-purple">
                   Faculty
                 </span>
+                <span v-else-if="user.role === 'non_teaching_staff'" class="badge-pill-emerald">
+                  Staff
+                </span>
                 <span v-else-if="user.role === 'kiosk'" class="badge-pill-amber">
                   Kiosk Terminal
                 </span>
@@ -698,7 +703,7 @@ function approvalBadge(status: string) {
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">
-                  {{ form.role === 'student' ? 'Student ID' : form.role === 'faculty' ? 'Faculty ID' : 'Institutional ID' }} *
+                  {{ form.role === 'student' ? 'Student ID' : form.role === 'faculty' ? 'Faculty ID' : form.role === 'non_teaching_staff' ? 'Employee ID' : 'Institutional ID' }} *
                 </label>
                 <input
                   v-model="form.institutionalId"
@@ -706,7 +711,7 @@ function approvalBadge(status: string) {
                   :required="modalMode === 'create'"
                   :disabled="modalMode === 'edit'"
                   class="input font-mono"
-                  :placeholder="form.role === 'student' ? 'e.g. 2024-CCS-001' : form.role === 'faculty' ? 'e.g. FAC-2024-001' : 'e.g. 2024-CCS-001'"
+                  :placeholder="form.role === 'student' ? 'e.g. 2024-CCS-001' : form.role === 'faculty' ? 'e.g. FAC-2024-001' : form.role === 'non_teaching_staff' ? 'e.g. EMP-2024-001' : 'e.g. 2024-CCS-001'"
                 />
               </div>
               <div>
@@ -714,7 +719,8 @@ function approvalBadge(status: string) {
                 <select v-model="form.role" required class="input" @change="handleRoleChange">
                   <option value="student">Student</option>
                   <option value="faculty">Faculty</option>
-                 
+                  <option value="non_teaching_staff">Staff</option>
+
                   <option value="kiosk">Kiosk</option>
                   <option v-if="modalMode === 'edit' && form.role === 'admin'" value="admin" disabled>Admin</option>
                 </select>
@@ -876,7 +882,7 @@ function approvalBadge(status: string) {
                   <p class="text-slate-500 text-sm font-medium mt-0.5">{{ viewingIdUser.email }}</p>
                   <div class="mt-3 flex gap-2 flex-wrap">
                     <span :class="['px-2.5 py-1 rounded-full text-xs font-bold capitalize', roleBadge(viewingIdUser.role)]">
-                      {{ viewingIdUser.role }}
+                      {{ viewingIdUser.role === 'non_teaching_staff' ? 'Staff' : viewingIdUser.role }}
                     </span>
                     <span :class="['px-2.5 py-1 rounded-full text-xs font-bold capitalize', eligBadge(viewingIdUser.eligibilityStatus)]">
                       {{ viewingIdUser.eligibilityStatus }}
@@ -888,7 +894,7 @@ function approvalBadge(status: string) {
               <div class="grid grid-cols-2 gap-4">
                 <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                   <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">
-                    {{ viewingIdUser.role === 'student' ? 'Student ID' : viewingIdUser.role === 'faculty' ? 'Faculty ID' : 'Institutional ID' }}
+                    {{ viewingIdUser.role === 'student' ? 'Student ID' : viewingIdUser.role === 'faculty' ? 'Faculty ID' : viewingIdUser.role === 'non_teaching_staff' ? 'Employee ID' : 'Institutional ID' }}
                   </p>
                   <p class="font-mono text-slate-800 font-medium">{{ viewingIdUser.institutionalId }}</p>
                 </div>
@@ -969,7 +975,7 @@ function approvalBadge(status: string) {
               <!-- Role -->
               <div class="absolute z-10 w-full text-center flex justify-center" style="top: 345px;">
                 <p class="text-[13px] font-bold text-[#b91c1c] uppercase tracking-[0.1em]" style="min-width: 120px;">
-                  {{ viewingIdUser.role || 'STUDENT' }}
+                  {{ viewingIdUser.role === 'non_teaching_staff' ? 'STAFF' : (viewingIdUser.role || 'STUDENT').toUpperCase() }}
                 </p>
               </div>
 
