@@ -33,8 +33,8 @@ export class RegisterDto {
   @MaxLength(30)
   institutionalId: string;
 
-  @IsIn([UserRole.STUDENT, UserRole.FACULTY, UserRole.LIBRARIAN])
-  role: UserRole.STUDENT | UserRole.FACULTY | UserRole.LIBRARIAN;
+  @IsIn([UserRole.STUDENT, UserRole.FACULTY, UserRole.LIBRARIAN, UserRole.NON_TEACHING_STAFF])
+  role: UserRole.STUDENT | UserRole.FACULTY | UserRole.LIBRARIAN | UserRole.NON_TEACHING_STAFF;
 
   @IsOptional()
   @IsEnum(Gender)

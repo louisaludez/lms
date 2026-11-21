@@ -247,7 +247,7 @@ export class UsersService implements OnModuleInit {
     firstName: string;
     lastName: string;
     institutionalId: string;
-    role: UserRole.STUDENT | UserRole.FACULTY | UserRole.LIBRARIAN;
+    role: UserRole.STUDENT | UserRole.FACULTY | UserRole.LIBRARIAN | UserRole.NON_TEACHING_STAFF;
     gender?: any;
     departmentId?: number;
     profilePhotoUrl?: string;
